@@ -49,20 +49,26 @@ def get_head_to_head(team_a_id: int, team_b_id: int) -> dict:
 
 def get_recent_fixtures(team_id: int, limit: int = 5) -> dict:
     """Fetch recent fixtures for a team to evaluate recent form."""
-    try:
-        url = f"{BASE_URL}/fixtures"
-        params = {
-            "filter[team_id]": team_id,
-            "per_page": limit,
-            "sort": "-starting_at",
-        }
-        resp = requests.get(url, headers=HEADERS, params=params)
-        resp.raise_for_status()
-        return {"status": "success", "data": resp.json().get("data", [])}
-    except requests.exceptions.HTTPError as e:
-        return {"status": "error", "message": f"HTTP error: {e}"}
-    except requests.exceptions.RequestException as e:
-        return {"status": "error", "message": f"Request failed: {e}"}
+    endpoints = [
+        (f"{BASE_URL}/fixtures", {"filters": f"teamId:{team_id}"}),
+        (f"{BASE_URL}/fixtures/upcoming/teamId/{team_id}", {}),
+        (f"{BASE_URL}/fixtures/latest/teamId/{team_id}", {}),
+    ]
+
+    last_error = None
+    for url, params in endpoints:
+        try:
+            resp = requests.get(url, headers=HEADERS, params=params)
+            resp.raise_for_status()
+            data = resp.json().get("data", [])
+            if data:
+                return {"status": "success", "data": data[:limit]}
+        except requests.exceptions.HTTPError as e:
+            last_error = f"HTTP error: {e}"
+        except requests.exceptions.RequestException as e:
+            last_error = f"Request failed: {e}"
+
+    return {"status": "error", "message": last_error or "All endpoints failed"}
 
 
 def check_team_data(team_a_id: int, team_b_id: int) -> dict:
