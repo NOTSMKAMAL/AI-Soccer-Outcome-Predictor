@@ -48,5 +48,10 @@ frontend/.env*.local
 frontend/node_modules/
 frontend/.next/
 frontend/out/
+frontend/tsconfig.tsbuildinfo
+frontend/*.log
+frontend/.next-dev*.log
+
 venv/
 .env
+

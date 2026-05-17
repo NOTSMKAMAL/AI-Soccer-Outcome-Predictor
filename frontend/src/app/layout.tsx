@@ -7,7 +7,7 @@ const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "AI Sports Predictor",
-  description: "Predict match outcomes powered by AI",
+  description: "AI-powered match outcome predictions for the world's top leagues",
 };
 
 export default function RootLayout({
@@ -16,8 +16,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className={inter.className}>
+    <html lang="en" className="dark">
+      <body className={`${inter.className} bg-[#05050a] text-white antialiased`}>
         <Providers>{children}</Providers>
       </body>
     </html>
