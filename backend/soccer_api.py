@@ -4,18 +4,22 @@ from backend.config import APIFOOTBALL_API_KEY, APIFOOTBALL_BASE_URL
 
 MOCK_TEAMS = [
     {"id": 33, "name": "Argentina", "country": "Argentina"},
-    {"id": 2, "name": "France", "country": "France"},
-    {"id": 6, "name": "Brazil", "country": "Brazil"},
-    {"id": 9, "name": "Spain", "country": "Spain"},
-    {"id": 27, "name": "Germany", "country": "Germany"},
+    {"id": 2,  "name": "France",    "country": "France"},
+    {"id": 6,  "name": "Brazil",    "country": "Brazil"},
+    {"id": 9,  "name": "Spain",     "country": "Spain"},
+    {"id": 27, "name": "Germany",   "country": "Germany"},
 ]
 
 MOCK_STATS: dict[int, dict[str, float]] = {
-    33: {"attack": 8.5, "defense": 8.1, "recent_form": 4.2},
-    2:  {"attack": 7.8, "defense": 8.3, "recent_form": 3.6},
-    6:  {"attack": 8.2, "defense": 7.9, "recent_form": 3.8},
-    9:  {"attack": 7.6, "defense": 8.0, "recent_form": 3.5},
-    27: {"attack": 7.4, "defense": 7.7, "recent_form": 3.2},
+    33: {"attack": 9.1, "defense": 8.4, "recent_form": 9.4, "possession": 8.6, "finishing": 9.0},
+    2:  {"attack": 9.0, "defense": 8.8, "recent_form": 8.7, "possession": 7.9, "finishing": 8.9},
+    6:  {"attack": 8.9, "defense": 8.0, "recent_form": 8.2, "possession": 8.4, "finishing": 8.7},
+    9:  {"attack": 8.6, "defense": 8.5, "recent_form": 8.9, "possession": 9.1, "finishing": 8.3},
+    27: {"attack": 8.4, "defense": 8.7, "recent_form": 7.9, "possession": 8.2, "finishing": 8.2},
+}
+
+_DEFAULT_STATS: dict[str, float] = {
+    "attack": 7.0, "defense": 7.0, "recent_form": 3.0, "possession": 7.0, "finishing": 7.0,
 }
 
 
@@ -50,21 +54,27 @@ class SoccerApiClient:
 
     def get_team_stats(self, team_id: int) -> dict[str, float]:
         if not APIFOOTBALL_API_KEY:
-            return MOCK_STATS.get(team_id, {"attack": 7.0, "defense": 7.0, "recent_form": 3.0})
+            return MOCK_STATS.get(team_id, _DEFAULT_STATS.copy())
         try:
             data = self._get("teams/statistics", {"team": team_id, "league": "1", "season": "2023"})
             resp = data.get("response", {})
-            goals_for = resp.get("goals", {}).get("for", {}).get("average", {}).get("total", "7.0")
-            goals_against = resp.get("goals", {}).get("against", {}).get("average", {}).get("total", "7.0")
+            goals_for = resp.get("goals", {}).get("for", {}).get("average", {}).get("total", "3.5")
+            goals_against = resp.get("goals", {}).get("against", {}).get("average", {}).get("total", "1.0")
             fixtures = resp.get("fixtures", {})
             wins = fixtures.get("wins", {}).get("total", 0) or 0
             total = fixtures.get("played", {}).get("total", 1) or 1
             attack = min(10.0, float(goals_for) * 2)
             defense = max(0.0, 10.0 - float(goals_against) * 2)
-            recent_form = round((wins / total) * 5, 1)
-            return {"attack": round(attack, 1), "defense": round(defense, 1), "recent_form": recent_form}
+            recent_form = round((wins / total) * 10, 1)
+            return {
+                "attack": round(attack, 1),
+                "defense": round(defense, 1),
+                "recent_form": recent_form,
+                "possession": 8.0,
+                "finishing": round(attack * 0.95, 1),
+            }
         except Exception:
-            return MOCK_STATS.get(team_id, {"attack": 7.0, "defense": 7.0, "recent_form": 3.0})
+            return MOCK_STATS.get(team_id, _DEFAULT_STATS.copy())
 
     def get_team_name(self, team_id: int) -> str:
         for team in MOCK_TEAMS:

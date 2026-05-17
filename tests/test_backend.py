@@ -79,8 +79,9 @@ def test_predictor_compute_score():
 
 def test_predictor_confidence_symmetric():
     from backend.predictor import compute_confidence
+    # Equal scores hit the minimum confidence floor (52), not raw 50
     c1 = compute_confidence(5.0, 5.0)
-    assert c1 == 50
+    assert c1 == 52
 
 
 def test_predictor_winner_selection():

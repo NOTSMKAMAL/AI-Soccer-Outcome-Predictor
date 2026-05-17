@@ -2,6 +2,10 @@
 .env
 *.env
 
+# Firebase service account — must never be committed
+serviceAccountKey.json
+*serviceAccountKey*.json
+
 # Python
 __pycache__/
 *.py[cod]
@@ -37,3 +41,10 @@ Thumbs.db
 
 # Claude Code
 .claude/
+
+# Next.js frontend
+frontend/.env.local
+frontend/.env*.local
+frontend/node_modules/
+frontend/.next/
+frontend/out/
