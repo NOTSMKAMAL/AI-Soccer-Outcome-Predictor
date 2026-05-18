@@ -366,3 +366,331 @@ def get_fixture_detail(fixture_id: int) -> dict:
         return {"status": "error", "message": f"HTTP error: {e}"}
     except requests.exceptions.RequestException as e:
         return {"status": "error", "message": f"Request failed: {e}"}
+
+
+def get_latest_fixtures(team_id: int, limit: int = 5) -> dict:
+    """Fetch the last N completed fixtures for a team."""
+    try:
+        url = f"{BASE_URL}/fixtures/latest/teamId/{team_id}"
+        resp = requests.get(url, headers=_auth_headers(), params={"per_page": limit}, timeout=10)
+        resp.raise_for_status()
+        raw = resp.json().get("data", [])
+        parsed = [
+            {
+                "name": f.get("name", ""),
+                "starting_at": (f.get("starting_at") or "")[:10],
+                "result_info": f.get("result_info") or "",
+            }
+            for f in raw[:limit]
+        ]
+        return {"status": "success", "data": parsed}
+    except requests.exceptions.HTTPError as e:
+        return {"status": "error", "message": f"HTTP error: {e}"}
+    except requests.exceptions.RequestException as e:
+        return {"status": "error", "message": f"Request failed: {e}"}
+
+
+def get_season_standings(season_id: int) -> dict:
+    """Fetch full standings table for a season with team names and W/D/L details."""
+    if not season_id:
+        return {"status": "error", "message": "season_id required"}
+    # Standings detail type_ids (confirmed from API)
+    _TID = {
+        "played":   129,
+        "won":      130,
+        "draw":     131,
+        "lost":     132,
+        "goals_scored":   133,
+        "goals_against":  134,
+        "goal_diff":      179,
+    }
+    try:
+        url = f"{BASE_URL}/standings/seasons/{season_id}"
+        resp = requests.get(
+            url, headers=_auth_headers(),
+            params={"include": "participant;details"},
+            timeout=10,
+        )
+        resp.raise_for_status()
+        raw = resp.json().get("data", [])
+
+        parsed = []
+        for row in raw:
+            participant = row.get("participant") or {}
+
+            # Build a type_id → value map from the details array
+            details_map: dict[int, int] = {}
+            for det in (row.get("details") or []):
+                tid = det.get("type_id")
+                val = det.get("value")
+                if tid is not None and isinstance(val, (int, float)):
+                    details_map[tid] = int(val)
+
+            parsed.append({
+                "position":       row.get("position"),
+                "participant_id": row.get("participant_id"),
+                "team_name":      participant.get("name", ""),
+                "team_logo":      participant.get("image_path"),
+                "points":         row.get("points"),
+                "won":            details_map.get(_TID["won"]),
+                "drawn":          details_map.get(_TID["draw"]),
+                "lost":           details_map.get(_TID["lost"]),
+                "goals_scored":   details_map.get(_TID["goals_scored"]),
+                "goals_against":  details_map.get(_TID["goals_against"]),
+                "goal_difference":details_map.get(_TID["goal_diff"]),
+                "total_played":   details_map.get(_TID["played"]),
+                "form":           row.get("form"),
+            })
+        return {"status": "success", "data": parsed}
+    except requests.exceptions.HTTPError as e:
+        return {"status": "error", "message": f"HTTP error: {e}"}
+    except requests.exceptions.RequestException as e:
+        return {"status": "error", "message": f"Request failed: {e}"}
+
+
+def get_team_season_stats(team_id: int, season_id: int) -> dict:
+    """Fetch season statistics for a specific team."""
+    if not season_id:
+        return {"status": "error", "message": "season_id required"}
+    try:
+        url = f"{BASE_URL}/statistics/seasons/teams/{team_id}"
+        resp = requests.get(
+            url, headers=_auth_headers(),
+            params={"filters": f"seasonId:{season_id}"},
+            timeout=10,
+        )
+        resp.raise_for_status()
+        raw = resp.json().get("data", {})
+
+        # Normalise: may be a list or a single object
+        stat = (raw[0] if isinstance(raw, list) and raw else raw) or {}
+        details = stat.get("details") or stat
+
+        def _pick(*keys):
+            for k in keys:
+                v = details.get(k)
+                if v is not None:
+                    return v
+                v = stat.get(k)
+                if v is not None:
+                    return v
+            return None
+
+        goals_scored = _pick("goals_scored", "scored", "goals_for")
+        goals_conceded = _pick("goals_conceded", "conceded", "goals_against")
+        clean_sheets = _pick("clean_sheets", "cleansheets")
+        wins = _pick("wins", "won")
+        draws = _pick("draws", "drawn", "draw")
+        losses = _pick("losses", "lost")
+        total = _pick("total_matches", "played", "games_played")
+        avg = round(goals_scored / total, 2) if goals_scored and total else None
+
+        return {
+            "status": "success",
+            "data": {
+                "goals_scored": goals_scored,
+                "goals_conceded": goals_conceded,
+                "clean_sheets": clean_sheets,
+                "wins": wins,
+                "draws": draws,
+                "losses": losses,
+                "total_matches": total,
+                "avg_goals_per_game": avg,
+            },
+        }
+    except requests.exceptions.HTTPError as e:
+        return {"status": "error", "message": f"HTTP error: {e}"}
+    except requests.exceptions.RequestException as e:
+        return {"status": "error", "message": f"Request failed: {e}"}
+
+
+def get_fixture_injuries(fixture_id: int) -> dict:
+    """Fetch injured and suspended players for a fixture.
+
+    Returns an empty list (not an error) when the endpoint is not available
+    on the current subscription plan (404) so the UI shows "Full squad available".
+    """
+    try:
+        url = f"{BASE_URL}/injuries/fixtures/{fixture_id}"
+        resp = requests.get(url, headers=_auth_headers(), timeout=10)
+        if resp.status_code == 404:
+            return {"status": "success", "data": []}
+        resp.raise_for_status()
+        raw = resp.json().get("data", [])
+
+        parsed = []
+        for entry in raw:
+            player = entry.get("player") or {}
+            parsed.append({
+                "player_name": (
+                    player.get("display_name")
+                    or player.get("name")
+                    or entry.get("player_name", "Unknown")
+                ),
+                "team_id": entry.get("team_id"),
+                "type": entry.get("type", "injured"),
+                "reason": entry.get("reason") or entry.get("description", ""),
+            })
+        return {"status": "success", "data": parsed}
+    except requests.exceptions.HTTPError as e:
+        return {"status": "error", "message": f"HTTP error: {e}"}
+    except requests.exceptions.RequestException as e:
+        return {"status": "error", "message": f"Request failed: {e}"}
+
+
+def get_fixtures_by_date(date_str: str) -> dict:
+    """Fetch completed fixtures for a date with full team, score, and statistics data."""
+    # Confirmed type_ids from live API inspection
+    _STAT_TYPES: dict[int, str] = {
+        42: "shots_total",
+        86: "shots_on_target",
+        45: "possession",
+        80: "passes",
+        82: "pass_accuracy",
+        34: "corners",
+        56: "fouls",
+        84: "yellow_cards",
+    }
+    try:
+        url = f"{BASE_URL}/fixtures/date/{date_str}"
+        resp = requests.get(
+            url, headers=_auth_headers(),
+            # per_page=100 is required: the default (~5) only returns a subset
+            # of fixtures (typically MLS), silently dropping EPL, La Liga, etc.
+            params={"include": "participants;scores;statistics.type", "per_page": 100},
+            timeout=10,
+        )
+        resp.raise_for_status()
+        raw = resp.json().get("data", [])
+
+        parsed = []
+        for f in raw:
+            if not f.get("result_info"):
+                continue  # skip fixtures without a result (not yet played)
+
+            # ── Participants → home / away ────────────────────────────────────
+            participants = f.get("participants") or []
+            home_p = next(
+                (p for p in participants if (p.get("meta") or {}).get("location") == "home"), {}
+            )
+            away_p = next(
+                (p for p in participants if (p.get("meta") or {}).get("location") == "away"), {}
+            )
+            home_id = home_p.get("id")
+            away_id = away_p.get("id")
+
+            # ── Scores → CURRENT description ─────────────────────────────────
+            home_goals: int | None = None
+            away_goals: int | None = None
+            for s in (f.get("scores") or []):
+                if s.get("description") == "CURRENT":
+                    side = (s.get("score") or {}).get("participant", "")
+                    goals = (s.get("score") or {}).get("goals")
+                    if side == "home":
+                        home_goals = goals
+                    elif side == "away":
+                        away_goals = goals
+
+            # ── Statistics → type_id + location ──────────────────────────────
+            stats_map: dict[str, dict[str, int | None]] = {"home": {}, "away": {}}
+            for s in (f.get("statistics") or []):
+                tid = s.get("type_id")
+                loc = s.get("location")
+                if tid in _STAT_TYPES and loc in ("home", "away"):
+                    val_obj = s.get("data") or {}
+                    val = val_obj.get("value") if isinstance(val_obj, dict) else None
+                    stats_map[loc][_STAT_TYPES[tid]] = val
+
+            def _side_stats(loc: str) -> dict | None:
+                d = stats_map[loc]
+                if not d:
+                    return None
+                return {k: d.get(k) for k in _STAT_TYPES.values()}
+
+            home_stats = _side_stats("home")
+            away_stats = _side_stats("away")
+
+            parsed.append({
+                "fixture_id":   f.get("id"),
+                "name":         f.get("name", ""),
+                "date":         (f.get("starting_at") or "")[:10],
+                "home_team":    {"id": home_id, "name": home_p.get("name", ""), "logo": home_p.get("image_path")},
+                "away_team":    {"id": away_id, "name": away_p.get("name", ""), "logo": away_p.get("image_path")},
+                "score":        {"home": home_goals, "away": away_goals},
+                "result_info":  f.get("result_info") or "",
+                "participant_ids": [home_id, away_id],
+                "general_stats": {"home": home_stats, "away": away_stats} if (home_stats or away_stats) else None,
+                "xg_stats":     None,  # xgfixture returns 403 on date endpoint (Starter plan)
+            })
+        return {"status": "success", "data": parsed}
+    except requests.exceptions.HTTPError as e:
+        return {"status": "error", "message": f"HTTP error: {e}"}
+    except requests.exceptions.RequestException as e:
+        return {"status": "error", "message": f"Request failed: {e}"}
+
+
+def get_fixture_with_xg(fixture_id: int) -> dict:
+    """Fetch a fixture with xG stats and trends included (0 extra API calls via includes)."""
+    try:
+        url = f"{BASE_URL}/fixtures/{fixture_id}"
+        resp = requests.get(
+            url, headers=_auth_headers(),
+            params={"include": "xGFixture;trends;participants"},
+            timeout=10,
+        )
+        resp.raise_for_status()
+        data = resp.json().get("data", {})
+
+        # Identify home/away team IDs from participants
+        participants = data.get("participants") or []
+        home_team_id: int | None = None
+        away_team_id: int | None = None
+        for p in participants:
+            loc = (p.get("meta") or {}).get("location", "")
+            if loc == "home":
+                home_team_id = p.get("id")
+            elif loc == "away":
+                away_team_id = p.get("id")
+
+        # Parse xGFixture
+        xg_raw = data.get("xGFixture") or []
+        if isinstance(xg_raw, dict):
+            xg_raw = xg_raw.get("data", [])
+        xg: dict | None = None
+        if xg_raw:
+            entry = xg_raw[0]
+            home_xg = entry.get("home_xg")
+            away_xg = entry.get("away_xg")
+            if home_xg is not None and away_xg is not None:
+                xg = {"team_a_xg": float(home_xg), "team_b_xg": float(away_xg)}
+
+        # Parse trends grouped by team
+        trends_raw = data.get("trends") or []
+        if isinstance(trends_raw, dict):
+            trends_raw = trends_raw.get("data", [])
+        team_a_trends: list[str] = []
+        team_b_trends: list[str] = []
+        for trend in trends_raw:
+            tid = trend.get("team_id")
+            ttype = trend.get("type") or trend.get("name") or ""
+            tval = trend.get("value")
+            label = f"{ttype}: {tval}" if tval is not None else ttype
+            if tid == home_team_id:
+                team_a_trends.append(label)
+            elif tid == away_team_id:
+                team_b_trends.append(label)
+
+        return {
+            "status": "success",
+            "data": {
+                "xg": xg,
+                "trends": {"team_a": team_a_trends, "team_b": team_b_trends},
+                "home_team_id": home_team_id,
+                "away_team_id": away_team_id,
+                "season_id": data.get("season_id"),
+            },
+        }
+    except requests.exceptions.HTTPError as e:
+        return {"status": "error", "message": f"HTTP error: {e}"}
+    except requests.exceptions.RequestException as e:
+        return {"status": "error", "message": f"Request failed: {e}"}

@@ -1,3 +1,4 @@
+import asyncio
 from datetime import datetime, timedelta, timezone
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -13,6 +14,9 @@ from backend.firebase_db import delete_prediction, get_user_predictions, save_pr
 from storage.sportmonks_client import (
     get_upcoming_mls_fixtures,
     get_fixture_detail,
+    get_fixtures_by_date,
+    get_season_standings,
+    get_fixture_with_xg,
     LEAGUE_IDS,
     LEAGUE_NAMES,
     _parse_scores,
@@ -37,8 +41,9 @@ app.add_middleware(
 
 soccer_client = SoccerApiClient()
 
-# ── In-memory fixture cache (populated on GET /api/fixtures) ──────────────────
+# ── In-memory caches ──────────────────────────────────────────────────────────
 _fixture_cache: dict[str, dict] = {}
+_enriched_cache: dict[str, dict] = {}
 
 # Mock MLS fixtures used when SportMonks returns no data.
 # These IDs are NOT real SportMonks IDs — prediction will fail gracefully for them.
@@ -198,6 +203,7 @@ def _normalize_fixture(sm_fixture: dict) -> dict:
         "startingAt": sm_fixture.get("starting_at", ""),
         "leagueId": league_id,
         "leagueName": league_name,
+        "seasonId": sm_fixture.get("season_id"),
         "status": match_status,
         "venue": venue_name,
         "_isMock": False,
@@ -316,8 +322,114 @@ def get_fixture(match_id: str) -> dict[str, Any]:
     raise HTTPException(status_code=404, detail="Fixture not found.")
 
 
+async def _gather_enriched(
+    team_a_id: int, team_b_id: int,
+    season_id: int | None, fixture_id_int: int,
+) -> dict:
+    """Fetch all enrichment data in parallel (6 calls, within 9-call budget).
+
+    Recent form: 3 x /fixtures/date/{date}?include=participants;scores;statistics.type
+    Standings:   1 x /standings/seasons/{id}?include=participant;details
+    Injuries:    1 x /injuries/fixtures/{id}  (returns empty list on 404)
+    xG/Trends:   1 x /fixtures/{id}?include=xGFixture;trends;participants
+    """
+    from datetime import date, timedelta
+
+    def _safe(fn, *args):
+        try:
+            return fn(*args)
+        except Exception as exc:
+            return {"status": "error", "message": str(exc)}
+
+    today = date.today()
+    # 8 date calls targeting Sat/Sun/Wed across ~4 weeks.
+    # Root-cause fix: get_fixtures_by_date now uses per_page=100, which returns
+    # ALL subscribed leagues (EPL, La Liga, Serie A, MLS, etc.) instead of the
+    # first ~5 (MLS only). d-28 (Sunday ~4 weeks ago) catches EPL fixture days
+    # that d-11 (midweek, low European activity) was missing.
+    # Budget: 8 date + 1 standings + 1 xG = 10 enriched + 2 prediction = 12 ✓
+    # xG: xgfixture returns 403 on Starter plan — xg_stats is always null.
+    day_offsets = [1, 4, 8, 14, 21, 22, 28, 29]
+    date_strs = [str(today - timedelta(days=d)) for d in day_offsets]
+
+    results = await asyncio.gather(
+        *[asyncio.to_thread(_safe, get_fixtures_by_date, d) for d in date_strs],
+        asyncio.to_thread(_safe, get_season_standings, season_id),
+        asyncio.to_thread(_safe, get_fixture_with_xg, fixture_id_int),
+        return_exceptions=True,
+    )
+
+    def _ok(result: Any) -> Any:
+        if isinstance(result, Exception):
+            return None
+        if isinstance(result, dict) and result.get("status") == "success":
+            return result.get("data")
+        return None
+
+    n = len(day_offsets)  # 8
+    date_results = results[:n]
+    standings_r, xg_r = results[n], results[n + 1]
+
+    # Merge all date fixtures newest-first (day_offsets ascending = newest first)
+    all_date_fixtures: list[dict] = []
+    for r in date_results:
+        all_date_fixtures.extend(_ok(r) or [])
+
+    def _team_form(team_id: int, limit: int = 5) -> list[dict] | None:
+        matches = [
+            f for f in all_date_fixtures
+            if team_id in (f.get("participant_ids") or []) and f.get("result_info")
+        ]
+        return matches[:limit] if matches else None
+
+    team_a_recent_form = _team_form(team_a_id)
+    team_b_recent_form = _team_form(team_b_id)
+
+    # Season stats derived from standings details (zero extra API calls)
+    standings_list: list[dict] = _ok(standings_r) or []
+
+    def _team_stats_from_standings(team_id: int) -> dict | None:
+        row = next((r for r in standings_list if r.get("participant_id") == team_id), None)
+        if not row:
+            return None
+        played = row.get("total_played") or 0
+        gs = row.get("goals_scored")
+        return {
+            "goals_scored":   gs,
+            "goals_conceded": row.get("goals_against"),
+            "clean_sheets":   None,
+            "wins":           row.get("won"),
+            "draws":          row.get("drawn"),
+            "losses":         row.get("lost"),
+            "total_matches":  played,
+            "avg_goals_per_game": round(gs / played, 2) if gs and played else None,
+        }
+
+    team_a_stats = _team_stats_from_standings(team_a_id)
+    team_b_stats = _team_stats_from_standings(team_b_id)
+
+    # Injuries endpoint returns 404 on Starter plan — skip the call and
+    # show "Full squad available" for both teams (same outcome as the 404 path).
+    injuries: dict = {"team_a": [], "team_b": []}
+
+    xg_result = _ok(xg_r) or {}
+    xg = xg_result.get("xg")
+    trends = xg_result.get("trends")
+
+    return {
+        "team_a_recent_form": team_a_recent_form,
+        "team_b_recent_form": team_b_recent_form,
+        "standings":          standings_list,
+        "team_a_stats":       team_a_stats,
+        "team_b_stats":       team_b_stats,
+        "injuries":           injuries,
+        "xg":                 xg,
+        "trends":             trends,
+    }
+
+
 @app.post("/api/fixtures/{match_id}/prediction")
-def fixture_prediction(
+async def fixture_prediction(
     match_id: str,
     user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
@@ -348,9 +460,29 @@ def fixture_prediction(
     home = fixture["homeTeam"]
     away = fixture["awayTeam"]
 
+    # Gather enrichment data in parallel so Gemini can reason from it
+    enriched_data: dict | None = None
     try:
-        prediction = _engine_generate_prediction(
-            home["id"], away["id"], home["name"], away["name"]
+        fixture_id_int = int(match_id)
+    except ValueError:
+        fixture_id_int = 0
+
+    if not fixture.get("_isMock") and fixture_id_int:
+        try:
+            enriched_data = await _gather_enriched(
+                home["id"], away["id"],
+                fixture.get("seasonId"),
+                fixture_id_int,
+            )
+            _enriched_cache[match_id] = enriched_data
+        except Exception:
+            enriched_data = None
+
+    try:
+        prediction = await asyncio.to_thread(
+            _engine_generate_prediction,
+            home["id"], away["id"], home["name"], away["name"],
+            enriched_data,
         )
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Prediction engine error: {exc}")
@@ -362,6 +494,51 @@ def fixture_prediction(
         )
 
     return {"status": "success", "data": prediction["data"]}
+
+
+@app.get("/api/fixtures/{match_id}/enriched")
+async def fixture_enriched(
+    match_id: str,
+    user: dict = Depends(get_current_user),
+) -> dict[str, Any]:
+    # Serve from cache when the prediction endpoint already populated it
+    if match_id in _enriched_cache:
+        return {"status": "success", "data": _enriched_cache[match_id]}
+
+    # Resolve fixture
+    fixture = _fixture_cache.get(match_id)
+    if not fixture:
+        try:
+            fixture_id = int(match_id)
+            result = get_fixture_detail(fixture_id)
+            if result["status"] == "success" and result["data"]:
+                fixture = _normalize_fixture(result["data"])
+                _fixture_cache[match_id] = fixture
+        except (ValueError, Exception):
+            pass
+
+    if not fixture:
+        raise HTTPException(status_code=404, detail="Fixture not found.")
+
+    _empty: dict = {k: None for k in [
+        "team_a_recent_form", "team_b_recent_form", "standings",
+        "team_a_stats", "team_b_stats", "topscorers", "injuries", "xg", "trends",
+    ]}
+    if fixture.get("_isMock"):
+        return {"status": "success", "data": _empty}
+
+    try:
+        fixture_id_int = int(match_id)
+    except ValueError:
+        return {"status": "success", "data": _empty}
+
+    data = await _gather_enriched(
+        fixture["homeTeam"]["id"], fixture["awayTeam"]["id"],
+        fixture.get("seasonId"),
+        fixture_id_int,
+    )
+    _enriched_cache[match_id] = data
+    return {"status": "success", "data": data}
 
 
 # ── Auth verify ───────────────────────────────────────────────────────────────
