@@ -536,7 +536,8 @@ function MatchCard({
   fixture: RecentFixture; teamId: number; defaultExpanded: boolean;
 }) {
   const [expanded, setExpanded] = useState(defaultExpanded);
-  const [tab, setTab] = useState<"general" | "xg">("general");
+  // xG tab removed — xgfixture returns 403 on SportMonks Starter plan.
+  // XGStatsTab component is kept in the file for future use.
 
   // Determine which side is "our" team so we always render it on the left
   const isHome  = fixture.home_team.id === teamId;
@@ -546,8 +547,6 @@ function MatchCard({
   // Stats: our team always on the left bar, opponent always on the right
   const myGeneral  = isHome ? fixture.general_stats?.home : fixture.general_stats?.away;
   const oppGeneral = isHome ? fixture.general_stats?.away : fixture.general_stats?.home;
-  const myXg       = isHome ? fixture.xg_stats?.home      : fixture.xg_stats?.away;
-  const oppXg      = isHome ? fixture.xg_stats?.away      : fixture.xg_stats?.home;
 
   // Score from our perspective: my goals — opp goals
   const myScore  = isHome ? fixture.score?.home : fixture.score?.away;
@@ -598,29 +597,8 @@ function MatchCard({
             <TeamLogo src={oppTeam.logo} name={oppTeam.name} size={32} />
           </div>
 
-          {/* Tab toggle */}
-          <div className="flex rounded-full border border-purple-500/20 bg-white/4 p-0.5 mb-4">
-            {(["general", "xg"] as const).map((t) => (
-              <button
-                key={t}
-                onClick={() => setTab(t)}
-                className={`flex-1 rounded-full py-1 text-xs font-semibold transition-all ${
-                  tab === t
-                    ? "bg-[#1e1b4b] text-white shadow"
-                    : "text-gray-500 hover:text-gray-300"
-                }`}
-              >
-                {t === "general" ? "General" : "xG"}
-              </button>
-            ))}
-          </div>
-
-          {tab === "general" && (
-            <GeneralStatsTab myStats={myGeneral ?? null} oppStats={oppGeneral ?? null} />
-          )}
-          {tab === "xg" && (
-            <XGStatsTab myStats={myXg ?? null} oppStats={oppXg ?? null} />
-          )}
+          {/* Stat rows appear directly under Statistics header — no tab UI */}
+          <GeneralStatsTab myStats={myGeneral ?? null} oppStats={oppGeneral ?? null} />
         </div>
       )}
     </div>
