@@ -14,7 +14,7 @@ from backend.firebase_db import delete_prediction, get_user_predictions, save_pr
 from storage.sportmonks_client import (
     get_upcoming_mls_fixtures,
     get_fixture_detail,
-    get_fixtures_by_date,
+    get_fixtures_between_for_team,
     get_season_standings,
     get_fixture_with_xg,
     LEAGUE_IDS,
@@ -342,18 +342,16 @@ async def _gather_enriched(
             return {"status": "error", "message": str(exc)}
 
     today = date.today()
-    # 8 date calls targeting Sat/Sun/Wed across ~4 weeks.
-    # Root-cause fix: get_fixtures_by_date now uses per_page=100, which returns
-    # ALL subscribed leagues (EPL, La Liga, Serie A, MLS, etc.) instead of the
-    # first ~5 (MLS only). d-28 (Sunday ~4 weeks ago) catches EPL fixture days
-    # that d-11 (midweek, low European activity) was missing.
-    # Budget: 8 date + 1 standings + 1 xG = 10 enriched + 2 prediction = 12 ✓
-    # xG: xgfixture returns 403 on Starter plan — xg_stats is always null.
-    day_offsets = [1, 4, 8, 14, 21, 22, 28, 29]
-    date_strs = [str(today - timedelta(days=d)) for d in day_offsets]
+    # Replaced 8 guessed date calls with 2 direct team-specific calls.
+    # /fixtures/between/{start}/{end}/{team_id} reliably returns completed
+    # fixtures for any team/league without needing to guess game-day patterns.
+    # Budget: 2 form + 1 standings + 1 xG = 4 enriched + 2 prediction = 6 ✓
+    start_date = str(today - timedelta(days=60))
+    end_date   = str(today)
 
     results = await asyncio.gather(
-        *[asyncio.to_thread(_safe, get_fixtures_by_date, d) for d in date_strs],
+        asyncio.to_thread(_safe, get_fixtures_between_for_team, team_a_id, start_date, end_date, 5),
+        asyncio.to_thread(_safe, get_fixtures_between_for_team, team_b_id, start_date, end_date, 5),
         asyncio.to_thread(_safe, get_season_standings, season_id),
         asyncio.to_thread(_safe, get_fixture_with_xg, fixture_id_int),
         return_exceptions=True,
@@ -366,24 +364,10 @@ async def _gather_enriched(
             return result.get("data")
         return None
 
-    n = len(day_offsets)  # 8
-    date_results = results[:n]
-    standings_r, xg_r = results[n], results[n + 1]
+    form_a_r, form_b_r, standings_r, xg_r = results
 
-    # Merge all date fixtures newest-first (day_offsets ascending = newest first)
-    all_date_fixtures: list[dict] = []
-    for r in date_results:
-        all_date_fixtures.extend(_ok(r) or [])
-
-    def _team_form(team_id: int, limit: int = 5) -> list[dict] | None:
-        matches = [
-            f for f in all_date_fixtures
-            if team_id in (f.get("participant_ids") or []) and f.get("result_info")
-        ]
-        return matches[:limit] if matches else None
-
-    team_a_recent_form = _team_form(team_a_id)
-    team_b_recent_form = _team_form(team_b_id)
+    team_a_recent_form: list[dict] | None = _ok(form_a_r) or None
+    team_b_recent_form: list[dict] | None = _ok(form_b_r) or None
 
     # Season stats derived from standings details (zero extra API calls)
     standings_list: list[dict] = _ok(standings_r) or []

@@ -629,6 +629,99 @@ def get_fixtures_by_date(date_str: str) -> dict:
         return {"status": "error", "message": f"Request failed: {e}"}
 
 
+def get_fixtures_between_for_team(
+    team_id: int, start: str, end: str, limit: int = 5
+) -> dict:
+    """Fetch the last N completed fixtures for a team using the between endpoint.
+
+    Uses /fixtures/between/{start}/{end}/{team_id} which reliably returns
+    fixtures for a specific team regardless of league or game-day pattern.
+    Returns results sorted newest-first, capped at `limit`.
+    """
+    _STAT_TYPES: dict[int, str] = {
+        42: "shots_total",
+        86: "shots_on_target",
+        45: "possession",
+        80: "passes",
+        82: "pass_accuracy",
+        34: "corners",
+        56: "fouls",
+        84: "yellow_cards",
+    }
+    try:
+        url = f"{BASE_URL}/fixtures/between/{start}/{end}/{team_id}"
+        resp = requests.get(
+            url, headers=_auth_headers(),
+            params={"include": "participants;scores;statistics.type", "per_page": 100},
+            timeout=15,
+        )
+        resp.raise_for_status()
+        raw = resp.json().get("data", [])
+
+        # Sort newest-first so [:limit] takes the most recent matches
+        raw_sorted = sorted(raw, key=lambda f: f.get("starting_at") or "", reverse=True)
+
+        parsed: list[dict] = []
+        for f in raw_sorted:
+            if not f.get("result_info"):
+                continue  # skip fixtures not yet completed
+
+            participants = f.get("participants") or []
+            home_p = next(
+                (p for p in participants if (p.get("meta") or {}).get("location") == "home"), {}
+            )
+            away_p = next(
+                (p for p in participants if (p.get("meta") or {}).get("location") == "away"), {}
+            )
+            home_id = home_p.get("id")
+            away_id = away_p.get("id")
+
+            home_goals: int | None = None
+            away_goals: int | None = None
+            for s in (f.get("scores") or []):
+                if s.get("description") == "CURRENT":
+                    side = (s.get("score") or {}).get("participant", "")
+                    goals = (s.get("score") or {}).get("goals")
+                    if side == "home":
+                        home_goals = goals
+                    elif side == "away":
+                        away_goals = goals
+
+            stats_map: dict[str, dict[str, int | None]] = {"home": {}, "away": {}}
+            for s in (f.get("statistics") or []):
+                tid = s.get("type_id")
+                loc = s.get("location")
+                if tid in _STAT_TYPES and loc in ("home", "away"):
+                    val_obj = s.get("data") or {}
+                    val = val_obj.get("value") if isinstance(val_obj, dict) else None
+                    stats_map[loc][_STAT_TYPES[tid]] = val
+
+            def _side(loc: str) -> dict | None:
+                d = stats_map[loc]
+                return {k: d.get(k) for k in _STAT_TYPES.values()} if d else None
+
+            parsed.append({
+                "fixture_id":    f.get("id"),
+                "name":          f.get("name", ""),
+                "date":          (f.get("starting_at") or "")[:10],
+                "home_team":     {"id": home_id, "name": home_p.get("name", ""), "logo": home_p.get("image_path")},
+                "away_team":     {"id": away_id, "name": away_p.get("name", ""), "logo": away_p.get("image_path")},
+                "score":         {"home": home_goals, "away": away_goals},
+                "result_info":   f.get("result_info") or "",
+                "participant_ids": [home_id, away_id],
+                "general_stats": {"home": _side("home"), "away": _side("away")} if (_side("home") or _side("away")) else None,
+                "xg_stats":      None,  # xgfixture is 403 on Starter plan
+            })
+            if len(parsed) >= limit:
+                break
+
+        return {"status": "success", "data": parsed}
+    except requests.exceptions.HTTPError as e:
+        return {"status": "error", "message": f"HTTP error: {e}"}
+    except requests.exceptions.RequestException as e:
+        return {"status": "error", "message": f"Request failed: {e}"}
+
+
 def get_fixture_with_xg(fixture_id: int) -> dict:
     """Fetch a fixture with xG stats and trends included (0 extra API calls via includes)."""
     try:
