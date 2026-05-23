@@ -80,7 +80,7 @@ def _fetch_completed_fixtures(api_key: str) -> list[dict]:
     """
     Fetch completed fixtures for all 5 target leagues over the lookback window.
 
-    Uses  GET /fixtures/between/{start}/{end}  with  include=participants;scores.
+    Uses  GET /fixtures/between/{start}/{end}  with  include=scores;participants.
     Paginates up to 3 pages (100 fixtures each) to stay within the API budget.
     After fetching, filters to the 5 target leagues and fixtures that have a
     result (result_info field present and non-empty).
@@ -97,7 +97,7 @@ def _fetch_completed_fixtures(api_key: str) -> list[dict]:
     for page in range(1, 4):           # hard cap at 3 pages = 3 API calls
         params: dict = {
             "api_token": api_key,
-            "include":   "participants;scores",
+            "include":   "scores;participants",
             "per_page":  100,
             "page":      page,
         }
@@ -131,8 +131,9 @@ def _parse_actual_result(fixture: dict) -> str | None:
     """
     Determine actual match outcome from the scores include.
 
-    Looks for score entries with description == "CURRENT" (SportMonks final
-    score label), extracts home and away goals, and returns the outcome string.
+    Looks for score entries with description == "2ND_HALF" (SportMonks full-time
+    score label — confirmed from live API; "CURRENT" does not exist).  Each
+    2ND_HALF entry covers one side: participant="home" or participant="away".
 
     Functional oracle: the ground truth is the real scoreline — not inferred
     from any model output.
@@ -143,7 +144,7 @@ def _parse_actual_result(fixture: dict) -> str | None:
     away_g: int | None = None
 
     for entry in (fixture.get("scores") or []):
-        if entry.get("description") != "CURRENT":
+        if entry.get("description") != "2ND_HALF":
             continue
         score_obj = entry.get("score") or {}
         goals      = score_obj.get("goals")
