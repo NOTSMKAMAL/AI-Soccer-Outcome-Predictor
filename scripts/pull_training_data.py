@@ -141,45 +141,79 @@ def fetch_season_fixtures(
     league_id: int, api_key: str, call_count: list
 ) -> list[dict]:
     """
-    Paginate /fixtures/between/{date_from}/{date_to} filtered by league_id.
-    Uses the confirmed-working endpoint from backtest.py (Starter tier compatible).
-    Returns raw fixture dicts for completed matches (result_info present).
-    Stops early if DAILY_CALL_BUDGET is reached.
+    Collect all completed fixtures for a league across the full 2025/26 season
+    by stepping backward through it in 79-day windows.
+
+    The Starter tier enforces a ~90-day cap on /fixtures/between/ — a single
+    10-month range returns HTTP 422. Sliding 79-day windows stay within the
+    confirmed-safe limit (backtest.py uses an 80-day window successfully).
+
+    URL pattern matches backtest.py exactly: no 'filters' param; league_id
+    post-filtered in Python. seen_ids deduplicates fixtures that fall in two
+    adjacent windows. Stops early and returns collected fixtures if budget hit.
     """
-    url = f"{BASE_URL}/fixtures/between/{SEASON_DATE_FROM}/{SEASON_DATE_TO}"
+    from datetime import date, timedelta
+
+    WINDOW_DAYS  = 79                  # safe margin below ~90-day Starter cap
+    season_end   = date(2026, 5, 22)   # yesterday — confirmed working by curl
+    season_start = date(2025, 7,  1)   # full season coverage incl. MLS start
+
     all_fixtures: list[dict] = []
+    seen_ids: set[int] = set()
 
-    for page in range(1, 500):  # wide upper bound — pagination loop
-        if call_count[0] >= DAILY_CALL_BUDGET:
-            print(f"    Budget cap reached at page {page} — stopping early")
-            break
+    window_end   = season_end
+    window_start = window_end - timedelta(days=WINDOW_DAYS)
 
-        params = {
-            "api_token": api_key,
-            "include":   "scores;participants",
-            "per_page":  25,
-            "page":      page,
-        }
-        body = _get(url, params, call_count)
-        if body is None:
-            break
+    while window_end >= season_start:
+        if window_start < season_start:
+            window_start = season_start
 
-        data = body.get("data", [])
-        if not data:
-            break  # no more pages
+        ws  = window_start.isoformat()
+        we  = window_end.isoformat()
+        url = f"{BASE_URL}/fixtures/between/{ws}/{we}"
+        print(f"  Window {ws} → {we}:")
 
-        completed = [
-            f for f in data
-            if f.get("league_id") == league_id and f.get("result_info")
-        ]
-        all_fixtures.extend(completed)
-        print(f"    Page {page}: {len(data)} fixtures, {len(completed)} completed "
-              f"(call {call_count[0]}/{DAILY_CALL_BUDGET})")
+        for page in range(1, 500):
+            if call_count[0] >= DAILY_CALL_BUDGET:
+                print(f"    Budget cap reached at page {page} — stopping early")
+                return all_fixtures
 
-        # SportMonks caps at 25 per page on this subscription tier
-        if len(data) < 25:
-            break
+            params = {
+                "api_token": api_key,
+                "include":   "scores;participants",
+                "per_page":  25,
+                "page":      page,
+            }
+            body = _get(url, params, call_count)
+            if body is None:
+                break
 
+            data = body.get("data", [])
+            if not data:
+                break  # no more pages
+
+            new_in_page = [
+                f for f in data
+                if f.get("league_id") == league_id
+                and f.get("result_info")
+                and f.get("id") not in seen_ids
+            ]
+            for f in new_in_page:
+                seen_ids.add(f["id"])
+                all_fixtures.append(f)
+
+            print(f"    Page {page}: {len(data)} raw, "
+                  f"{len(new_in_page)} new for this league "
+                  f"(call {call_count[0]}/{DAILY_CALL_BUDGET})")
+
+            if len(data) < 25:
+                break  # last page
+
+        # Step window backward one full window
+        window_end   = window_start - timedelta(days=1)
+        window_start = window_end - timedelta(days=WINDOW_DAYS)
+
+    print(f"  Season complete: {len(all_fixtures)} fixtures collected")
     return all_fixtures
 
 
