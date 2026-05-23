@@ -16,7 +16,7 @@ Architecture boundary (3-layer per Lab 4 worksheet):
   directly. No FastAPI routes, no Gemini, no frontend code.
 
 API budget: <= 50 SportMonks API calls per run.
-  Actual: up to 3 (fixture pages) + 5 (standings) = 8 calls max.
+  Actual: up to 3 (fixture pages) + 5 (standings) = 8 calls max. start
 
 Run from project root with venv activated:
   python3 scripts/backtest.py
@@ -63,7 +63,7 @@ CONFIDENCE_THRESHOLD = 0.65
 # Fetch fixtures this many days back from yesterday.  180 days ≈ half-season
 # for European leagues; covers most of the MLS regular season as well.
 # Increasing this window captures more fixtures but uses more API pages.
-LOOKBACK_DAYS = 180
+LOOKBACK_DAYS = 80
 
 
 # ── API helpers ─────────────────────────────────────────────────────────────────

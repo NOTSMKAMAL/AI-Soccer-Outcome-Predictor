@@ -1,0 +1,28 @@
+{
+  "evaluation_date": "2026-05-23",
+  "total_fixtures": 25,
+  "overall_accuracy": 0.48,
+  "home_baseline_accuracy": 0.32,
+  "improvement_over_baseline_pp": 16.0,
+  "margin_of_error_95pct": 0.1958,
+  "by_outcome": {
+    "home_win": 0.3889,
+    "draw": null,
+    "away_win": 0.7143
+  },
+  "by_league": {
+    "8": 0.3,
+    "301": 0.25,
+    "564": 0.6667,
+    "384": 0.75,
+    "779": 1.0
+  },
+  "calibration_accuracy": 0.625,
+  "calibration_n": 8,
+  "confidence_threshold": 0.65,
+  "limitations": [
+    "end-of-season standings proxy \u2014 not match-day standings",
+    "draws systematically underweighted by Poisson model",
+    "sample size 25 may be insufficient for statistical significance"
+  ]
+}
