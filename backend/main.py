@@ -17,6 +17,9 @@ from storage.sportmonks_client import (
     get_fixtures_between_for_team,
     get_season_standings,
     get_fixture_with_xg,
+    get_fixture_lineups,
+    get_topscorers_with_names,
+    get_squad,
     LEAGUE_IDS,
     LEAGUE_NAMES,
     _parse_scores,
@@ -354,6 +357,11 @@ async def _gather_enriched(
         asyncio.to_thread(_safe, get_fixtures_between_for_team, team_b_id, start_date, end_date, 5),
         asyncio.to_thread(_safe, get_season_standings, season_id),
         asyncio.to_thread(_safe, get_fixture_with_xg, fixture_id_int),
+        # 3 new Gemini-context calls — feed into prompt only, never rendered by frontend
+        # Budget: 4 existing + 3 new = 7 enriched + 2 prediction = 9 total ✓
+        asyncio.to_thread(_safe, get_fixture_lineups, fixture_id_int, team_a_id, team_b_id),
+        asyncio.to_thread(_safe, get_topscorers_with_names, season_id, 10),
+        asyncio.to_thread(_safe, get_squad, team_a_id),
         return_exceptions=True,
     )
 
@@ -364,7 +372,7 @@ async def _gather_enriched(
             return result.get("data")
         return None
 
-    form_a_r, form_b_r, standings_r, xg_r = results
+    form_a_r, form_b_r, standings_r, xg_r, lineups_r, topscorers_r, squad_a_r = results
 
     team_a_recent_form: list[dict] | None = _ok(form_a_r) or None
     team_b_recent_form: list[dict] | None = _ok(form_b_r) or None
@@ -409,6 +417,10 @@ async def _gather_enriched(
         "injuries":           injuries,
         "xg":                 xg,
         "trends":             trends,
+        # Gemini prompt context only — not read by the frontend
+        "lineup":             _ok(lineups_r),
+        "topscorers_with_names": _ok(topscorers_r),
+        "squad_a":            _ok(squad_a_r),
     }
 
 

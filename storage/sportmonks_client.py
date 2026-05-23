@@ -629,6 +629,136 @@ def get_fixtures_by_date(date_str: str) -> dict:
         return {"status": "error", "message": f"Request failed: {e}"}
 
 
+def get_fixture_lineups(fixture_id: int, team_a_id: int, team_b_id: int) -> dict:
+    """Fetch confirmed starting lineups (type_id 11) for both teams in a fixture.
+
+    Returns player_name, position_id, jersey_number grouped by team.
+    Lineups are only available after confirmation (typically a few hours
+    before kickoff). Returns empty starters when not yet confirmed.
+    """
+    try:
+        url = f"{BASE_URL}/fixtures/{fixture_id}"
+        resp = requests.get(
+            url, headers=_auth_headers(),
+            params={"include": "lineups"},
+            timeout=10,
+        )
+        resp.raise_for_status()
+        lineups = resp.json().get("data", {}).get("lineups") or []
+
+        team_a_starters: list[dict] = []
+        team_b_starters: list[dict] = []
+        for p in lineups:
+            if p.get("type_id") != 11:  # 11 = starting XI
+                continue
+            entry = {
+                "player_name":   p.get("player_name", "Unknown"),
+                "team_id":       p.get("team_id"),
+                "position_id":   p.get("position_id"),
+                "jersey_number": p.get("jersey_number"),
+            }
+            if p.get("team_id") == team_a_id:
+                team_a_starters.append(entry)
+            elif p.get("team_id") == team_b_id:
+                team_b_starters.append(entry)
+
+        return {
+            "status": "success",
+            "data": {
+                "team_a_starters": team_a_starters,
+                "team_b_starters": team_b_starters,
+                "confirmed":       bool(team_a_starters or team_b_starters),
+            },
+        }
+    except requests.exceptions.HTTPError as e:
+        return {"status": "error", "message": f"HTTP error: {e}"}
+    except requests.exceptions.RequestException as e:
+        return {"status": "error", "message": f"Request failed: {e}"}
+
+
+def get_topscorers_with_names(season_id: int, limit: int = 10) -> dict:
+    """Fetch top goal scorers (type_id 83) with player and team names resolved.
+
+    Returns rank, player_name, team_name, team_id, goals sorted by goals desc.
+    """
+    if not season_id:
+        return {"status": "error", "message": "season_id required"}
+    _GOALS_TYPE_ID = 83
+    try:
+        url = f"{BASE_URL}/topscorers/seasons/{season_id}"
+        resp = requests.get(
+            url, headers=_auth_headers(),
+            params={"include": "player;participant", "per_page": limit * 2},
+            timeout=10,
+        )
+        resp.raise_for_status()
+        raw = resp.json().get("data", [])
+
+        goal_entries = [e for e in raw if e.get("type_id") == _GOALS_TYPE_ID]
+        if not goal_entries:
+            goal_entries = raw
+        goal_entries.sort(key=lambda e: -(e.get("total") or 0))
+
+        parsed = []
+        for entry in goal_entries[:limit]:
+            player      = entry.get("player")      or {}
+            participant = entry.get("participant")  or {}
+            parsed.append({
+                "player_name": (
+                    player.get("display_name")
+                    or player.get("common_name")
+                    or player.get("name")
+                    or "Unknown"
+                ),
+                "team_name": participant.get("name") or participant.get("short_code") or "",
+                "team_id":   entry.get("participant_id"),
+                "goals":     entry.get("total") or 0,
+                "rank":      entry.get("position") or len(parsed) + 1,
+            })
+        return {"status": "success", "data": parsed}
+    except requests.exceptions.HTTPError as e:
+        return {"status": "error", "message": f"HTTP error: {e}"}
+    except requests.exceptions.RequestException as e:
+        return {"status": "error", "message": f"Request failed: {e}"}
+
+
+def get_squad(team_id: int) -> dict:
+    """Fetch squad members with player names, position, and captain status.
+
+    Used to cross-reference against lineup to detect absent key players
+    (first-choice GK = position_id 24, captain = captain True).
+    """
+    try:
+        url = f"{BASE_URL}/squads/teams/{team_id}"
+        resp = requests.get(
+            url, headers=_auth_headers(),
+            params={"include": "player"},
+            timeout=10,
+        )
+        resp.raise_for_status()
+        raw = resp.json().get("data", [])
+
+        parsed = []
+        for entry in raw:
+            player = entry.get("player") or {}
+            parsed.append({
+                "player_name": (
+                    player.get("display_name")
+                    or player.get("common_name")
+                    or player.get("name")
+                    or "Unknown"
+                ),
+                "position_id":   entry.get("position_id"),
+                "jersey_number": entry.get("jersey_number"),
+                "captain":       bool(entry.get("captain")),
+            })
+        return {"status": "success", "data": parsed}
+    except requests.exceptions.HTTPError as e:
+        return {"status": "error", "message": f"HTTP error: {e}"}
+    except requests.exceptions.RequestException as e:
+        return {"status": "error", "message": f"Request failed: {e}"}
+
+
 def get_fixtures_between_for_team(
     team_id: int, start: str, end: str, limit: int = 5
 ) -> dict:

@@ -169,7 +169,7 @@ def _build_enriched_section(
             f"INJURY & SUSPENSION NEWS:\n{_inj(team_a_name, inj_a)}\n{_inj(team_b_name, inj_b)}"
         )
 
-    # Top scorers
+    # Top scorers (legacy key — kept for backwards compat)
     topscorers = enriched.get("topscorers") or []
     if topscorers:
         scorer_lines = []
@@ -182,6 +182,77 @@ def _build_enriched_section(
                 f"{s.get('goals', 0)} goals, {s.get('assists', 0)} assists{flag}"
             )
         parts.append("TOP SCORERS IN THIS LEAGUE:\n" + "\n".join(scorer_lines))
+
+    # ── NEW SECTIONS for improved Gemini reasoning ────────────────────────────
+
+    # Confirmed lineups
+    lineup = enriched.get("lineup") or {}
+    team_a_starters: list[dict] = lineup.get("team_a_starters") or []
+    team_b_starters: list[dict] = lineup.get("team_b_starters") or []
+    lineup_confirmed = lineup.get("confirmed", False)
+
+    if lineup_confirmed and (team_a_starters or team_b_starters):
+        a_names = ", ".join(p["player_name"] for p in team_a_starters) or "Unknown"
+        b_names = ", ".join(p["player_name"] for p in team_b_starters) or "Unknown"
+        parts.append(
+            f"CONFIRMED STARTING LINEUPS:\n"
+            f"  {team_a_name} starting XI: {a_names}\n"
+            f"  {team_b_name} starting XI: {b_names}"
+        )
+    else:
+        parts.append(
+            "CONFIRMED STARTING LINEUPS:\n"
+            "  Lineups not yet confirmed for this match"
+        )
+
+    # Top scorers with names + lineup cross-reference
+    scorers = enriched.get("topscorers_with_names") or []
+    if scorers:
+        starter_names_a = {p["player_name"].lower() for p in team_a_starters}
+        starter_names_b = {p["player_name"].lower() for p in team_b_starters}
+        scorer_lines = []
+        for s in scorers:
+            name  = s.get("player_name", "?")
+            team  = s.get("team_name", "?")
+            goals = s.get("goals", 0)
+            rank  = s.get("rank", "?")
+            flag  = ""
+            if name.lower() in starter_names_a:
+                flag = f" ← CONFIRMED STARTING for {team_a_name}"
+            elif name.lower() in starter_names_b:
+                flag = f" ← CONFIRMED STARTING for {team_b_name}"
+            elif s.get("team_id") in (team_a_id, team_b_id):
+                flag = " ← plays for one of today's teams (lineup TBC)"
+            scorer_lines.append(f"  {rank}. {name} ({team}): {goals} goals{flag}")
+        parts.append(
+            "TOP SCORERS IN THIS LEAGUE (season):\n"
+            + "\n".join(scorer_lines)
+            + "\n  Instruction: if a top scorer is confirmed in the starting XI, "
+            "weight their team's attacking threat higher in your prediction."
+        )
+
+    # Squad depth note — flags missing first-choice GK or captain for team_a
+    squad_a: list[dict] = enriched.get("squad_a") or []
+    if squad_a and lineup_confirmed and team_a_starters:
+        starter_names_a_set = {p["player_name"].lower() for p in team_a_starters}
+        key_absences = []
+        for player in squad_a:
+            pname = player.get("player_name", "")
+            if pname.lower() in starter_names_a_set:
+                continue  # player IS starting, not absent
+            if player.get("position_id") == 24:  # 24 = goalkeeper
+                key_absences.append(f"{pname} (GK)")
+            elif player.get("captain"):
+                key_absences.append(f"{pname} (captain)")
+        if key_absences:
+            absence_str = ", ".join(key_absences)
+            parts.append(
+                f"SQUAD DEPTH NOTE ({team_a_name}):\n"
+                f"  Key player(s) absent from starting XI: {absence_str}\n"
+                f"  Instruction: a missing captain or first-choice goalkeeper "
+                f"significantly affects {team_a_name}'s prediction confidence — "
+                f"lower their defensive/leadership rating accordingly."
+            )
 
     return "\n\n".join(parts)
 
