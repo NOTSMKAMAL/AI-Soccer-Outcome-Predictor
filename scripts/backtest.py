@@ -111,8 +111,8 @@ def _fetch_completed_fixtures(api_key: str) -> list[dict]:
                 break
             all_raw.extend(data)
             print(f"  Page {page}: received {len(data)} fixtures")
-            if len(data) < 100:
-                break                  # reached the last page
+            if len(data) < 25:
+                break                  # reached the last page (API caps at 25 per page)
         except Exception as exc:
             print(f"  Page {page} request failed: {exc}")
             break
