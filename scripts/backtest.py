@@ -214,21 +214,23 @@ def _build_team_stats(season_id: int) -> dict[int, dict]:
 
 # ── Prediction ─────────────────────────────────────────────────────────────────
 
-def _predict(home_stats: dict, away_stats: dict) -> tuple[str | None, float]:
+def _predict(home_stats: dict, away_stats: dict) -> tuple[str | None, float, dict | None]:
     """
-    Run Dixon-Coles and return (predicted_outcome, winning_probability).
+    Run Dixon-Coles and return (predicted_outcome, winning_probability, full_probs).
 
     is_home_a=True because the first stats dict always represents the home team.
-    Returns (None, 0.0) when Dixon-Coles cannot compute (missing stats).
+    Returns (None, 0.0, None) when Dixon-Coles cannot compute (missing stats).
+    full_probs is the raw {"home_win", "draw", "away_win"} dict needed for
+    Brier score and log loss — returned here to avoid a second engine call.
     """
     probs = dixon_coles_probability(home_stats, away_stats, is_home_a=True)
     if not probs:
-        return None, 0.0
+        return None, 0.0, None
     max_prob = max(probs.values())
     for outcome in ("home_win", "draw", "away_win"):
         if probs[outcome] == max_prob:
-            return outcome, max_prob
-    return None, 0.0
+            return outcome, max_prob, probs
+    return None, 0.0, None
 
 
 # ── Main ───────────────────────────────────────────────────────────────────────
@@ -299,7 +301,7 @@ def run_backtest() -> None:
             skipped += 1
             continue
 
-        predicted, confidence = _predict(home_stats, away_stats)
+        predicted, confidence, probs = _predict(home_stats, away_stats)
         if predicted is None:
             skipped += 1
             continue
@@ -311,6 +313,7 @@ def run_backtest() -> None:
             "actual":     actual,
             "predicted":  predicted,
             "confidence": confidence,
+            "probs":      probs,   # full dist for Brier score / log loss
             "correct":    predicted == actual,
         })
 
@@ -360,6 +363,25 @@ def run_backtest() -> None:
 
     # 95% margin of error (normal approximation)
     margin = 1.96 * math.sqrt(overall_acc * (1 - overall_acc) / n)
+
+    # Brier score and log loss — calibration quality metrics
+    # BS  = (1/N) Σ [(p_h - o_h)² + (p_d - o_d)² + (p_a - o_a)²]
+    # LL  = -(1/N) Σ [o_h·log(p_h) + o_d·log(p_d) + o_a·log(p_a)]
+    # Probabilities clipped to [0.001, 0.999] to guard against log(0).
+    brier_sum = log_loss_sum = 0.0
+    for r in records:
+        p = r["probs"]
+        actual_r = r["actual"]
+        o_h = 1.0 if actual_r == "home_win" else 0.0
+        o_d = 1.0 if actual_r == "draw"     else 0.0
+        o_a = 1.0 if actual_r == "away_win" else 0.0
+        p_h = max(0.001, min(0.999, p["home_win"]))
+        p_d = max(0.001, min(0.999, p["draw"]))
+        p_a = max(0.001, min(0.999, p["away_win"]))
+        brier_sum    += (p_h - o_h) ** 2 + (p_d - o_d) ** 2 + (p_a - o_a) ** 2
+        log_loss_sum += o_h * math.log(p_h) + o_d * math.log(p_d) + o_a * math.log(p_a)
+    brier_score = brier_sum / n
+    log_loss    = -log_loss_sum / n
 
     # Count distinct leagues with at least 1 evaluated fixture
     active_leagues = sum(1 for lid in BACKTEST_LEAGUE_IDS if league_buckets.get(lid))
@@ -420,6 +442,13 @@ def run_backtest() -> None:
     print("  [Measures if confidence score is meaningful]")
     print()
 
+    print("CALIBRATION QUALITY (addresses benchmark fragility):")
+    print(f"  Brier Score: {brier_score:.4f}  [random=0.667, good model<0.50]")
+    print(f"  Log Loss:    {log_loss:.4f}  [random=1.10,  good model<0.95]")
+    print("  [Note: accuracy alone can hide poor calibration —")
+    print("   Brier and log loss measure probability quality]")
+    print()
+
     print("REGRESSION BASELINE (save for future comparison):")
     print(f"  This run accuracy: {overall_acc:.1%} on {n} fixtures (±{margin:.1%} at 95% CI)")
     print("  Run this script again after model changes to detect")
@@ -457,6 +486,8 @@ def run_backtest() -> None:
         "calibration_accuracy":   _safe_acc(cal_acc),
         "calibration_n":          cal_n,
         "confidence_threshold":   CONFIDENCE_THRESHOLD,
+        "brier_score":            round(brier_score, 4),
+        "log_loss":               round(log_loss, 4),
         "limitations": [
             "end-of-season standings proxy — not match-day standings",
             "draws systematically underweighted by Poisson model",
