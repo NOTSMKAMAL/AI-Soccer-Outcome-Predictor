@@ -156,7 +156,6 @@ def fetch_season_fixtures(
 
         params = {
             "api_token": api_key,
-            "filters":   f"leagueIds:{league_id}",
             "include":   "scores;participants",
             "per_page":  25,
             "page":      page,
@@ -169,7 +168,10 @@ def fetch_season_fixtures(
         if not data:
             break  # no more pages
 
-        completed = [f for f in data if f.get("result_info")]
+        completed = [
+            f for f in data
+            if f.get("league_id") == league_id and f.get("result_info")
+        ]
         all_fixtures.extend(completed)
         print(f"    Page {page}: {len(data)} fixtures, {len(completed)} completed "
               f"(call {call_count[0]}/{DAILY_CALL_BUDGET})")
