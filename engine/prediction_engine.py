@@ -1,6 +1,8 @@
 import os
+from datetime import date as _date
 from dotenv import load_dotenv
 from google import genai
+from google.genai import types
 from storage.sportmonks_client import check_team_data, get_head_to_head, get_recent_fixtures
 
 load_dotenv()
@@ -290,7 +292,20 @@ def generate_prediction(
         enriched_section = _build_enriched_section(
             team_a_name, team_b_name, team_a_id, team_b_id, enriched_data
         )
-        data_block = f"{h2h_section}\n\n{enriched_section}"
+        today_str = _date.today().isoformat()
+        grounding_instruction = (
+            f"REAL-TIME NEWS INSTRUCTION (Google Search):\n"
+            f"Search for: \"{team_a_name} vs {team_b_name} injury news team news lineup {today_str}\"\n"
+            f"If you find relevant injury reports, lineup hints, or manager press-conference\n"
+            f"quotes, include them in this format inside your response:\n\n"
+            f"REAL-TIME TEAM NEWS (from Google Search):\n"
+            f"- [finding about {team_a_name} injuries or lineup hints]\n"
+            f"- [finding about {team_b_name} injuries or lineup hints]\n"
+            f"- [manager quote or press-conference note if found]\n\n"
+            f"Weave these findings into the Reasoning sentences alongside the statistical data.\n"
+            f"If no relevant real-time information is found, proceed with the data above only."
+        )
+        data_block = f"{h2h_section}\n\n{enriched_section}\n\n{grounding_instruction}"
         response_format = (
             "Respond in this exact format:\n"
             "Winner: <team name>\n"
@@ -321,11 +336,23 @@ Team B: {team_b_name}
 {response_format}
 """
 
+    _search_tools = [types.Tool(google_search=types.GoogleSearch())]
+
     try:
-        response = client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=prompt,
-        )
+        # Attempt grounded call so Gemini can retrieve real-time injury/team news.
+        # If grounding is unavailable (plan restriction, SDK mismatch, etc.) fall back
+        # to a plain call so the prediction always completes.
+        try:
+            response = client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=prompt,
+                tools=_search_tools,
+            )
+        except Exception:
+            response = client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=prompt,
+            )
         raw = response.text
 
         # Multi-line aware parser
