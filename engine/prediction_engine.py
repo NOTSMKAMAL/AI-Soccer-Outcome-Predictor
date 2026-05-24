@@ -4,11 +4,13 @@ from datetime import date as _date
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
-from storage.sportmonks_client import check_team_data, get_head_to_head, get_recent_fixtures
+from storage.sportmonks_client import check_team_data, get_head_to_head, get_recent_fixtures, get_season_team_stats
 
 load_dotenv()
 
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+
+_season_stats_cache: dict[int, dict] = {}
 
 
 def prepare_matchup(team_a_id: int, team_b_id: int) -> dict:
@@ -83,6 +85,9 @@ def dixon_coles_probability(
     rho: float = -0.1,
     home_advantage: float = 1.15,
     max_goals: int = 10,
+    season_id: int | None = None,
+    team_a_id: int | None = None,
+    team_b_id: int | None = None,
 ) -> dict | None:
     """Dixon-Coles adjusted Poisson model (Dixon & Coles 1997).
 
@@ -105,6 +110,20 @@ def dixon_coles_probability(
                     pass
         return None
 
+    # ── Primary path: per-game stats from Season Statistics endpoint ───────────
+    avg_s_a = avg_c_a = avg_s_b = avg_c_b = None
+    if season_id and team_a_id and team_b_id:
+        if season_id not in _season_stats_cache:
+            _season_stats_cache[season_id] = get_season_team_stats(season_id)
+        sdata = _season_stats_cache[season_id]
+        ta = sdata.get(int(team_a_id))
+        tb = sdata.get(int(team_b_id))
+        if ta and tb:
+            avg_s_a = ta.get("goals_scored_per_game")
+            avg_c_a = ta.get("goals_conceded_per_game")
+            avg_s_b = tb.get("goals_scored_per_game")
+            avg_c_b = tb.get("goals_conceded_per_game")
+
     gs_a = _f(team_a_stats, "goals_scored")
     ga_a = _f(team_a_stats, "goals_conceded", "goals_against")
     pl_a = _f(team_a_stats, "total_matches", "played")
@@ -112,11 +131,12 @@ def dixon_coles_probability(
     ga_b = _f(team_b_stats, "goals_conceded", "goals_against")
     pl_b = _f(team_b_stats, "total_matches", "played")
 
-    if any(v is None for v in [gs_a, ga_a, pl_a, gs_b, ga_b, pl_b]):
-        return None
-
-    avg_s_a, avg_c_a = gs_a / pl_a, ga_a / pl_a  # type: ignore[operator]
-    avg_s_b, avg_c_b = gs_b / pl_b, ga_b / pl_b  # type: ignore[operator]
+    # Fallback to standings-based per-game averages if season stats unavailable
+    if avg_s_a is None or avg_c_a is None or avg_s_b is None or avg_c_b is None:
+        if any(v is None for v in [gs_a, ga_a, pl_a, gs_b, ga_b, pl_b]):
+            return None
+        avg_s_a, avg_c_a = gs_a / pl_a, ga_a / pl_a  # type: ignore[operator]
+        avg_s_b, avg_c_b = gs_b / pl_b, ga_b / pl_b  # type: ignore[operator]
 
     league_avg = ((avg_s_a + avg_s_b) / 2) or 0.01
     if league_avg < 0.01:
@@ -390,10 +410,14 @@ def generate_prediction(
     # Dixon-Coles probabilities — computed from standings data, never from Gemini
     dc_probs: dict | None = None
     if enriched_data:
+        _season_id = (enriched_data or {}).get("season_id")
         dc_probs = dixon_coles_probability(
             enriched_data.get("team_a_stats") or {},
             enriched_data.get("team_b_stats") or {},
             is_home_a=True,  # team_a_id is always the home team (see fixture_prediction)
+            season_id=_season_id,
+            team_a_id=team_a_id,
+            team_b_id=team_b_id,
         )
 
     if enriched_data:

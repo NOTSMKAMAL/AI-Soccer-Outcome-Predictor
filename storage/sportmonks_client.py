@@ -917,3 +917,74 @@ def get_fixture_with_xg(fixture_id: int) -> dict:
         return {"status": "error", "message": f"HTTP error: {e}"}
     except requests.exceptions.RequestException as e:
         return {"status": "error", "message": f"Request failed: {e}"}
+
+
+def get_season_team_stats(season_id: int) -> dict:
+    """Fetch per-game stats for all teams in a season from Season Statistics endpoint.
+
+    Calls GET /statistics/seasons/{season_id}?include=statistics (endpoint ID 241).
+    Returns {team_id: {goals_scored_per_game, goals_conceded_per_game, matches_played,
+    clean_sheets}} or {} silently on 404/403 (graceful fallback for untested Starter tier).
+    """
+    if not season_id:
+        return {}
+
+    try:
+        url = f"{BASE_URL}/statistics/seasons/{season_id}"
+        params = {"include": "statistics"}
+        resp = requests.get(url, headers=_auth_headers(), params=params, timeout=10)
+
+        # Graceful fallback on 404/403 (not on subscription tier)
+        if resp.status_code in (403, 404):
+            return {}
+        if not resp.ok:
+            return {}
+
+        result: dict[int, dict] = {}
+        raw_data = resp.json().get("data", [])
+        if not raw_data:
+            return {}
+
+        for row in raw_data:
+            team_id = row.get("participant_id")
+            if not team_id:
+                continue
+
+            stats_array = row.get("statistics", [])
+            if not isinstance(stats_array, list):
+                stats_array = []
+
+            stats_map = {}
+            for stat in stats_array:
+                type_id = stat.get("type_id")
+                value = stat.get("value")
+                if type_id == 52:  # Goals scored
+                    stats_map["goals_scored"] = float(value) if value else 0
+                elif type_id == 53:  # Goals conceded
+                    stats_map["goals_conceded"] = float(value) if value else 0
+                elif type_id == 129:  # Matches played
+                    stats_map["matches_played"] = int(value) if value else 0
+                elif type_id == 84:  # Clean sheets
+                    stats_map["clean_sheets"] = int(value) if value else 0
+
+            matches_played = stats_map.get("matches_played", 0)
+            if matches_played == 0:
+                continue  # Skip teams with 0 matches (avoid division by zero)
+
+            goals_scored = stats_map.get("goals_scored", 0)
+            goals_conceded = stats_map.get("goals_conceded", 0)
+
+            result[int(team_id)] = {
+                "goals_scored_per_game": float(goals_scored) / float(matches_played),
+                "goals_conceded_per_game": float(goals_conceded) / float(matches_played),
+                "matches_played": matches_played,
+                "clean_sheets": stats_map.get("clean_sheets", 0),
+            }
+
+        if result:
+            print(f"  get_season_team_stats: {len(result)} teams loaded (season {season_id})")
+        return result
+
+    except Exception:
+        # Silent fallback on any error (network, JSON parse, etc.)
+        return {}

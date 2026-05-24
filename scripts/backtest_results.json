@@ -20,8 +20,8 @@
   "calibration_accuracy": 0.7368,
   "calibration_n": 19,
   "confidence_threshold": 0.65,
-  "brier_score": 0.5752,
-  "log_loss": 0.9669,
+  "brier_score": 0.5769,
+  "log_loss": 0.9694,
   "limitations": [
     "end-of-season standings proxy \u2014 not match-day standings",
     "draws systematically underweighted by Poisson model",
