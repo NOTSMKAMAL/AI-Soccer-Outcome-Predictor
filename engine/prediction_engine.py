@@ -100,6 +100,7 @@ def dixon_coles_probability(
     team_a_id: int | None = None,
     team_b_id: int | None = None,
     league_id: int | None = None,
+    rolling_form: dict | None = None,
 ) -> dict | None:
     """Dixon-Coles adjusted Poisson model (Dixon & Coles 1997).
 
@@ -122,9 +123,24 @@ def dixon_coles_probability(
                     pass
         return None
 
-    # ── Primary path: per-game stats from Season Statistics endpoint ───────────
+    # ── Priority 1: Rolling 5-round form ─────────────────────────────────────
     avg_s_a = avg_c_a = avg_s_b = avg_c_b = None
-    if season_id and team_a_id and team_b_id:
+    data_source = None
+
+    if rolling_form and all(
+        rolling_form.get(k) not in (None, "", 0)
+        for k in ["home_scored_5r", "home_conceded_5r",
+                   "away_scored_5r", "away_conceded_5r"]
+    ):
+        ROUNDS = 5  # number of rounds in rolling window
+        avg_s_a = rolling_form["home_scored_5r"] / ROUNDS
+        avg_c_a = rolling_form["home_conceded_5r"] / ROUNDS
+        avg_s_b = rolling_form["away_scored_5r"] / ROUNDS
+        avg_c_b = rolling_form["away_conceded_5r"] / ROUNDS
+        data_source = "rolling_5r"
+
+    # ── Priority 2: Season Statistics endpoint ──────────────────────────────
+    if avg_s_a is None and season_id and team_a_id and team_b_id:
         if season_id not in _season_stats_cache:
             _season_stats_cache[season_id] = get_season_team_stats(season_id)
         sdata = _season_stats_cache[season_id]
@@ -135,6 +151,7 @@ def dixon_coles_probability(
             avg_c_a = ta.get("goals_conceded_per_game")
             avg_s_b = tb.get("goals_scored_per_game")
             avg_c_b = tb.get("goals_conceded_per_game")
+            data_source = "season_stats"
 
     gs_a = _f(team_a_stats, "goals_scored")
     ga_a = _f(team_a_stats, "goals_conceded", "goals_against")
@@ -143,12 +160,13 @@ def dixon_coles_probability(
     ga_b = _f(team_b_stats, "goals_conceded", "goals_against")
     pl_b = _f(team_b_stats, "total_matches", "played")
 
-    # Fallback to standings-based per-game averages if season stats unavailable
+    # ── Priority 3: Standings fallback ────────────────────────────────────────
     if avg_s_a is None or avg_c_a is None or avg_s_b is None or avg_c_b is None:
         if any(v is None for v in [gs_a, ga_a, pl_a, gs_b, ga_b, pl_b]):
             return None
         avg_s_a, avg_c_a = gs_a / pl_a, ga_a / pl_a  # type: ignore[operator]
         avg_s_b, avg_c_b = gs_b / pl_b, ga_b / pl_b  # type: ignore[operator]
+        data_source = "standings"
 
     league_avg = ((avg_s_a + avg_s_b) / 2) or 0.01
     if league_avg < 0.01:
@@ -206,6 +224,7 @@ def dixon_coles_probability(
         "home_win": max(0.05, min(0.90, round(hw / t2, 4))),
         "draw":     max(0.05, min(0.90, round(dr / t2, 4))),
         "away_win": max(0.05, min(0.90, round(aw / t2, 4))),
+        "method": data_source,
     }
 
 

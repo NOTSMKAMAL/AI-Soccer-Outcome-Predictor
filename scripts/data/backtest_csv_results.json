@@ -1,37 +1,37 @@
 {
-  "evaluation_date": "2026-05-23",
+  "evaluation_date": "2026-05-24",
   "mode": "csv",
   "total_fixtures": 1747,
-  "overall_accuracy": 0.5335,
+  "overall_accuracy": 0.4751,
   "confidence_interval_95": 0.0234,
   "home_baseline_accuracy": 0.4482,
-  "improvement_over_baseline_pp": 8.53,
+  "improvement_over_baseline_pp": 2.69,
   "by_outcome": {
-    "home_win": 0.556,
-    "draw": 0.2308,
-    "away_win": 0.4957
+    "home_win": 0.5427,
+    "draw": 0.2414,
+    "away_win": 0.409
   },
   "by_league": {
-    "8": 0.5221,
-    "301": 0.5541,
-    "564": 0.5541,
-    "384": 0.5472,
+    "8": 0.4538,
+    "301": 0.4492,
+    "564": 0.473,
+    "384": 0.4852,
     "779": 0.4978
   },
-  "calibration_accuracy": 0.7304,
-  "calibration_n": 345,
+  "calibration_accuracy": 0.5764,
+  "calibration_n": 491,
   "confidence_threshold": 0.65,
-  "brier_score": 0.5897,
-  "log_loss": 0.9905,
+  "brier_score": 0.6507,
+  "log_loss": 1.0941,
   "limitations": [
     "matches_played derived from goals (2.7 avg/match) \u2014 may deviate from true if team scoring rate differs from league avg",
     "end-of-season standings proxy \u2014 not match-day standings",
     "draws systematically underweighted by Poisson model",
     "sample size 1747 may be insufficient for statistical significance"
   ],
-  "source_file": "/Users/briangarcia/CS180_PROJECT/final-project-sm-kamal-brian-garcia/scripts/data/raw_fixtures.csv",
+  "source_file": "/Users/briangarcia/CS180_PROJECT/final-project-sm-kamal-brian-garcia/scripts/data/enriched_fixtures.csv",
   "skipped_fixtures": 0,
   "api_baseline_accuracy": 0.5467,
   "api_baseline_n": 75,
-  "delta_vs_baseline_pp": -1.32
+  "delta_vs_baseline_pp": -7.16
 }

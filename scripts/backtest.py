@@ -68,7 +68,7 @@ CONFIDENCE_THRESHOLD = 0.65
 LOOKBACK_DAYS = 80
 
 # CSV mode constants
-CSV_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "raw_fixtures.csv")
+CSV_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "enriched_fixtures.csv")
 MATCHES_PLAYED_PROXY = 34  # Fixed season-length proxy for CSV mode
 
 
@@ -143,8 +143,26 @@ def _load_csv_fixtures() -> tuple[list[dict], int]:
                         max(1, round((away_gs_f + away_ga_f) / avg_total_goals_per_match))
                     )
 
+                    # Extract rolling form fields (optional, may be empty for early-season fixtures)
+                    home_scored_5r = row.get("home_form_goals_scored_5r", "").strip()
+                    home_conceded_5r = row.get("home_form_goals_conceded_5r", "").strip()
+                    away_scored_5r = row.get("away_form_goals_scored_5r", "").strip()
+                    away_conceded_5r = row.get("away_form_goals_conceded_5r", "").strip()
+
+                    rolling_form = None
+                    if home_scored_5r and home_conceded_5r and away_scored_5r and away_conceded_5r:
+                        try:
+                            rolling_form = {
+                                "home_scored_5r": float(home_scored_5r),
+                                "home_conceded_5r": float(home_conceded_5r),
+                                "away_scored_5r": float(away_scored_5r),
+                                "away_conceded_5r": float(away_conceded_5r),
+                            }
+                        except (ValueError, TypeError):
+                            rolling_form = None
+
                     # Build fixture record in the same format as API mode uses
-                    fixtures.append({
+                    fixture_record = {
                         "fixture_id": fixture_id,
                         "league_id": league_id,
                         "home_team_id": home_team_id,
@@ -160,7 +178,10 @@ def _load_csv_fixtures() -> tuple[list[dict], int]:
                             "goals_conceded": away_ga_f,
                             "total_matches": float(away_matches),
                         },
-                    })
+                    }
+                    if rolling_form:
+                        fixture_record["rolling_form"] = rolling_form
+                    fixtures.append(fixture_record)
                 except (ValueError, KeyError) as e:
                     skipped += 1
                     continue
@@ -327,23 +348,25 @@ def _build_team_stats(season_id: int) -> dict[int, dict]:
 
 # ── Prediction ─────────────────────────────────────────────────────────────────
 
-def _predict(home_stats: dict, away_stats: dict, league_id: int | None = None) -> tuple[str | None, float, dict | None]:
+def _predict(home_stats: dict, away_stats: dict, league_id: int | None = None, rolling_form: dict | None = None) -> tuple[str | None, float, dict | None, str | None]:
     """
-    Run Dixon-Coles and return (predicted_outcome, winning_probability, full_probs).
+    Run Dixon-Coles and return (predicted_outcome, winning_probability, full_probs, data_source).
 
     is_home_a=True because the first stats dict always represents the home team.
-    Returns (None, 0.0, None) when Dixon-Coles cannot compute (missing stats).
+    Returns (None, 0.0, None, None) when Dixon-Coles cannot compute (missing stats).
     full_probs is the raw {"home_win", "draw", "away_win"} dict needed for
     Brier score and log loss — returned here to avoid a second engine call.
+    data_source indicates which data priority was used ("rolling_5r", "season_stats", or "standings").
     """
-    probs = dixon_coles_probability(home_stats, away_stats, is_home_a=True, league_id=league_id)
+    probs = dixon_coles_probability(home_stats, away_stats, is_home_a=True, league_id=league_id, rolling_form=rolling_form)
     if not probs:
-        return None, 0.0, None
-    max_prob = max(probs.values())
+        return None, 0.0, None, None
+    data_source = probs.get("method")
+    max_prob = max(v for k, v in probs.items() if k != "method")
     for outcome in ("home_win", "draw", "away_win"):
         if probs[outcome] == max_prob:
-            return outcome, max_prob, probs
-    return None, 0.0, None
+            return outcome, max_prob, probs, data_source
+    return None, 0.0, None, None
 
 
 # ── Main ───────────────────────────────────────────────────────────────────────
@@ -412,7 +435,7 @@ def run_backtest() -> None:
             skipped += 1
             continue
 
-        predicted, confidence, probs = _predict(home_stats, away_stats, league_id=lid)
+        predicted, confidence, probs, data_source = _predict(home_stats, away_stats, league_id=lid)
         if predicted is None:
             skipped += 1
             continue
@@ -456,18 +479,21 @@ def run_backtest_csv() -> None:
     print("Step 2: Running Dixon-Coles predictions (0 API calls — pure computation)...")
     records: list[dict] = []
     skipped_pred = 0
+    data_source_counts: dict[str | None, int] = {}
 
     for f in csv_fixtures:
         home_stats = f.get("home_stats", {})
         away_stats = f.get("away_stats", {})
         league_id = f.get("league_id")
+        rolling_form = f.get("rolling_form")
 
-        predicted, confidence, probs = _predict(home_stats, away_stats, league_id=league_id)
+        predicted, confidence, probs, data_source = _predict(home_stats, away_stats, league_id=league_id, rolling_form=rolling_form)
         if predicted is None:
             skipped_pred += 1
             continue
 
         actual = f.get("actual_outcome")
+        data_source_counts[data_source] = data_source_counts.get(data_source, 0) + 1
         records.append({
             "fixture_id": f.get("fixture_id"),
             "league_id": f.get("league_id"),
@@ -476,6 +502,7 @@ def run_backtest_csv() -> None:
             "confidence": confidence,
             "probs": probs,
             "correct": predicted == actual,
+            "data_source": data_source,
         })
 
     print(f"  Evaluated: {len(records)} fixtures | Skipped (prediction failed): {skipped_pred}")
@@ -486,7 +513,7 @@ def run_backtest_csv() -> None:
         sys.exit(1)
 
     # ── Step 3: Compute metrics (identical to API mode) ─────────────────────────
-    _compute_and_report_metrics(records, today, mode="csv", csv_skipped=skipped)
+    _compute_and_report_metrics(records, today, mode="csv", csv_skipped=skipped, data_source_counts=data_source_counts)
 
 
 def _compute_and_report_metrics(
@@ -494,6 +521,7 @@ def _compute_and_report_metrics(
     today: str,
     mode: str = "api",
     csv_skipped: int = 0,
+    data_source_counts: dict | None = None,
 ) -> None:
     """Compute and report all metrics for backtest results.
 
@@ -646,6 +674,42 @@ def _compute_and_report_metrics(
     print("  [Note: accuracy alone can hide poor calibration —")
     print("   Brier and log loss measure probability quality]")
     print()
+
+    # Data source breakdown (CSV mode only)
+    if mode == "csv" and data_source_counts:
+        print("DATA SOURCE BREAKDOWN:")
+        rolling_5r_count = data_source_counts.get("rolling_5r", 0)
+        season_stats_count = data_source_counts.get("season_stats", 0)
+        standings_count = data_source_counts.get("standings", 0)
+        total = rolling_5r_count + season_stats_count + standings_count
+        if total > 0:
+            print(f"  Rolling 5-round form:  {rolling_5r_count} fixtures ({100 * rolling_5r_count / total:.1f}% of total)")
+            print(f"  Season statistics:     {season_stats_count} fixtures ({100 * season_stats_count / total:.1f}% of total)")
+            print(f"  Standings fallback:    {standings_count} fixtures ({100 * standings_count / total:.1f}% of total)")
+            print()
+
+            # Calculate accuracy by data source
+            rolling_5r_correct = sum(1 for r in records if r.get("data_source") == "rolling_5r" and r["correct"])
+            rolling_5r_total = rolling_5r_count
+            season_stats_correct = sum(1 for r in records if r.get("data_source") == "season_stats" and r["correct"])
+            season_stats_total = season_stats_count
+            standings_correct = sum(1 for r in records if r.get("data_source") == "standings" and r["correct"])
+            standings_total = standings_count
+
+            print("ROLLING FORM vs STANDINGS ACCURACY:")
+            if rolling_5r_total > 0:
+                rolling_5r_acc = rolling_5r_correct / rolling_5r_total
+                print(f"  Rolling form fixtures: {rolling_5r_acc:.1%} accuracy ({rolling_5r_total} fixtures)")
+            if standings_total > 0:
+                standings_acc = standings_correct / standings_total
+                print(f"  Standings fallback:    {standings_acc:.1%} accuracy ({standings_total} fixtures)")
+                if rolling_5r_total > 0:
+                    delta_acc = (rolling_5r_acc - standings_acc) * 100
+                    sign = "+" if delta_acc >= 0 else ""
+                    print(f"  Delta:                 {sign}{delta_acc:.1f} pp")
+                    if rolling_5r_acc > standings_acc:
+                        print("  [Rolling form improvement verified]")
+            print()
 
     # Comparison to API baseline (for CSV mode)
     if mode == "csv":
