@@ -88,7 +88,11 @@ def load_checkpoint() -> dict:
             return json.load(fh)
     return {
         "completed_leagues": [],
-        "round_stats": {},  # {round_id: {team_id: {goals_scored, goals_conceded}}}
+        "round_lists": {},  # {league_id: [round list]}
+        "round_fixtures": {},  # {round_id: {team_id: {scored, conceded}}}
+        "round_standings": {},  # {round_id: {team_id: {position, points, ...}}}
+        "team_recent_fixtures": {},  # {team_id: [recent fixture list]}
+        "upcoming_lineups": {},  # {fixture_id: {home_lineup, away_lineup}}
         "total_call_count": 0,
     }
 
@@ -117,6 +121,105 @@ def fetch_rounds(season_id: int, api_key: str, call_count: list) -> list[dict]:
 
     rounds = data.get("data", [])
     return rounds
+
+
+# ── Round fixtures fetcher ────────────────────────────────────────────────────
+
+def fetch_round_fixtures(round_id: int, api_key: str, call_count: list) -> dict:
+    """
+    Fetch all fixtures for a round via endpoint /rounds/{id}?include=fixtures.scores;fixtures.participants.
+    Parse 2ND_HALF scores to get goals scored/conceded per team.
+    Returns {team_id: {goals_scored: N, goals_conceded: N}}.
+    Gracefully returns {} on 404/403.
+    """
+    url = f"{BASE_URL}/rounds/{round_id}"
+    params = {
+        "api_token": api_key,
+        "include": "fixtures.scores;fixtures.participants",
+    }
+    data = _get(url, params, call_count)
+    if not data:
+        return {}
+
+    fixtures_list = data.get("data", {}).get("fixtures", []) or []
+    if not fixtures_list:
+        return {}
+
+    result: dict[int, dict] = {}
+    for fixture in fixtures_list:
+        participants = fixture.get("participants") or []
+        scores = fixture.get("scores") or []
+
+        # Find home and away team IDs
+        home_team_id = None
+        away_team_id = None
+        for p in participants:
+            meta = p.get("meta") or {}
+            if meta.get("location") == "home":
+                home_team_id = p.get("id")
+            elif meta.get("location") == "away":
+                away_team_id = p.get("id")
+
+        if not home_team_id or not away_team_id:
+            continue
+
+        # Parse 2ND_HALF scores
+        home_goals = 0
+        away_goals = 0
+        for score in scores:
+            if score.get("description") == "2ND_HALF":
+                home_goals = int(score.get("participant_id") == home_team_id and score.get("goals") or 0)
+                away_goals = int(score.get("participant_id") == away_team_id and score.get("goals") or 0)
+                break
+
+        # Accumulate: home team scored/conceded, away team scored/conceded
+        if home_team_id not in result:
+            result[home_team_id] = {"goals_scored": 0, "goals_conceded": 0}
+        if away_team_id not in result:
+            result[away_team_id] = {"goals_scored": 0, "goals_conceded": 0}
+
+        result[home_team_id]["goals_scored"] += home_goals
+        result[home_team_id]["goals_conceded"] += away_goals
+        result[away_team_id]["goals_scored"] += away_goals
+        result[away_team_id]["goals_conceded"] += home_goals
+
+    return result
+
+
+# ── Round standings fetcher ────────────────────────────────────────────────────
+
+def fetch_round_standings(round_id: int, api_key: str, call_count: list) -> dict:
+    """
+    Fetch league standings at a specific round via GET /standings/rounds/{round_id}.
+    Returns {team_id: {position: N, points: N, goals_scored: N, goals_conceded: N}}.
+    Gracefully returns {} on 404/403.
+    """
+    url = f"{BASE_URL}/standings/rounds/{round_id}"
+    params = {
+        "api_token": api_key,
+    }
+    data = _get(url, params, call_count)
+    if not data:
+        return {}
+
+    standings_list = data.get("data", []) or []
+    if not standings_list:
+        return {}
+
+    result: dict[int, dict] = {}
+    for entry in standings_list:
+        team_id = entry.get("participant_id")
+        if not team_id:
+            continue
+
+        result[team_id] = {
+            "position": entry.get("position"),
+            "points": entry.get("total_points") or entry.get("points"),
+            "goals_scored": entry.get("goals_scored"),
+            "goals_conceded": entry.get("goals_against") or entry.get("goals_conceded"),
+        }
+
+    return result
 
 
 # ── Statistics by round fetcher ────────────────────────────────────────────────
@@ -322,7 +425,9 @@ def main() -> None:
     # Load checkpoint
     checkpoint = load_checkpoint()
     completed = set(checkpoint.get("completed_leagues", []))
-    round_stats = checkpoint.get("round_stats", {})
+    round_lists = checkpoint.get("round_lists", {})
+    round_fixtures = checkpoint.get("round_fixtures", {})
+    round_standings = checkpoint.get("round_standings", {})
     call_count = [checkpoint.get("total_call_count", 0)]
 
     # All rounds per league (will populate)
@@ -337,6 +442,9 @@ def main() -> None:
 
         if league_id in completed:
             print(f"[{name}] Already completed — skipping")
+            # Restore from checkpoint
+            if str(league_id) in round_lists:
+                all_rounds[league_id] = round_lists[str(league_id)]
             continue
 
         print(f"[{name}]")
@@ -349,11 +457,10 @@ def main() -> None:
         if len(rounds) > 0:
             print(f"  First round: {rounds[0].get('name')} ({rounds[0].get('starting_at', '')[:10]})")
 
-        # ── STEP 2: Fetch statistics for each round ────────────────────────────
-        print(f"  Fetching stats for {len(rounds)} rounds...")
+        # ── STEP 2: Fetch fixtures and standings for each round ────────────────
+        print(f"  Processing {len(rounds)} rounds...")
 
-        rounds_with_stats = 0
-        team_round_records = 0
+        rounds_with_data = 0
 
         for rnd in rounds:
             round_id = rnd.get("id")
@@ -361,24 +468,29 @@ def main() -> None:
                 continue
 
             # Skip if already in checkpoint
-            if str(round_id) in round_stats:
-                team_round_records += len(round_stats[str(round_id)])
-                rounds_with_stats += 1
+            if str(round_id) in round_fixtures and str(round_id) in round_standings:
+                rounds_with_data += 1
                 continue
 
-            # Fetch round stats
-            r_stats = fetch_round_stats(round_id, api_key, call_count)
-            if r_stats:
-                round_stats[str(round_id)] = r_stats
-                rounds_with_stats += 1
-                team_round_records += len(r_stats)
+            # Fetch round fixtures (2ND_HALF scores)
+            r_fixtures = fetch_round_fixtures(round_id, api_key, call_count)
+            if r_fixtures:
+                round_fixtures[str(round_id)] = r_fixtures
+                rounds_with_data += 1
 
-        print(f"  League complete: {rounds_with_stats} rounds, {team_round_records} team-round records")
+            # Fetch round standings
+            r_standings = fetch_round_standings(round_id, api_key, call_count)
+            if r_standings:
+                round_standings[str(round_id)] = r_standings
+
+        print(f"  League complete: {rounds_with_data} rounds with fixture/standing data")
 
         # Mark league as completed and save checkpoint
         completed.add(league_id)
         checkpoint["completed_leagues"] = list(completed)
-        checkpoint["round_stats"] = round_stats
+        checkpoint["round_lists"] = {**round_lists, str(league_id): rounds}
+        checkpoint["round_fixtures"] = round_fixtures
+        checkpoint["round_standings"] = round_standings
         checkpoint["total_call_count"] = call_count[0]
         save_checkpoint(checkpoint)
         print(f"  Checkpoint saved.\n")
@@ -394,7 +506,7 @@ def main() -> None:
 
     print(f"  Computing rolling 5-round form...")
 
-    form_data = build_form_data(CSV_PATH, round_stats, all_rounds)
+    form_data = build_form_data(CSV_PATH, round_fixtures, all_rounds)
 
     # Count distribution
     full_data = sum(1 for fd in form_data.values()
@@ -444,7 +556,8 @@ def main() -> None:
     # ── Summary ────────────────────────────────────────────────────────────────
     print(f"\nSESSION SUMMARY")
     print(f"  Total calls used: {call_count[0]}/{DAILY_CALL_BUDGET}")
-    print(f"  Rounds fetched: {len(round_stats)} across 5 leagues")
+    print(f"  Rounds with fixture data: {len(round_fixtures)} across 5 leagues")
+    print(f"  Rounds with standings: {len(round_standings)} across 5 leagues")
     print(f"  enriched_fixtures.csv: {fixture_count} rows, {len(fieldnames)} columns")
     print(f"  Ready for Part B: engine rolling form upgrade\n")
 

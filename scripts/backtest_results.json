@@ -18,11 +18,11 @@
     "384": 0.5714,
     "779": 0.7647
   },
-  "calibration_accuracy": 0.7368,
-  "calibration_n": 19,
+  "calibration_accuracy": 0.7778,
+  "calibration_n": 18,
   "confidence_threshold": 0.65,
-  "brier_score": 0.5773,
-  "log_loss": 0.9701,
+  "brier_score": 0.5746,
+  "log_loss": 0.966,
   "limitations": [
     "end-of-season standings proxy \u2014 not match-day standings",
     "draws systematically underweighted by Poisson model",
