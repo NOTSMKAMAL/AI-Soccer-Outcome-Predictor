@@ -392,15 +392,15 @@ def build_form_data(
 
                 round_stats_data = round_stats.get(str(prior_round_id), {})
 
-                # Home team
-                home_stats = round_stats_data.get(home_team_id)
+                # Home team (team_ids stored as strings in round_fixtures)
+                home_stats = round_stats_data.get(str(home_team_id))
                 if home_stats:
                     home_gs += home_stats.get("goals_scored", 0)
                     home_gc += home_stats.get("goals_conceded", 0)
                     rounds_used_home += 1
 
-                # Away team
-                away_stats = round_stats_data.get(away_team_id)
+                # Away team (team_ids stored as strings in round_fixtures)
+                away_stats = round_stats_data.get(str(away_team_id))
                 if away_stats:
                     away_gs += away_stats.get("goals_scored", 0)
                     away_gc += away_stats.get("goals_conceded", 0)
@@ -412,6 +412,8 @@ def build_form_data(
                 "home_form_goals_conceded_5r": home_gc if rounds_used_home >= 3 else "",
                 "away_form_goals_scored_5r": away_gs if rounds_used_away >= 3 else "",
                 "away_form_goals_conceded_5r": away_gc if rounds_used_away >= 3 else "",
+                "home_form_rounds_used": str(rounds_used_home) if rounds_used_home >= 3 else "",
+                "away_form_rounds_used": str(rounds_used_away) if rounds_used_away >= 3 else "",
             }
 
     return form_data
@@ -493,6 +495,7 @@ def main() -> None:
         completed.add(league_id)
         checkpoint["completed_leagues"] = list(completed)
         checkpoint["round_lists"] = {**round_lists, str(league_id): rounds}
+        round_lists = checkpoint["round_lists"]  # Update local var for next iteration
         checkpoint["round_fixtures"] = round_fixtures
         checkpoint["round_standings"] = round_standings
         checkpoint["total_call_count"] = call_count[0]
@@ -537,6 +540,8 @@ def main() -> None:
             "home_form_goals_conceded_5r",
             "away_form_goals_scored_5r",
             "away_form_goals_conceded_5r",
+            "home_form_rounds_used",
+            "away_form_rounds_used",
         ]
         fieldnames = fieldnames + new_columns
 
@@ -552,6 +557,8 @@ def main() -> None:
             row["home_form_goals_conceded_5r"] = fd.get("home_form_goals_conceded_5r", "")
             row["away_form_goals_scored_5r"] = fd.get("away_form_goals_scored_5r", "")
             row["away_form_goals_conceded_5r"] = fd.get("away_form_goals_conceded_5r", "")
+            row["home_form_rounds_used"] = fd.get("home_form_rounds_used", "")
+            row["away_form_rounds_used"] = fd.get("away_form_rounds_used", "")
 
             writer.writerow(row)
 

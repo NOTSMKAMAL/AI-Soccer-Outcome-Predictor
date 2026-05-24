@@ -132,11 +132,15 @@ def dixon_coles_probability(
         for k in ["home_scored_5r", "home_conceded_5r",
                    "away_scored_5r", "away_conceded_5r"]
     ):
-        ROUNDS = 5  # number of rounds in rolling window
-        avg_s_a = rolling_form["home_scored_5r"] / ROUNDS
-        avg_c_a = rolling_form["home_conceded_5r"] / ROUNDS
-        avg_s_b = rolling_form["away_scored_5r"] / ROUNDS
-        avg_c_b = rolling_form["away_conceded_5r"] / ROUNDS
+        # Use actual rounds used (default to 5 if not specified)
+        home_rounds = rolling_form.get("home_rounds_used", 5)
+        away_rounds = rolling_form.get("away_rounds_used", 5)
+        home_rounds = max(1, int(home_rounds)) if home_rounds else 5
+        away_rounds = max(1, int(away_rounds)) if away_rounds else 5
+        avg_s_a = rolling_form["home_scored_5r"] / home_rounds
+        avg_c_a = rolling_form["home_conceded_5r"] / home_rounds
+        avg_s_b = rolling_form["away_scored_5r"] / away_rounds
+        avg_c_b = rolling_form["away_conceded_5r"] / away_rounds
         data_source = "rolling_5r"
 
     # ── Priority 2: Season Statistics endpoint ──────────────────────────────

@@ -148,6 +148,8 @@ def _load_csv_fixtures() -> tuple[list[dict], int]:
                     home_conceded_5r = row.get("home_form_goals_conceded_5r", "").strip()
                     away_scored_5r = row.get("away_form_goals_scored_5r", "").strip()
                     away_conceded_5r = row.get("away_form_goals_conceded_5r", "").strip()
+                    home_rounds_used = row.get("home_form_rounds_used", "").strip()
+                    away_rounds_used = row.get("away_form_rounds_used", "").strip()
 
                     rolling_form = None
                     if home_scored_5r and home_conceded_5r and away_scored_5r and away_conceded_5r:
@@ -157,6 +159,8 @@ def _load_csv_fixtures() -> tuple[list[dict], int]:
                                 "home_conceded_5r": float(home_conceded_5r),
                                 "away_scored_5r": float(away_scored_5r),
                                 "away_conceded_5r": float(away_conceded_5r),
+                                "home_rounds_used": int(home_rounds_used) if home_rounds_used else 5,
+                                "away_rounds_used": int(away_rounds_used) if away_rounds_used else 5,
                             }
                         except (ValueError, TypeError):
                             rolling_form = None
