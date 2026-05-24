@@ -7,22 +7,22 @@
   "home_baseline_accuracy": 0.4482,
   "improvement_over_baseline_pp": 8.53,
   "by_outcome": {
-    "home_win": 0.5493,
+    "home_win": 0.556,
     "draw": 0.2308,
-    "away_win": 0.5064
+    "away_win": 0.4957
   },
   "by_league": {
-    "8": 0.5341,
+    "8": 0.5221,
     "301": 0.5541,
     "564": 0.5541,
     "384": 0.5472,
-    "779": 0.4912
+    "779": 0.4978
   },
-  "calibration_accuracy": 0.732,
-  "calibration_n": 362,
+  "calibration_accuracy": 0.7304,
+  "calibration_n": 345,
   "confidence_threshold": 0.65,
-  "brier_score": 0.5888,
-  "log_loss": 0.9895,
+  "brier_score": 0.5897,
+  "log_loss": 0.9905,
   "limitations": [
     "matches_played derived from goals (2.7 avg/match) \u2014 may deviate from true if team scoring rate differs from league avg",
     "end-of-season standings proxy \u2014 not match-day standings",

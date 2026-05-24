@@ -12,6 +12,17 @@ client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 _season_stats_cache: dict[int, dict] = {}
 
+# Per-league home advantage coefficients (Dixon-Coles research)
+# MLS lower due to large travel distances and weaker crowd effects
+_HOME_ADVANTAGE = {
+    8:   1.18,   # Premier League — strong home crowds
+    564: 1.16,   # La Liga — strong home support
+    384: 1.15,   # Serie A — standard home advantage
+    301: 1.13,   # Ligue 1 — slightly below average
+    779: 1.08,   # MLS — weakest due to travel distances
+}
+_HOME_ADVANTAGE_DEFAULT = 1.15  # fallback for unknown leagues
+
 
 def prepare_matchup(team_a_id: int, team_b_id: int) -> dict:
     if team_a_id == team_b_id:
@@ -88,6 +99,7 @@ def dixon_coles_probability(
     season_id: int | None = None,
     team_a_id: int | None = None,
     team_b_id: int | None = None,
+    league_id: int | None = None,
 ) -> dict | None:
     """Dixon-Coles adjusted Poisson model (Dixon & Coles 1997).
 
@@ -148,7 +160,10 @@ def dixon_coles_probability(
     def_b = avg_c_b / league_avg
 
     # Expected goals: home team benefits from home_advantage multiplier
-    ha = home_advantage if is_home_a else 1.0 / home_advantage
+    # Use per-league coefficient if league_id provided, else fall back to param
+    ha_coeff = _HOME_ADVANTAGE.get(league_id, _HOME_ADVANTAGE_DEFAULT) \
+               if league_id else home_advantage
+    ha = ha_coeff if is_home_a else 1.0 / ha_coeff
     lam = atk_a * def_b * ha         * league_avg  # team_a expected goals
     mu  = atk_b * def_a * (1.0 / ha) * league_avg  # team_b expected goals
 

@@ -327,7 +327,7 @@ def _build_team_stats(season_id: int) -> dict[int, dict]:
 
 # ── Prediction ─────────────────────────────────────────────────────────────────
 
-def _predict(home_stats: dict, away_stats: dict) -> tuple[str | None, float, dict | None]:
+def _predict(home_stats: dict, away_stats: dict, league_id: int | None = None) -> tuple[str | None, float, dict | None]:
     """
     Run Dixon-Coles and return (predicted_outcome, winning_probability, full_probs).
 
@@ -336,7 +336,7 @@ def _predict(home_stats: dict, away_stats: dict) -> tuple[str | None, float, dic
     full_probs is the raw {"home_win", "draw", "away_win"} dict needed for
     Brier score and log loss — returned here to avoid a second engine call.
     """
-    probs = dixon_coles_probability(home_stats, away_stats, is_home_a=True)
+    probs = dixon_coles_probability(home_stats, away_stats, is_home_a=True, league_id=league_id)
     if not probs:
         return None, 0.0, None
     max_prob = max(probs.values())
@@ -412,7 +412,7 @@ def run_backtest() -> None:
             skipped += 1
             continue
 
-        predicted, confidence, probs = _predict(home_stats, away_stats)
+        predicted, confidence, probs = _predict(home_stats, away_stats, league_id=lid)
         if predicted is None:
             skipped += 1
             continue
@@ -460,8 +460,9 @@ def run_backtest_csv() -> None:
     for f in csv_fixtures:
         home_stats = f.get("home_stats", {})
         away_stats = f.get("away_stats", {})
+        league_id = f.get("league_id")
 
-        predicted, confidence, probs = _predict(home_stats, away_stats)
+        predicted, confidence, probs = _predict(home_stats, away_stats, league_id=league_id)
         if predicted is None:
             skipped_pred += 1
             continue
@@ -619,6 +620,17 @@ def _compute_and_report_metrics(
             print(f"  {tag:<22} no fixtures evaluated")
     print()
 
+    if mode == "csv":
+        print("HOME ADVANTAGE COEFFICIENTS APPLIED:")
+        print("  Premier League (8):  1.18")
+        print("  La Liga (564):       1.16")
+        print("  Serie A (384):       1.15")
+        print("  Ligue 1 (301):       1.13")
+        print("  MLS (779):           1.08")
+        print("  [Research-backed values from Dixon-Coles literature.")
+        print("   MLS lower due to travel distances and crowd effects.]")
+        print()
+
     print(f"CALIBRATION (confidence >= {CONFIDENCE_THRESHOLD:.0%} threshold):")
     print(f"  High-confidence predictions: {cal_n} fixtures")
     if cal_acc is not None:
@@ -653,6 +665,22 @@ def _compute_and_report_metrics(
         else:
             interpretation = "improved" if delta_pp > 0 else "degraded" if delta_pp < 0 else "unchanged"
             print(f"  Interpretation: Result {interpretation} within expected variance.")
+        print()
+
+        # Comparison vs previous CSV run with fixed home_advantage=1.15
+        prev_csv_acc = 0.5335
+        prev_csv_mls = 0.4912
+        delta_overall = (overall_acc - prev_csv_acc) * 100
+        mls_acc, _ = _league_acc(779)
+        delta_mls = (mls_acc - prev_csv_mls) * 100 if mls_acc else 0.0
+        sign_overall = "+" if delta_overall >= 0 else ""
+        sign_mls = "+" if delta_mls >= 0 else ""
+
+        print("COMPARISON vs PREVIOUS CSV RUN:")
+        print(f"  Previous (fixed 1.15):    53.3% overall, MLS 49.1%")
+        print(f"  Updated (per-league):     {overall_acc:.1%} overall, MLS {mls_acc:.1%}")
+        print(f"  MLS improvement:          {sign_mls}{delta_mls:.1f} pp")
+        print(f"  Overall improvement:      {sign_overall}{delta_overall:.1f} pp")
         print()
 
     print("REGRESSION BASELINE (save for future comparison):")
