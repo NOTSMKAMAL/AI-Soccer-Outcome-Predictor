@@ -1,11 +1,16 @@
+import math
 import os
+from datetime import date as _date
 from dotenv import load_dotenv
 from google import genai
-from storage.sportmonks_client import check_team_data, get_head_to_head, get_recent_fixtures
+from google.genai import types
+from storage.sportmonks_client import check_team_data, get_head_to_head, get_recent_fixtures, get_season_team_stats
 
 load_dotenv()
 
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+
+_season_stats_cache: dict[int, dict] = {}
 
 
 def prepare_matchup(team_a_id: int, team_b_id: int) -> dict:
@@ -71,6 +76,122 @@ def _form_label(fixtures: list[dict], winner_name: str) -> tuple[str, int]:
         return "", 0
     win_rate = int(symbols.count("W") / len(symbols) * 100)
     return "/".join(symbols), win_rate
+
+
+def dixon_coles_probability(
+    team_a_stats: dict,
+    team_b_stats: dict,
+    is_home_a: bool = True,
+    rho: float = -0.1,
+    home_advantage: float = 1.15,
+    max_goals: int = 10,
+    season_id: int | None = None,
+    team_a_id: int | None = None,
+    team_b_id: int | None = None,
+) -> dict | None:
+    """Dixon-Coles adjusted Poisson model (Dixon & Coles 1997).
+
+    Computes P(home win), P(draw), P(away win) by summing joint Poisson
+    probabilities over all scorelines up to max_goals x max_goals with the
+    low-score correction parameter rho.
+
+    Returns {"home_win": float, "draw": float, "away_win": float} summing
+    to 1.0, or None when stats are insufficient.
+    """
+    def _f(d: dict, *keys) -> float | None:
+        for k in keys:
+            v = d.get(k)
+            if v is not None:
+                try:
+                    f = float(v)
+                    if f > 0:
+                        return f
+                except (TypeError, ValueError):
+                    pass
+        return None
+
+    # ── Primary path: per-game stats from Season Statistics endpoint ───────────
+    avg_s_a = avg_c_a = avg_s_b = avg_c_b = None
+    if season_id and team_a_id and team_b_id:
+        if season_id not in _season_stats_cache:
+            _season_stats_cache[season_id] = get_season_team_stats(season_id)
+        sdata = _season_stats_cache[season_id]
+        ta = sdata.get(int(team_a_id))
+        tb = sdata.get(int(team_b_id))
+        if ta and tb:
+            avg_s_a = ta.get("goals_scored_per_game")
+            avg_c_a = ta.get("goals_conceded_per_game")
+            avg_s_b = tb.get("goals_scored_per_game")
+            avg_c_b = tb.get("goals_conceded_per_game")
+
+    gs_a = _f(team_a_stats, "goals_scored")
+    ga_a = _f(team_a_stats, "goals_conceded", "goals_against")
+    pl_a = _f(team_a_stats, "total_matches", "played")
+    gs_b = _f(team_b_stats, "goals_scored")
+    ga_b = _f(team_b_stats, "goals_conceded", "goals_against")
+    pl_b = _f(team_b_stats, "total_matches", "played")
+
+    # Fallback to standings-based per-game averages if season stats unavailable
+    if avg_s_a is None or avg_c_a is None or avg_s_b is None or avg_c_b is None:
+        if any(v is None for v in [gs_a, ga_a, pl_a, gs_b, ga_b, pl_b]):
+            return None
+        avg_s_a, avg_c_a = gs_a / pl_a, ga_a / pl_a  # type: ignore[operator]
+        avg_s_b, avg_c_b = gs_b / pl_b, ga_b / pl_b  # type: ignore[operator]
+
+    league_avg = ((avg_s_a + avg_s_b) / 2) or 0.01
+    if league_avg < 0.01:
+        return None
+
+    atk_a = avg_s_a / league_avg
+    def_a = avg_c_a / league_avg
+    atk_b = avg_s_b / league_avg
+    def_b = avg_c_b / league_avg
+
+    # Expected goals: home team benefits from home_advantage multiplier
+    ha = home_advantage if is_home_a else 1.0 / home_advantage
+    lam = atk_a * def_b * ha         * league_avg  # team_a expected goals
+    mu  = atk_b * def_a * (1.0 / ha) * league_avg  # team_b expected goals
+
+    def _pois(k: int, lam_: float) -> float:
+        return math.exp(-lam_) * (lam_ ** k) / math.factorial(k)
+
+    # Dixon-Coles low-score correction τ(x, y)
+    def _tau(x: int, y: int) -> float:
+        if x == 0 and y == 0:
+            return 1.0 - lam * mu * rho
+        if x == 0 and y == 1:
+            return 1.0 + lam * rho
+        if x == 1 and y == 0:
+            return 1.0 + mu  * rho
+        if x == 1 and y == 1:
+            return 1.0 - rho
+        return 1.0
+
+    home_win = draw = away_win = 0.0
+    for i in range(max_goals + 1):
+        pi = _pois(i, lam)
+        for j in range(max_goals + 1):
+            p = _tau(i, j) * pi * _pois(j, mu)
+            if   i > j: home_win += p
+            elif i == j: draw    += p
+            else:        away_win += p
+
+    total = home_win + draw + away_win
+    if total <= 0:
+        return None
+
+    hw = max(0.05, min(0.90, home_win / total))
+    dr = max(0.05, min(0.90, draw     / total))
+    aw = max(0.05, min(0.90, away_win / total))
+
+    # Normalise after capping, then apply the floor/ceiling again so the
+    # returned values strictly respect the [0.05, 0.90] bounds.
+    t2 = hw + dr + aw
+    return {
+        "home_win": max(0.05, min(0.90, round(hw / t2, 4))),
+        "draw":     max(0.05, min(0.90, round(dr / t2, 4))),
+        "away_win": max(0.05, min(0.90, round(aw / t2, 4))),
+    }
 
 
 def _build_enriched_section(
@@ -169,7 +290,7 @@ def _build_enriched_section(
             f"INJURY & SUSPENSION NEWS:\n{_inj(team_a_name, inj_a)}\n{_inj(team_b_name, inj_b)}"
         )
 
-    # Top scorers
+    # Top scorers (legacy key — kept for backwards compat)
     topscorers = enriched.get("topscorers") or []
     if topscorers:
         scorer_lines = []
@@ -182,6 +303,77 @@ def _build_enriched_section(
                 f"{s.get('goals', 0)} goals, {s.get('assists', 0)} assists{flag}"
             )
         parts.append("TOP SCORERS IN THIS LEAGUE:\n" + "\n".join(scorer_lines))
+
+    # ── NEW SECTIONS for improved Gemini reasoning ────────────────────────────
+
+    # Confirmed lineups
+    lineup = enriched.get("lineup") or {}
+    team_a_starters: list[dict] = lineup.get("team_a_starters") or []
+    team_b_starters: list[dict] = lineup.get("team_b_starters") or []
+    lineup_confirmed = lineup.get("confirmed", False)
+
+    if lineup_confirmed and (team_a_starters or team_b_starters):
+        a_names = ", ".join(p["player_name"] for p in team_a_starters) or "Unknown"
+        b_names = ", ".join(p["player_name"] for p in team_b_starters) or "Unknown"
+        parts.append(
+            f"CONFIRMED STARTING LINEUPS:\n"
+            f"  {team_a_name} starting XI: {a_names}\n"
+            f"  {team_b_name} starting XI: {b_names}"
+        )
+    else:
+        parts.append(
+            "CONFIRMED STARTING LINEUPS:\n"
+            "  Lineups not yet confirmed for this match"
+        )
+
+    # Top scorers with names + lineup cross-reference
+    scorers = enriched.get("topscorers_with_names") or []
+    if scorers:
+        starter_names_a = {p["player_name"].lower() for p in team_a_starters}
+        starter_names_b = {p["player_name"].lower() for p in team_b_starters}
+        scorer_lines = []
+        for s in scorers:
+            name  = s.get("player_name", "?")
+            team  = s.get("team_name", "?")
+            goals = s.get("goals", 0)
+            rank  = s.get("rank", "?")
+            flag  = ""
+            if name.lower() in starter_names_a:
+                flag = f" ← CONFIRMED STARTING for {team_a_name}"
+            elif name.lower() in starter_names_b:
+                flag = f" ← CONFIRMED STARTING for {team_b_name}"
+            elif s.get("team_id") in (team_a_id, team_b_id):
+                flag = " ← plays for one of today's teams (lineup TBC)"
+            scorer_lines.append(f"  {rank}. {name} ({team}): {goals} goals{flag}")
+        parts.append(
+            "TOP SCORERS IN THIS LEAGUE (season):\n"
+            + "\n".join(scorer_lines)
+            + "\n  Instruction: if a top scorer is confirmed in the starting XI, "
+            "weight their team's attacking threat higher in your prediction."
+        )
+
+    # Squad depth note — flags missing first-choice GK or captain for team_a
+    squad_a: list[dict] = enriched.get("squad_a") or []
+    if squad_a and lineup_confirmed and team_a_starters:
+        starter_names_a_set = {p["player_name"].lower() for p in team_a_starters}
+        key_absences = []
+        for player in squad_a:
+            pname = player.get("player_name", "")
+            if pname.lower() in starter_names_a_set:
+                continue  # player IS starting, not absent
+            if player.get("position_id") == 24:  # 24 = goalkeeper
+                key_absences.append(f"{pname} (GK)")
+            elif player.get("captain"):
+                key_absences.append(f"{pname} (captain)")
+        if key_absences:
+            absence_str = ", ".join(key_absences)
+            parts.append(
+                f"SQUAD DEPTH NOTE ({team_a_name}):\n"
+                f"  Key player(s) absent from starting XI: {absence_str}\n"
+                f"  Instruction: a missing captain or first-choice goalkeeper "
+                f"significantly affects {team_a_name}'s prediction confidence — "
+                f"lower their defensive/leadership rating accordingly."
+            )
 
     return "\n\n".join(parts)
 
@@ -215,11 +407,37 @@ def generate_prediction(
             "Use your general knowledge of these MLS teams to make a prediction."
         )
 
+    # Dixon-Coles probabilities — computed from standings data, never from Gemini
+    dc_probs: dict | None = None
+    if enriched_data:
+        _season_id = (enriched_data or {}).get("season_id")
+        dc_probs = dixon_coles_probability(
+            enriched_data.get("team_a_stats") or {},
+            enriched_data.get("team_b_stats") or {},
+            is_home_a=True,  # team_a_id is always the home team (see fixture_prediction)
+            season_id=_season_id,
+            team_a_id=team_a_id,
+            team_b_id=team_b_id,
+        )
+
     if enriched_data:
         enriched_section = _build_enriched_section(
             team_a_name, team_b_name, team_a_id, team_b_id, enriched_data
         )
-        data_block = f"{h2h_section}\n\n{enriched_section}"
+        today_str = _date.today().isoformat()
+        grounding_instruction = (
+            f"REAL-TIME NEWS INSTRUCTION (Google Search):\n"
+            f"Search for: \"{team_a_name} vs {team_b_name} injury news team news lineup {today_str}\"\n"
+            f"If you find relevant injury reports, lineup hints, or manager press-conference\n"
+            f"quotes, include them in this format inside your response:\n\n"
+            f"REAL-TIME TEAM NEWS (from Google Search):\n"
+            f"- [finding about {team_a_name} injuries or lineup hints]\n"
+            f"- [finding about {team_b_name} injuries or lineup hints]\n"
+            f"- [manager quote or press-conference note if found]\n\n"
+            f"Weave these findings into the Reasoning sentences alongside the statistical data.\n"
+            f"If no relevant real-time information is found, proceed with the data above only."
+        )
+        data_block = f"{h2h_section}\n\n{enriched_section}\n\n{grounding_instruction}"
         response_format = (
             "Respond in this exact format:\n"
             "Winner: <team name>\n"
@@ -250,11 +468,23 @@ Team B: {team_b_name}
 {response_format}
 """
 
+    _search_tools = [types.Tool(google_search=types.GoogleSearch())]
+
     try:
-        response = client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=prompt,
-        )
+        # Attempt grounded call so Gemini can retrieve real-time injury/team news.
+        # If grounding is unavailable (plan restriction, SDK mismatch, etc.) fall back
+        # to a plain call so the prediction always completes.
+        try:
+            response = client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=prompt,
+                tools=_search_tools,
+            )
+        except Exception:
+            response = client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=prompt,
+            )
         raw = response.text
 
         # Multi-line aware parser
@@ -308,6 +538,27 @@ Team B: {team_b_name}
         key_factors = [kf for kf in (kf1, kf2, kf3) if kf]
         if key_factors:
             result_data["keyFactors"] = key_factors
+
+        # Win-probability split — Dixon-Coles when stats available, else confidence fallback
+        if dc_probs:
+            result_data["home_win_probability"] = dc_probs["home_win"]
+            result_data["draw_probability"]     = dc_probs["draw"]
+            result_data["away_win_probability"] = dc_probs["away_win"]
+            result_data["probability_method"]   = "dixon-coles"
+        else:
+            # Confidence-label fallback: assign probabilities based on predicted winner
+            _fb: dict[str, tuple[float, float, float]] = {
+                "high":   (0.72, 0.18, 0.10),
+                "medium": (0.52, 0.23, 0.25),
+                "low":    (0.38, 0.28, 0.34),
+            }
+            conf_key = parsed.get("Confidence", "low").lower()
+            w_p, dr_p, l_p = _fb.get(conf_key, _fb["low"])
+            winner_is_home = parsed.get("Winner", "").lower() == team_a_name.lower()
+            result_data["home_win_probability"] = w_p if winner_is_home else l_p
+            result_data["draw_probability"]     = dr_p
+            result_data["away_win_probability"] = l_p if winner_is_home else w_p
+            result_data["probability_method"]   = "confidence-estimate"
 
         return {"status": "success", "data": result_data}
     except Exception as e:

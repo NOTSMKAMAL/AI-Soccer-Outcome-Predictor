@@ -251,9 +251,9 @@ function ThreeSegmentBar({
       {/* Percentages */}
       <div className="grid grid-cols-3 text-center font-bold text-sm"
         style={{ fontFamily: "var(--font-display), system-ui" }}>
-        <span style={{ color: "#13BBAF" }}>{homeP.toFixed(0)}%</span>
-        <span style={{ color: "#F8C25C" }}>{drawP.toFixed(0)}%</span>
-        <span style={{ color: "#82B5CC" }}>{awayP.toFixed(0)}%</span>
+        <span style={{ color: "#13BBAF" }}>{(homeP * 100).toFixed(0)}%</span>
+        <span style={{ color: "#F8C25C" }}>{(drawP * 100).toFixed(0)}%</span>
+        <span style={{ color: "#82B5CC" }}>{(awayP * 100).toFixed(0)}%</span>
       </div>
     </div>
   );
@@ -1143,7 +1143,19 @@ function PredictionContent({ matchId }: { matchId: string }) {
         factors: (raw.factors as string[]) ?? undefined,
         riskFactors: (raw.riskFactors as string[]) ?? undefined,
         headToHead: raw.headToHead ? (raw.headToHead as Prediction["headToHead"]) : undefined,
-      };
+      
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        keyFactors: (raw.keyFactors as any) ?? undefined,
+        // Dixon-Coles three-way probabilities (not in Prediction type — accessed via cast)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        homeWinProbability: (raw.home_win_probability as any) ?? undefined,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        drawProbability: (raw.draw_probability as any) ?? undefined,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        awayWinProbability: (raw.away_win_probability as any) ?? undefined,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        probabilityMethod: (raw.probability_method as any) ?? undefined,
+      } as Prediction;
 
       setPrediction(pred);
       setPageState("predicted");
