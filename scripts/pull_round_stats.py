@@ -167,10 +167,14 @@ def fetch_round_fixtures(round_id: int, api_key: str, call_count: list) -> dict:
         home_goals = 0
         away_goals = 0
         for score in scores:
-            if score.get("description") == "2ND_HALF":
-                home_goals = int(score.get("participant_id") == home_team_id and score.get("goals") or 0)
-                away_goals = int(score.get("participant_id") == away_team_id and score.get("goals") or 0)
-                break
+            if score.get("description") != "2ND_HALF":
+                continue
+            goals = (score.get("score") or {}).get("goals", 0) or 0
+            pid = score.get("participant_id")
+            if pid == home_team_id:
+                home_goals = int(goals)
+            elif pid == away_team_id:
+                away_goals = int(goals)
 
         # Accumulate: home team scored/conceded, away team scored/conceded
         if home_team_id not in result:
