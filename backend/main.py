@@ -417,6 +417,7 @@ async def _gather_enriched(
         "injuries":           injuries,
         "xg":                 xg,
         "trends":             trends,
+        "season_id":          season_id,
         # Gemini prompt context only — not read by the frontend
         "lineup":             _ok(lineups_r),
         "topscorers_with_names": _ok(topscorers_r),
