@@ -1,0 +1,37 @@
+{
+  "evaluation_date": "2026-05-23",
+  "mode": "csv",
+  "total_fixtures": 1747,
+  "overall_accuracy": 0.5117,
+  "confidence_interval_95": 0.0234,
+  "home_baseline_accuracy": 0.4482,
+  "improvement_over_baseline_pp": 6.35,
+  "by_outcome": {
+    "home_win": 0.5629,
+    "draw": 0.271,
+    "away_win": 0.5333
+  },
+  "by_league": {
+    "8": 0.5341,
+    "301": 0.5541,
+    "564": 0.5541,
+    "384": 0.5445,
+    "779": 0.4093
+  },
+  "calibration_accuracy": 0.7534,
+  "calibration_n": 292,
+  "confidence_threshold": 0.65,
+  "brier_score": 0.5987,
+  "log_loss": 1.0038,
+  "limitations": [
+    "matches_played fixed at 34 \u2014 not actual per team",
+    "end-of-season standings proxy \u2014 not match-day standings",
+    "draws systematically underweighted by Poisson model",
+    "sample size 1747 may be insufficient for statistical significance"
+  ],
+  "source_file": "/Users/briangarcia/CS180_PROJECT/final-project-sm-kamal-brian-garcia/scripts/data/raw_fixtures.csv",
+  "skipped_fixtures": 0,
+  "api_baseline_accuracy": 0.5467,
+  "api_baseline_n": 75,
+  "delta_vs_baseline_pp": -3.5
+}
