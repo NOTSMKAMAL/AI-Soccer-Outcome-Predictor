@@ -615,6 +615,16 @@ Team B: {team_b_name}
             result_data["draw_probability"]     = dc_probs["draw"]
             result_data["away_win_probability"] = dc_probs["away_win"]
             result_data["probability_method"]   = "dixon-coles"
+
+            # Override winner with Dixon-Coles prediction
+
+            if dc_probs["home_win"] >= dc_probs["away_win"] and \
+               dc_probs["home_win"] >= dc_probs["draw"]:
+                result_data["winner"] = team_a_name
+            elif dc_probs["away_win"] >= dc_probs["home_win"] and \
+                 dc_probs["away_win"] >= dc_probs["draw"]:
+                result_data["winner"] = team_b_name
+
         else:
             # Confidence-label fallback: assign probabilities based on predicted winner
             _fb: dict[str, tuple[float, float, float]] = {
