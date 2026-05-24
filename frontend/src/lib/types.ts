@@ -42,6 +42,9 @@ export interface Prediction {
   confidence: "low" | "medium" | "high" | string;
   reasoning: string;
   winProbability?: number;
+  home_win_probability?: number;
+  draw_probability?: number;
+  away_win_probability?: number;
   predictedScore?: string;
   factors?: string[];
   riskFactors?: string[];

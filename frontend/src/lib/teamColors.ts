@@ -215,5 +215,5 @@ export function getTeamColor(name: string): { primary: string; abbr: string } {
     }
   }
 
-  return { primary: "#8B5CF6", abbr: generateAbbr(name) };
+  return { primary: "#13BBAF", abbr: generateAbbr(name) };
 }
