@@ -496,6 +496,19 @@ def generate_prediction(
             team_b_id=team_b_id,
         )
 
+    # Determine winner from Dixon-Coles before building prompt
+    # Inject into Gemini prompt so reasoning supports verdict, not contradicts it
+    winner_name = None
+    if dc_probs:
+        if dc_probs["home_win"] >= dc_probs["away_win"] and \
+           dc_probs["home_win"] >= dc_probs["draw"]:
+            winner_name = team_a_name
+        elif dc_probs["away_win"] >= dc_probs["home_win"] and \
+             dc_probs["away_win"] >= dc_probs["draw"]:
+            winner_name = team_b_name
+        else:
+            winner_name = team_a_name  # draw: home team
+
     if enriched_data:
         enriched_section = _build_enriched_section(
             team_a_name, team_b_name, team_a_id, team_b_id, enriched_data
@@ -533,7 +546,30 @@ def generate_prediction(
             "Reasoning: <2-3 sentences explaining the key factors>"
         )
 
-    prompt = f"""You are a professional sports analyst AI for the AI Sports Outcome Predictor.
+    # Build prompt with or without PREDICTED WINNER instruction based on availability
+    if winner_name:
+        # Dixon-Coles determined winner — inject it upfront so reasoning supports it
+        predicted_winner_instruction = (
+            f"PREDICTED WINNER: {winner_name}\n"
+            f"The statistical model has determined that {winner_name} is predicted to win this match.\n\n"
+            f"Your task: Write a clear, factual explanation of WHY {winner_name} is predicted to win,\n"
+            f"using the data provided below. Cite specific statistics. Do NOT argue for the other team\n"
+            f"winning. Do NOT contradict the predicted winner. Your Winner field MUST be: {winner_name}\n\n"
+        )
+        prompt = f"""You are a professional sports analyst AI for the AI Sports Outcome Predictor.
+
+{predicted_winner_instruction}Match data:
+
+Team A: {team_a_name}
+Team B: {team_b_name}
+
+{data_block}
+
+{response_format}
+"""
+    else:
+        # No Dixon-Coles prediction — Gemini decides freely
+        prompt = f"""You are a professional sports analyst AI for the AI Sports Outcome Predictor.
 Analyze ALL data below and predict the winner. Your reasoning MUST cite specific statistics.
 
 Team A: {team_a_name}
