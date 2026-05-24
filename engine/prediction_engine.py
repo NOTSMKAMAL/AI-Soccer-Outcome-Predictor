@@ -123,7 +123,7 @@ def dixon_coles_probability(
                     pass
         return None
 
-    # ── Priority 1: Rolling 5-round form ─────────────────────────────────────
+    # ── Priority 1: Weighted blend of rolling form + season average ──────────
     avg_s_a = avg_c_a = avg_s_b = avg_c_b = None
     data_source = None
 
@@ -132,16 +132,48 @@ def dixon_coles_probability(
         for k in ["home_scored_5r", "home_conceded_5r",
                    "away_scored_5r", "away_conceded_5r"]
     ):
-        # Use actual rounds used (default to 5 if not specified)
-        home_rounds = rolling_form.get("home_rounds_used", 5)
-        away_rounds = rolling_form.get("away_rounds_used", 5)
-        home_rounds = max(1, int(home_rounds)) if home_rounds else 5
-        away_rounds = max(1, int(away_rounds)) if away_rounds else 5
-        avg_s_a = rolling_form["home_scored_5r"] / home_rounds
-        avg_c_a = rolling_form["home_conceded_5r"] / home_rounds
-        avg_s_b = rolling_form["away_scored_5r"] / away_rounds
-        avg_c_b = rolling_form["away_conceded_5r"] / away_rounds
-        data_source = "rolling_5r"
+        # Compute rolling form per-game averages from actual rounds used
+        home_rounds = max(1, int(
+            rolling_form.get("home_rounds_used", 5) or 5))
+        away_rounds = max(1, int(
+            rolling_form.get("away_rounds_used", 5) or 5))
+
+        roll_s_a = rolling_form["home_scored_5r"] / home_rounds
+        roll_c_a = rolling_form["home_conceded_5r"] / home_rounds
+        roll_s_b = rolling_form["away_scored_5r"] / away_rounds
+        roll_c_b = rolling_form["away_conceded_5r"] / away_rounds
+
+        # Extract season averages from team_a_stats / team_b_stats
+        gs_a = _f(team_a_stats, "goals_scored")
+        ga_a = _f(team_a_stats, "goals_conceded", "goals_against")
+        pl_a = _f(team_a_stats, "total_matches", "played")
+        gs_b = _f(team_b_stats, "goals_scored")
+        ga_b = _f(team_b_stats, "goals_conceded", "goals_against")
+        pl_b = _f(team_b_stats, "total_matches", "played")
+
+        # Season per-game averages (fallback to rolling if unavailable)
+        if gs_a and pl_a and pl_a > 0:
+            seas_s_a = gs_a / pl_a
+            seas_c_a = (ga_a or 0) / pl_a
+        else:
+            seas_s_a = roll_s_a
+            seas_c_a = roll_c_a
+
+        if gs_b and pl_b and pl_b > 0:
+            seas_s_b = gs_b / pl_b
+            seas_c_b = (ga_b or 0) / pl_b
+        else:
+            seas_s_b = roll_s_b
+            seas_c_b = roll_c_b
+
+        # Weighted blend: 20% recent form + 80% season average
+        FORM_WEIGHT   = 0.20
+        SEASON_WEIGHT = 0.80
+        avg_s_a = FORM_WEIGHT * roll_s_a + SEASON_WEIGHT * seas_s_a
+        avg_c_a = FORM_WEIGHT * roll_c_a + SEASON_WEIGHT * seas_c_a
+        avg_s_b = FORM_WEIGHT * roll_s_b + SEASON_WEIGHT * seas_s_b
+        avg_c_b = FORM_WEIGHT * roll_c_b + SEASON_WEIGHT * seas_c_b
+        data_source = "rolling_blend_20_80"
 
     # ── Priority 2: Season Statistics endpoint ──────────────────────────────
     if avg_s_a is None and season_id and team_a_id and team_b_id:

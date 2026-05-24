@@ -2,27 +2,27 @@
   "evaluation_date": "2026-05-24",
   "mode": "csv",
   "total_fixtures": 1747,
-  "overall_accuracy": 0.478,
+  "overall_accuracy": 0.5295,
   "confidence_interval_95": 0.0234,
   "home_baseline_accuracy": 0.4482,
-  "improvement_over_baseline_pp": 2.98,
+  "improvement_over_baseline_pp": 8.13,
   "by_outcome": {
-    "home_win": 0.5435,
-    "draw": 0.2564,
-    "away_win": 0.4104
+    "home_win": 0.5578,
+    "draw": 0.3636,
+    "away_win": 0.4781
   },
   "by_league": {
-    "8": 0.4618,
-    "301": 0.4557,
-    "564": 0.473,
-    "384": 0.4879,
+    "8": 0.5301,
+    "301": 0.5541,
+    "564": 0.5351,
+    "384": 0.5418,
     "779": 0.4978
   },
-  "calibration_accuracy": 0.5731,
-  "calibration_n": 499,
+  "calibration_accuracy": 0.7221,
+  "calibration_n": 349,
   "confidence_threshold": 0.65,
-  "brier_score": 0.6509,
-  "log_loss": 1.0943,
+  "brier_score": 0.5931,
+  "log_loss": 0.996,
   "limitations": [
     "matches_played derived from goals (2.7 avg/match) \u2014 may deviate from true if team scoring rate differs from league avg",
     "end-of-season standings proxy \u2014 not match-day standings",
@@ -33,5 +33,5 @@
   "skipped_fixtures": 0,
   "api_baseline_accuracy": 0.5467,
   "api_baseline_n": 75,
-  "delta_vs_baseline_pp": -6.87
+  "delta_vs_baseline_pp": -1.72
 }

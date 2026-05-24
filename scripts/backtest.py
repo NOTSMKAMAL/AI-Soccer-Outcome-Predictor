@@ -682,37 +682,57 @@ def _compute_and_report_metrics(
     # Data source breakdown (CSV mode only)
     if mode == "csv" and data_source_counts:
         print("DATA SOURCE BREAKDOWN:")
-        rolling_5r_count = data_source_counts.get("rolling_5r", 0)
+        # Support 40/60, 30/70, and 20/80 blend variants
+        rolling_blend_40_60 = data_source_counts.get("rolling_blend_40_60", 0)
+        rolling_blend_30_70 = data_source_counts.get("rolling_blend_30_70", 0)
+        rolling_blend_20_80 = data_source_counts.get("rolling_blend_20_80", 0)
+        rolling_blend_count = rolling_blend_40_60 + rolling_blend_30_70 + rolling_blend_20_80
         season_stats_count = data_source_counts.get("season_stats", 0)
         standings_count = data_source_counts.get("standings", 0)
-        total = rolling_5r_count + season_stats_count + standings_count
+        total = rolling_blend_count + season_stats_count + standings_count
+
+        # Determine which blend variant is being used
+        blend_variant = "40/60" if rolling_blend_40_60 > 0 else "30/70" if rolling_blend_30_70 > 0 else "20/80" if rolling_blend_20_80 > 0 else "unknown"
+        blend_form_weight = 0.40 if rolling_blend_40_60 > 0 else 0.30 if rolling_blend_30_70 > 0 else 0.20 if rolling_blend_20_80 > 0 else 0.0
+        blend_season_weight = 1.0 - blend_form_weight
+
         if total > 0:
-            print(f"  Rolling 5-round form:  {rolling_5r_count} fixtures ({100 * rolling_5r_count / total:.1f}% of total)")
+            print(f"  Weighted blend ({blend_variant}): {rolling_blend_count} fixtures ({100 * rolling_blend_count / total:.1f}% of total)")
             print(f"  Season statistics:     {season_stats_count} fixtures ({100 * season_stats_count / total:.1f}% of total)")
             print(f"  Standings fallback:    {standings_count} fixtures ({100 * standings_count / total:.1f}% of total)")
             print()
 
             # Calculate accuracy by data source
-            rolling_5r_correct = sum(1 for r in records if r.get("data_source") == "rolling_5r" and r["correct"])
-            rolling_5r_total = rolling_5r_count
+            blend_correct = sum(1 for r in records if r.get("data_source") in ("rolling_blend_40_60", "rolling_blend_30_70", "rolling_blend_20_80") and r["correct"])
+            blend_total = rolling_blend_count
             season_stats_correct = sum(1 for r in records if r.get("data_source") == "season_stats" and r["correct"])
             season_stats_total = season_stats_count
             standings_correct = sum(1 for r in records if r.get("data_source") == "standings" and r["correct"])
             standings_total = standings_count
 
-            print("ROLLING FORM vs STANDINGS ACCURACY:")
-            if rolling_5r_total > 0:
-                rolling_5r_acc = rolling_5r_correct / rolling_5r_total
-                print(f"  Rolling form fixtures: {rolling_5r_acc:.1%} accuracy ({rolling_5r_total} fixtures)")
+            print("WEIGHTED BLEND PARAMETERS:")
+            print(f"  Recent form weight:    {int(blend_form_weight*100)}% (5-round rolling avg)")
+            print(f"  Season history weight: {int(blend_season_weight*100)}% (full season avg)")
+            print(f"  Blend formula: {blend_form_weight} × rolling_gpg + {blend_season_weight} × season_gpg")
+            print(f"  Fixtures using blend:  {blend_total}")
+            print(f"  Fixtures using standings: {standings_total}")
+            print()
+
+            print("COMPARISON vs ALL BASELINES:")
+            if blend_total > 0:
+                blend_acc = blend_correct / blend_total
+                print(f"  Weighted blend ({blend_variant}): {blend_acc:.1%} accuracy ({blend_total} fixtures)")
             if standings_total > 0:
                 standings_acc = standings_correct / standings_total
-                print(f"  Standings fallback:    {standings_acc:.1%} accuracy ({standings_total} fixtures)")
-                if rolling_5r_total > 0:
-                    delta_acc = (rolling_5r_acc - standings_acc) * 100
-                    sign = "+" if delta_acc >= 0 else ""
-                    print(f"  Delta:                 {sign}{delta_acc:.1f} pp")
-                    if rolling_5r_acc > standings_acc:
-                        print("  [Rolling form improvement verified]")
+                print(f"  Pure standings:        {standings_acc:.1%} accuracy ({standings_total} fixtures)")
+            if season_stats_total > 0:
+                season_acc = season_stats_correct / season_stats_total
+                print(f"  Season statistics:     {season_acc:.1%} accuracy ({season_stats_total} fixtures)")
+            print(f"  API baseline (75 fixtures): 54.7%")
+            if blend_total > 0 and standings_total > 0:
+                delta_acc = (blend_acc - standings_acc) * 100
+                sign = "+" if delta_acc >= 0 else ""
+                print(f"  Blend vs standings delta:    {sign}{delta_acc:.1f} pp")
             print()
 
     # Comparison to API baseline (for CSV mode)
