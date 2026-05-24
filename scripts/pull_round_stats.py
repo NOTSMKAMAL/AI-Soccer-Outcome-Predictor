@@ -226,6 +226,85 @@ def fetch_round_standings(round_id: int, api_key: str, call_count: list) -> dict
     return result
 
 
+# ── MLS team fixtures fetcher (date range) ────────────────────────────────────
+
+def fetch_mls_team_fixtures(team_id: int, api_key: str, call_count: list) -> list[dict]:
+    """
+    Fetch recent completed fixtures for an MLS team via endpoint 147.
+    Uses date range because MLS uses round_id: null.
+    Returns list of dicts [{date, scored, conceded}, ...] ordered by date ascending.
+    """
+    url = f"{BASE_URL}/fixtures/between/2025-02-01/2026-05-23/{team_id}"
+    params = {
+        "api_token": api_key,
+        "include": "scores;participants",
+        "per_page": 50,
+    }
+    data = _get(url, params, call_count)
+    if not data:
+        return []
+
+    fixtures_list = data.get("data", []) or []
+    if not fixtures_list:
+        return []
+
+    result: list[dict] = []
+    for fixture in fixtures_list:
+        # Only include completed fixtures (have result_info)
+        if not fixture.get("result_info"):
+            continue
+
+        participants = fixture.get("participants") or []
+        scores = fixture.get("scores") or []
+        match_date = fixture.get("starting_at", "")[:10]
+
+        # Find home and away team IDs
+        home_team_id = None
+        away_team_id = None
+        for p in participants:
+            meta = p.get("meta") or {}
+            if meta.get("location") == "home":
+                home_team_id = p.get("id")
+            elif meta.get("location") == "away":
+                away_team_id = p.get("id")
+
+        if not home_team_id or not away_team_id:
+            continue
+
+        # Parse 2ND_HALF scores (same pattern as round fixtures)
+        home_goals = 0
+        away_goals = 0
+        for score in scores:
+            if score.get("description") != "2ND_HALF":
+                continue
+            goals = (score.get("score") or {}).get("goals", 0) or 0
+            pid = score.get("participant_id")
+            if pid == home_team_id:
+                home_goals = int(goals)
+            elif pid == away_team_id:
+                away_goals = int(goals)
+
+        # Determine which team is the queried team (home or away)
+        if home_team_id == team_id:
+            scored = home_goals
+            conceded = away_goals
+        elif away_team_id == team_id:
+            scored = away_goals
+            conceded = home_goals
+        else:
+            continue
+
+        result.append({
+            "date": match_date,
+            "scored": scored,
+            "conceded": conceded,
+        })
+
+    # Sort by date ascending (oldest first)
+    result.sort(key=lambda x: x["date"])
+    return result
+
+
 # ── Statistics by round fetcher ────────────────────────────────────────────────
 
 def fetch_round_stats(round_id: int, api_key: str, call_count: list) -> dict:
@@ -294,21 +373,28 @@ def build_form_data(
     raw_fixtures_path: str,
     round_stats: dict,
     all_rounds: dict,
+    mls_team_form: dict | None = None,
 ) -> dict:
     """
-    For each fixture in raw_fixtures.csv, find the 5 rounds prior and compute
-    rolling form stats for each team.
+    For each fixture in raw_fixtures.csv, compute rolling form stats for each team.
+
+    For European leagues (non-MLS): find the 5 rounds prior using round-based approach.
+    For MLS (league_id=779): use team_form fixture history (5 prior matches before fixture date).
 
     Returns: {fixture_id: {
         home_form_goals_scored_5r,
         home_form_goals_conceded_5r,
         away_form_goals_scored_5r,
-        away_form_goals_conceded_5r
+        away_form_goals_conceded_5r,
+        home_form_rounds_used,
+        away_form_rounds_used
     }}
 
-    Empty string if < 3 rounds available (early season).
+    Empty string if < 3 rounds/matches available (early season).
     """
     form_data = {}
+    if mls_team_form is None:
+        mls_team_form = {}
 
     with open(raw_fixtures_path) as fh:
         reader = csv.DictReader(fh)
@@ -322,11 +408,62 @@ def build_form_data(
             if not fixture_id or not league_id or not match_date_str:
                 continue
 
-            # Find which round this fixture belongs to
-            # Round bounds: starting_at <= match_date < ending_at
             match_date = datetime.fromisoformat(match_date_str).date()
-            fixture_round = None
 
+            # ── MLS: Use team form (date-range based) ─────────────────────────
+            if league_id == 779:
+                home_gs = home_gc = away_gs = away_gc = 0
+                rounds_used_home = rounds_used_away = 0
+
+                # Get home team's prior fixtures
+                home_fixtures = mls_team_form.get(str(home_team_id), [])
+                for fixture in home_fixtures:
+                    fixture_date_str = fixture.get("date", "")
+                    if fixture_date_str and fixture_date_str < match_date_str:
+                        home_gs += fixture.get("scored", 0)
+                        home_gc += fixture.get("conceded", 0)
+                        rounds_used_home += 1
+
+                # Get away team's prior fixtures
+                away_fixtures = mls_team_form.get(str(away_team_id), [])
+                for fixture in away_fixtures:
+                    fixture_date_str = fixture.get("date", "")
+                    if fixture_date_str and fixture_date_str < match_date_str:
+                        away_gs += fixture.get("scored", 0)
+                        away_gc += fixture.get("conceded", 0)
+                        rounds_used_away += 1
+
+                # Take only the 5 most recent matches (FIFO order to get last 5)
+                if rounds_used_home > 5:
+                    # Recalculate from the last 5
+                    recent_home = home_fixtures[-5:]
+                    recent_home = [f for f in recent_home
+                                   if f.get("date", "") < match_date_str]
+                    home_gs = sum(f.get("scored", 0) for f in recent_home)
+                    home_gc = sum(f.get("conceded", 0) for f in recent_home)
+                    rounds_used_home = len(recent_home)
+
+                if rounds_used_away > 5:
+                    # Recalculate from the last 5
+                    recent_away = away_fixtures[-5:]
+                    recent_away = [f for f in recent_away
+                                   if f.get("date", "") < match_date_str]
+                    away_gs = sum(f.get("scored", 0) for f in recent_away)
+                    away_gc = sum(f.get("conceded", 0) for f in recent_away)
+                    rounds_used_away = len(recent_away)
+
+                form_data[fixture_id] = {
+                    "home_form_goals_scored_5r": home_gs if rounds_used_home >= 3 else "",
+                    "home_form_goals_conceded_5r": home_gc if rounds_used_home >= 3 else "",
+                    "away_form_goals_scored_5r": away_gs if rounds_used_away >= 3 else "",
+                    "away_form_goals_conceded_5r": away_gc if rounds_used_away >= 3 else "",
+                    "home_form_rounds_used": str(rounds_used_home) if rounds_used_home >= 3 else "",
+                    "away_form_rounds_used": str(rounds_used_away) if rounds_used_away >= 3 else "",
+                }
+                continue
+
+            # ── European leagues: Use round-based form ─────────────────────
+            fixture_round = None
             for rnd in all_rounds.get(league_id, []):
                 start_str = rnd.get("starting_at", "")[:10]
                 end_str = rnd.get("ending_at", "")[:10]
@@ -344,14 +481,12 @@ def build_form_data(
                     "home_form_goals_conceded_5r": "",
                     "away_form_goals_scored_5r": "",
                     "away_form_goals_conceded_5r": "",
+                    "home_form_rounds_used": "",
+                    "away_form_rounds_used": "",
                 }
                 continue
 
-            # Get the 5 rounds BEFORE this fixture's round (not including the fixture's round)
-            fixture_round_num = fixture_round.get("name", "")
             fixture_round_id = fixture_round.get("id")
-
-            # Find round index
             league_rounds = all_rounds.get(league_id, [])
             fixture_idx = None
             for i, r in enumerate(league_rounds):
@@ -365,10 +500,11 @@ def build_form_data(
                     "home_form_goals_conceded_5r": "",
                     "away_form_goals_scored_5r": "",
                     "away_form_goals_conceded_5r": "",
+                    "home_form_rounds_used": "",
+                    "away_form_rounds_used": "",
                 }
                 continue
 
-            # Get the 5 rounds before (indices fixture_idx-5 to fixture_idx-1)
             prior_rounds = league_rounds[max(0, fixture_idx - 5):fixture_idx]
 
             if len(prior_rounds) < 3:
@@ -378,6 +514,8 @@ def build_form_data(
                     "home_form_goals_conceded_5r": "",
                     "away_form_goals_scored_5r": "",
                     "away_form_goals_conceded_5r": "",
+                    "home_form_rounds_used": "",
+                    "away_form_rounds_used": "",
                 }
                 continue
 
@@ -502,7 +640,54 @@ def main() -> None:
         save_checkpoint(checkpoint)
         print(f"  Checkpoint saved.\n")
 
-    # ── STEP 3: Enrichment phase ───────────────────────────────────────────────
+    # ── STEP 3: MLS team form pull (date-range based) ──────────────────────────
+    print("\nMLS TEAM FORM PULL")
+    print("  MLS uses round_id: null; fetching per-team fixtures instead...")
+
+    # Extract unique MLS team IDs from raw_fixtures
+    mls_teams: set[int] = set()
+    with open(CSV_PATH) as fh:
+        reader = csv.DictReader(fh)
+        for row in reader:
+            if int(row.get("league_id", 0)) == 779:
+                mls_teams.add(int(row.get("home_team_id", 0)))
+                mls_teams.add(int(row.get("away_team_id", 0)))
+
+    mls_teams = sorted(list(mls_teams))
+    print(f"  Unique MLS teams: {len(mls_teams)}")
+
+    # Load existing MLS team form from checkpoint
+    mls_team_form = checkpoint.get("mls_team_form", {})
+    fetched_count = 0
+
+    print(f"  Fetching recent fixtures per team...")
+    for team_id in mls_teams:
+        team_id_str = str(team_id)
+
+        # Skip if already fetched
+        if team_id_str in mls_team_form and len(mls_team_form[team_id_str]) > 0:
+            continue
+
+        # Fetch team fixtures
+        fixtures = fetch_mls_team_fixtures(team_id, api_key, call_count)
+        if fixtures:
+            mls_team_form[team_id_str] = fixtures
+            fetched_count += 1
+            print(f"  Team {team_id} (call {call_count[0]}/{DAILY_CALL_BUDGET}) — {len(fixtures)} fixtures found")
+
+        # Save checkpoint every 5 teams
+        if fetched_count % 5 == 0:
+            checkpoint["mls_team_form"] = mls_team_form
+            checkpoint["total_call_count"] = call_count[0]
+            save_checkpoint(checkpoint)
+
+    # Final checkpoint save
+    checkpoint["mls_team_form"] = mls_team_form
+    checkpoint["total_call_count"] = call_count[0]
+    save_checkpoint(checkpoint)
+    print(f"  Complete: {fetched_count} teams fetched, {len(mls_team_form)} teams with form data")
+
+    # ── STEP 4: Enrichment phase ───────────────────────────────────────────────
     print("\nENRICHMENT PHASE")
     print(f"  Loading raw_fixtures.csv: {CSV_PATH}")
 
@@ -511,9 +696,9 @@ def main() -> None:
         fixture_count = sum(1 for _ in csv.DictReader(fh))
     print(f"  {fixture_count} rows")
 
-    print(f"  Computing rolling 5-round form...")
+    print(f"  Computing rolling form (round-based for European, team-based for MLS)...")
 
-    form_data = build_form_data(CSV_PATH, round_fixtures, all_rounds)
+    form_data = build_form_data(CSV_PATH, round_fixtures, all_rounds, mls_team_form)
 
     # Count distribution
     full_data = sum(1 for fd in form_data.values()
