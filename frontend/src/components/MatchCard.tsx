@@ -15,9 +15,9 @@ function formatKickoff(isoString: string): { dateLabel: string; time: string; fu
   try {
     const d = parseFixtureDate(isoString);
     return {
-      dateLabel: formatLADateLabel(d),   // "TODAY" | "TOMORROW" | "Sat, May 17, 2026"
-      time: formatLATime(d),             // "5:30 PM PDT"
-      fullDate: formatLADateLong(d),     // "Saturday, May 16, 2026"
+      dateLabel: formatLADateLabel(d),
+      time: formatLATime(d),
+      fullDate: formatLADateLong(d),
     };
   } catch {
     return { dateLabel: "—", time: "—", fullDate: "—" };
@@ -56,7 +56,7 @@ function StatusChip({ status }: { status: string }) {
   return (
     <span style={{
       fontSize: 10, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase",
-      color: "var(--accent-2)", background: "var(--accent-soft)", border: "1px solid var(--accent-edge)",
+      color: "var(--accent-3)", background: "var(--accent-soft)", border: "1px solid var(--accent-edge)",
       borderRadius: 999, padding: "3px 9px",
     }}>
       Upcoming
@@ -67,7 +67,6 @@ function StatusChip({ status }: { status: string }) {
 function TeamBadge({ name, logo, primary }: { name: string; logo?: string; primary: string }) {
   const [imgError, setImgError] = useState(false);
   const { abbr } = getTeamColor(name);
-
   const useLogo = logo && !imgError;
 
   return (
@@ -79,11 +78,7 @@ function TeamBadge({ name, logo, primary }: { name: string; logo?: string; prima
       boxShadow: `0 2px 12px -4px ${primary}55`,
     }}>
       {useLogo ? (
-        <img
-          src={logo}
-          alt={name}
-          width={32}
-          height={32}
+        <img src={logo} alt={name} width={32} height={32}
           style={{ objectFit: "contain", display: "block" }}
           onError={() => setImgError(true)}
         />
@@ -96,7 +91,7 @@ function TeamBadge({ name, logo, primary }: { name: string; logo?: string; prima
   );
 }
 
-export default function MatchCard({ fixture, leagueAccent = "#8B5CF6" }: Props) {
+export default function MatchCard({ fixture, leagueAccent = "#13BBAF" }: Props) {
   const s = fixture.status?.toLowerCase() ?? "";
   const isLive = s === "inplay" || s === "live" || s === "halftime";
   const isFinished = ["finished", "ft", "aet", "pen"].includes(s);
@@ -130,10 +125,10 @@ export default function MatchCard({ fixture, leagueAccent = "#8B5CF6" }: Props) 
         (e.currentTarget as HTMLElement).style.transform = "translateY(0)";
       }}
     >
-      {/* Colored top strip */}
+      {/* League accent top strip */}
       <div style={{ height: 3, background: `linear-gradient(90deg, transparent, ${leagueAccent} 30%, ${leagueAccent} 70%, transparent)` }} />
 
-      {/* Subtle glow */}
+      {/* Subtle corner glow */}
       <div aria-hidden style={{
         position: "absolute", inset: 0, pointerEvents: "none",
         background: `radial-gradient(55% 35% at 100% 0%, ${leagueAccent}08, transparent 60%)`,
@@ -173,11 +168,11 @@ export default function MatchCard({ fixture, leagueAccent = "#8B5CF6" }: Props) 
             {(isLive || isFinished) && score ? (
               <>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ fontSize: 26, fontWeight: 800, lineHeight: 1, color: homeWin ? "var(--ink)" : awayWin ? "var(--muted-2)" : "var(--ink)" }}>
+                  <span style={{ fontSize: 26, fontWeight: 800, lineHeight: 1, color: homeWin ? "var(--ink)" : awayWin ? "var(--muted-2)" : "var(--ink)", fontFamily: "var(--font-display), system-ui" }}>
                     {score.home}
                   </span>
                   <span style={{ fontSize: 16, fontWeight: 500, color: "var(--muted-2)" }}>—</span>
-                  <span style={{ fontSize: 26, fontWeight: 800, lineHeight: 1, color: awayWin ? "var(--ink)" : homeWin ? "var(--muted-2)" : "var(--ink)" }}>
+                  <span style={{ fontSize: 26, fontWeight: 800, lineHeight: 1, color: awayWin ? "var(--ink)" : homeWin ? "var(--muted-2)" : "var(--ink)", fontFamily: "var(--font-display), system-ui" }}>
                     {score.away}
                   </span>
                 </div>
@@ -187,12 +182,10 @@ export default function MatchCard({ fixture, leagueAccent = "#8B5CF6" }: Props) 
               </>
             ) : (
               <>
-                {/* e.g. "TODAY" or "TOMORROW" or "Sat, May 17, 2026" */}
-                <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.08em", color: "var(--accent-2)", textTransform: "uppercase" }}>
+                <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.08em", color: "var(--warm)", textTransform: "uppercase" }}>
                   {dateLabel}
                 </span>
-                {/* e.g. "5:30 PM PDT" */}
-                <span style={{ fontSize: 18, fontWeight: 800, lineHeight: 1.1, letterSpacing: "-0.01em", color: "var(--ink)", whiteSpace: "nowrap" }}>
+                <span style={{ fontSize: 18, fontWeight: 800, lineHeight: 1.1, letterSpacing: "-0.01em", color: "var(--ink)", whiteSpace: "nowrap", fontFamily: "var(--font-display), system-ui" }}>
                   {time}
                 </span>
               </>
@@ -215,14 +208,12 @@ export default function MatchCard({ fixture, leagueAccent = "#8B5CF6" }: Props) 
           </div>
         </div>
 
-        {/* Footer: date + venue + CTA */}
+        {/* Footer */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, paddingTop: 4, borderTop: "1px solid var(--border)" }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0, overflow: "hidden" }}>
-            {/* Always show full date + time — "Saturday, May 16, 2026 · 5:30 PM PDT" */}
             <span style={{ fontSize: 11, color: "var(--muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
               {fullDate}{!isFinished && !isLive ? ` · ${time}` : ""}
             </span>
-            {/* Venue */}
             {fixture.venue && (
               <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
                 <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--muted-2)", flexShrink: 0 }}>
@@ -242,7 +233,7 @@ export default function MatchCard({ fixture, leagueAccent = "#8B5CF6" }: Props) 
               padding: "8px 14px", borderRadius: 10,
               fontSize: 12, fontWeight: 600,
               textDecoration: "none",
-              transition: "opacity 0.15s ease",
+              transition: "opacity 0.15s ease, transform 0.15s ease",
               ...(canPredict
                 ? {
                     background: `linear-gradient(180deg, ${leagueAccent}CC, ${leagueAccent})`,
@@ -261,6 +252,8 @@ export default function MatchCard({ fixture, leagueAccent = "#8B5CF6" }: Props) 
                     boxShadow: "inset 0 0 0 1px var(--border)",
                   }),
             }}
+            onMouseEnter={(e) => { if (canPredict) (e.currentTarget as HTMLElement).style.transform = "translateY(-1px)"; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.transform = "translateY(0)"; }}
           >
             {canPredict ? (
               <>

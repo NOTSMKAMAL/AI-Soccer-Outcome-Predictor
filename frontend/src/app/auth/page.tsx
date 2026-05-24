@@ -7,10 +7,12 @@ import { useAuth } from "@/context/AuthContext";
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
 
-function SparkleLg() {
+function SoccerBall() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-      <path d="M12 2 14 9l7 2-7 2-2 7-2-7-7-2 7-2 2-7Z" />
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10"/>
+      <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+      <path d="M2 12h20"/>
     </svg>
   );
 }
@@ -192,7 +194,7 @@ export default function AuthPage() {
       {/* ── LEFT PANEL ── */}
       <aside
         style={{
-          background: "linear-gradient(135deg, #07061B 0%, #1A0B40 40%, #4C1D95 100%)",
+          background: "linear-gradient(135deg, #020D0B 0%, #0B2420 40%, #1A4039 100%)",
           position: "relative",
           overflow: "hidden",
           padding: "56px",
@@ -208,7 +210,7 @@ export default function AuthPage() {
             style={{
               position: "absolute", borderRadius: "50%",
               width: 460, height: 460, top: -160, right: -120,
-              background: "radial-gradient(closest-side, rgba(167,139,250,0.55), transparent 70%)",
+              background: "radial-gradient(closest-side, rgba(19,187,175,0.35), transparent 70%)",
               filter: "blur(60px)",
               animation: "drift 18s ease infinite",
             }}
@@ -217,9 +219,18 @@ export default function AuthPage() {
             style={{
               position: "absolute", borderRadius: "50%",
               width: 380, height: 380, bottom: -100, left: -100,
-              background: "radial-gradient(closest-side, rgba(236,72,153,0.4), transparent 70%)",
+              background: "radial-gradient(closest-side, rgba(248,194,92,0.25), transparent 70%)",
               filter: "blur(60px)",
               animation: "drift 18s ease -7s infinite",
+            }}
+          />
+          <div
+            style={{
+              position: "absolute", borderRadius: "50%",
+              width: 260, height: 260, bottom: "30%", right: -60,
+              background: "radial-gradient(closest-side, rgba(39,90,83,0.5), transparent 70%)",
+              filter: "blur(40px)",
+              animation: "drift 22s ease -3s infinite",
             }}
           />
         </div>
@@ -232,16 +243,16 @@ export default function AuthPage() {
           <Link href="/" className="flex items-center gap-3 mb-14">
             <div
               style={{
-                width: 32, height: 32, borderRadius: 10,
-                background: "linear-gradient(135deg, rgba(255,255,255,0.3), rgba(255,255,255,0.1))",
+                width: 34, height: 34, borderRadius: 10,
+                background: "linear-gradient(135deg, #13BBAF 0%, #275A53 100%)",
                 display: "grid", placeItems: "center",
-                boxShadow: "inset 0 1px 0 rgba(255,255,255,0.3)",
+                boxShadow: "0 4px 16px rgba(19,187,175,0.4), inset 0 1px 0 rgba(255,255,255,0.2)",
               }}
             >
-              <SparkleLg />
+              <SoccerBall />
             </div>
-            <span style={{ fontWeight: 600, fontSize: 15, letterSpacing: "-0.01em" }}>
-              AI Sports Predictor
+            <span style={{ fontWeight: 700, fontSize: 15, letterSpacing: "-0.01em", fontFamily: "var(--font-display), system-ui" }}>
+              Soccer<em style={{ color: "#13BBAF", fontStyle: "italic" }}>AI</em> Predictor
             </span>
           </Link>
 
@@ -283,12 +294,12 @@ export default function AuthPage() {
               >
                 <span
                   style={{
-                    fontFamily: "monospace", fontSize: 11, fontWeight: 700, letterSpacing: "0.06em",
-                    color: "white",
-                    background: "rgba(255,255,255,0.14)",
+                    fontFamily: "var(--font-display), monospace", fontSize: 11, fontWeight: 700, letterSpacing: "0.06em",
+                    color: "#13BBAF",
+                    background: "rgba(19,187,175,0.18)",
                     padding: "5px 9px",
                     borderRadius: 8,
-                    boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.18)",
+                    boxShadow: "inset 0 0 0 1px rgba(19,187,175,0.3)",
                     flexShrink: 0,
                   }}
                 >
@@ -324,14 +335,15 @@ export default function AuthPage() {
           <div
             style={{
               width: 28, height: 28, borderRadius: 8,
-              background: "linear-gradient(135deg, #A78BFA, #7C3AED)",
+              background: "linear-gradient(135deg, #13BBAF, #275A53)",
               display: "grid", placeItems: "center", color: "white",
+              boxShadow: "0 4px 12px rgba(19,187,175,0.35)",
             }}
           >
-            <SparkleLg />
+            <SoccerBall />
           </div>
-          <span style={{ fontWeight: 600, fontSize: 15, color: "var(--ink)" }}>
-            AI Sports Predictor
+          <span style={{ fontWeight: 700, fontSize: 15, color: "var(--ink)", fontFamily: "var(--font-display), system-ui" }}>
+            Soccer<em style={{ color: "#13BBAF", fontStyle: "italic" }}>AI</em> Predictor
           </span>
         </div>
 
@@ -365,8 +377,8 @@ export default function AuthPage() {
                 left: 4,
                 width: "calc(50% - 4px)",
                 borderRadius: 999,
-                background: "linear-gradient(180deg, #9C70F8, #7C3AED)",
-                boxShadow: "0 6px 16px -4px rgba(124,58,237,0.6)",
+                background: "linear-gradient(180deg, #19D4C6, #13BBAF)",
+                boxShadow: "0 6px 16px -4px rgba(19,187,175,0.55)",
                 transition: "transform 0.3s cubic-bezier(0.2,0.6,0.2,1)",
                 transform: tab === "signup" ? "translateX(100%)" : "translateX(0)",
                 zIndex: 0,
@@ -382,7 +394,7 @@ export default function AuthPage() {
                   padding: "10px",
                   fontSize: 13,
                   fontWeight: 600,
-                  color: tab === t ? "white" : "var(--muted)",
+                  color: tab === t ? "#020E0C" : "var(--muted)",
                   background: "transparent",
                   border: "none",
                   cursor: "pointer",

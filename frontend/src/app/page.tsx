@@ -4,14 +4,24 @@ import Link from "next/link";
 // ── Static hero preview card ──────────────────────────────────────────────────
 
 const SAMPLE_FIXTURES = [
-  { league: "EPL", leagueColor: "#A78BFA", home: "Liverpool", away: "Man City",  status: "live", minute: "67'", conf: 72, level: "medium" },
+  { league: "EPL", leagueColor: "#9381FF", home: "Liverpool", away: "Man City",  status: "live", minute: "67'", conf: 72, level: "medium" },
   { league: "LIG", leagueColor: "#EE8707", home: "Real Ma…", away: "Barcel…",   status: "today", time: "21:00", conf: 68, level: "medium" },
   { league: "SA",  leagueColor: "#4A9FFF", home: "Inter Mil…", away: "AC Mil…", status: "today", time: "20:45", conf: 81, level: "high" },
 ];
 
 function ConfDot({ level }: { level: string }) {
-  const color = level === "high" ? "#34D399" : level === "medium" ? "#FACC15" : "#F87171";
+  const color = level === "high" ? "#13BBAF" : level === "medium" ? "#F8C25C" : "#F87171";
   return <span style={{ width: 6, height: 6, borderRadius: "50%", background: color, display: "inline-block", marginRight: 4 }} />;
+}
+
+function SoccerBallSm() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10"/>
+      <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+      <path d="M2 12h20"/>
+    </svg>
+  );
 }
 
 function HeroPreviewCard() {
@@ -20,7 +30,7 @@ function HeroPreviewCard() {
       {/* Glow */}
       <div aria-hidden style={{
         position: "absolute", inset: "-40px -60px",
-        background: "radial-gradient(ellipse 70% 60% at 55% 45%, rgba(124,58,237,0.35) 0%, transparent 70%)",
+        background: "radial-gradient(ellipse 70% 60% at 55% 45%, rgba(19,187,175,0.25) 0%, transparent 70%)",
         pointerEvents: "none",
       }} />
       {/* Card */}
@@ -32,12 +42,12 @@ function HeroPreviewCard() {
         overflow: "hidden",
       }}>
         {/* Top accent line */}
-        <div style={{ height: 2, background: "linear-gradient(90deg, transparent, #A78BFA 30%, #7C3AED 70%, transparent)" }} />
+        <div style={{ height: 2, background: "linear-gradient(90deg, transparent, #13BBAF 30%, #275A53 70%, transparent)" }} />
 
         {/* Header */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px 12px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#34D399", display: "inline-block", boxShadow: "0 0 6px #34D399" }} />
+            <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#13BBAF", display: "inline-block", boxShadow: "0 0 6px #13BBAF" }} />
             <span style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)" }}>Today&apos;s prediction board</span>
           </div>
           <span style={{
@@ -77,7 +87,7 @@ function HeroPreviewCard() {
               {/* Status */}
               <span style={{ fontSize: 11, color: "var(--muted)", whiteSpace: "nowrap", flexShrink: 0 }}>
                 {f.status === "live" ? (
-                  <><span style={{ color: "#F87171" }}>● </span>Live · {f.minute}</>
+                  <><span style={{ color: "#4ADE80" }}>● </span>Live · {f.minute}</>
                 ) : (
                   <>Today · {f.time}</>
                 )}
@@ -87,8 +97,8 @@ function HeroPreviewCard() {
               <span style={{
                 fontSize: 11, fontWeight: 700,
                 padding: "3px 8px", borderRadius: 20,
-                background: f.level === "high" ? "rgba(52,211,153,0.12)" : "rgba(250,204,21,0.12)",
-                color: f.level === "high" ? "#34D399" : "#FACC15",
+                background: f.level === "high" ? "rgba(19,187,175,0.12)" : "rgba(248,194,92,0.12)",
+                color: f.level === "high" ? "#13BBAF" : "#F8C25C",
                 display: "flex", alignItems: "center", flexShrink: 0,
               }}>
                 <ConfDot level={f.level} />
@@ -168,7 +178,7 @@ export default function HomePage() {
       {/* ── Ambient top glow ── */}
       <div aria-hidden style={{
         position: "fixed", inset: "0 0 auto 0", height: 600, pointerEvents: "none", zIndex: 0,
-        background: "radial-gradient(ellipse 70% 50% at 50% 0%, rgba(124,58,237,0.18) 0%, transparent 70%)",
+        background: "radial-gradient(ellipse 70% 50% at 50% 0%, rgba(39,90,83,0.22) 0%, transparent 70%)",
       }} />
 
       {/* ── Landing nav ── */}
@@ -185,18 +195,16 @@ export default function HomePage() {
           display: "flex", alignItems: "center", justifyContent: "space-between", gap: 24,
         }}>
           {/* Brand */}
-          <a href="#" style={{ display: "flex", alignItems: "center", gap: 10, fontWeight: 600, fontSize: 15, color: "var(--ink)", textDecoration: "none", letterSpacing: "-0.01em" }}>
+          <a href="#" style={{ display: "flex", alignItems: "center", gap: 10, fontWeight: 700, fontSize: 15, color: "var(--ink)", textDecoration: "none", letterSpacing: "-0.01em", fontFamily: "var(--font-display), system-ui" }}>
             <div style={{
               width: 28, height: 28, borderRadius: 8,
-              background: "linear-gradient(135deg, #A78BFA 0%, #7C3AED 100%)",
+              background: "linear-gradient(135deg, #13BBAF 0%, #275A53 100%)",
               display: "grid", placeItems: "center", color: "white",
-              boxShadow: "0 6px 16px -4px rgba(124,58,237,0.6), inset 0 1px 0 rgba(255,255,255,0.3)",
+              boxShadow: "0 6px 16px -4px rgba(19,187,175,0.5), inset 0 1px 0 rgba(255,255,255,0.25)",
             }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 2 14 9l7 2-7 2-2 7-2-7-7-2 7-2 2-7Z" />
-              </svg>
+              <SoccerBallSm />
             </div>
-            AI Sports<span style={{ color: "var(--accent-2)" }}> Predictor</span>
+            Soccer<em style={{ color: "#13BBAF", fontStyle: "italic" }}>AI</em> Predictor
           </a>
 
           {/* Nav links */}
@@ -233,9 +241,9 @@ export default function HomePage() {
           <Link href="/auth" style={{
             display: "inline-flex", alignItems: "center", gap: 6,
             padding: "9px 18px", borderRadius: 10, fontSize: 14, fontWeight: 600,
-            background: "linear-gradient(135deg, #A78BFA 0%, #7C3AED 100%)",
-            color: "white", textDecoration: "none",
-            boxShadow: "0 6px 16px -4px rgba(124,58,237,0.5)",
+            background: "linear-gradient(180deg, #19D4C6 0%, #0EA89E 100%)",
+            color: "#020E0C", textDecoration: "none",
+            boxShadow: "0 6px 16px -4px rgba(19,187,175,0.5)",
             transition: "opacity 0.15s",
           }}>
             Get started
@@ -258,18 +266,17 @@ export default function HomePage() {
             <div style={{
               display: "inline-flex", alignItems: "center", gap: 8,
               padding: "5px 14px 5px 6px", borderRadius: 999,
-              background: "rgba(139,92,246,0.12)",
-              border: "1px solid rgba(139,92,246,0.28)",
+              background: "rgba(19,187,175,0.10)",
+              border: "1px solid rgba(19,187,175,0.25)",
               marginBottom: 28,
             }}>
               <span style={{
                 width: 22, height: 22, borderRadius: "50%",
-                background: "linear-gradient(135deg, #C4B5FD, #7C3AED)",
+                background: "linear-gradient(135deg, #13BBAF, #275A53)",
                 display: "grid", placeItems: "center", color: "white", fontSize: 10,
+                boxShadow: "0 2px 8px rgba(19,187,175,0.4)",
               }}>
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M12 2 14 9l7 2-7 2-2 7-2-7-7-2 7-2 2-7Z" />
-                </svg>
+                <SoccerBallSm />
               </span>
               <span style={{ fontSize: 12, fontWeight: 500, color: "var(--accent-2)" }}>
                 Live football intelligence powered by AI
@@ -280,11 +287,12 @@ export default function HomePage() {
               fontSize: "clamp(36px, 5vw, 58px)", lineHeight: 1.05,
               fontWeight: 700, letterSpacing: "-0.035em",
               color: "var(--ink)", margin: "0 0 20px",
+              fontFamily: "var(--font-display), system-ui",
             }}>
               Predict football outcomes with{" "}
               <em style={{
                 fontStyle: "normal",
-                background: "linear-gradient(135deg, #C4B5FD 0%, #A78BFA 30%, #7C3AED 70%, #6D28D9 100%)",
+                background: "linear-gradient(135deg, #5CDDD7 0%, #13BBAF 40%, #275A53 100%)",
                 WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent",
               }}>
                 real match data
@@ -293,7 +301,7 @@ export default function HomePage() {
             </h1>
 
             <p style={{ fontSize: 18, lineHeight: 1.6, color: "var(--muted)", margin: "0 0 36px", maxWidth: 500 }}>
-              AI Sports Predictor analyzes fixtures, team form, head-to-head history and match context to generate
+              Soccer AI Predictor analyzes fixtures, team form, head-to-head history and match context to generate
               structured predictions for the top football leagues.
             </p>
 
@@ -301,9 +309,9 @@ export default function HomePage() {
               <Link href="/auth" style={{
                 display: "inline-flex", alignItems: "center", gap: 8,
                 padding: "14px 28px", borderRadius: 12, fontSize: 16, fontWeight: 600,
-                background: "linear-gradient(135deg, #A78BFA 0%, #7C3AED 100%)",
-                color: "white", textDecoration: "none",
-                boxShadow: "0 8px 24px -6px rgba(124,58,237,0.5)",
+                background: "linear-gradient(180deg, #19D4C6 0%, #0EA89E 100%)",
+                color: "#020E0C", textDecoration: "none",
+                boxShadow: "0 8px 24px -6px rgba(19,187,175,0.5)",
               }}>
                 Get started
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -324,7 +332,7 @@ export default function HomePage() {
             <div style={{ display: "flex", flexWrap: "wrap", gap: "8px 20px" }}>
               {["No credit card", "Live SportMonks data", "Gemini reasoning"].map((t) => (
                 <span key={t} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--muted)" }}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#34D399" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#13BBAF" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M20 6L9 17l-5-5" />
                   </svg>
                   {t}
@@ -371,7 +379,7 @@ export default function HomePage() {
             }}>
               Why this exists
             </div>
-            <h2 style={{ fontSize: "clamp(28px, 4vw, 44px)", fontWeight: 700, letterSpacing: "-0.03em", color: "var(--ink)", margin: "0 0 16px" }}>
+            <h2 style={{ fontSize: "clamp(28px, 4vw, 44px)", fontWeight: 700, letterSpacing: "-0.03em", color: "var(--ink)", margin: "0 0 16px", fontFamily: "var(--font-display), system-ui" }}>
               Built for fans who want clarity, not noise.
             </h2>
             <p style={{ fontSize: 16, color: "var(--muted)", maxWidth: 560, margin: "0 auto", lineHeight: 1.6 }}>
@@ -389,7 +397,7 @@ export default function HomePage() {
               }}
               onMouseEnter={e => {
                 (e.currentTarget as HTMLElement).style.transform = "translateY(-3px)";
-                (e.currentTarget as HTMLElement).style.boxShadow = "0 20px 40px -16px rgba(0,0,0,0.4), inset 0 0 0 1px rgba(139,92,246,0.2)";
+                (e.currentTarget as HTMLElement).style.boxShadow = "0 20px 40px -16px rgba(0,0,0,0.4), inset 0 0 0 1px rgba(19,187,175,0.2)";
               }}
               onMouseLeave={e => {
                 (e.currentTarget as HTMLElement).style.transform = "";
@@ -398,7 +406,7 @@ export default function HomePage() {
               >
                 <div style={{
                   width: 44, height: 44, borderRadius: 12, marginBottom: 20,
-                  background: "rgba(139,92,246,0.12)", border: "1px solid rgba(139,92,246,0.22)",
+                  background: "rgba(19,187,175,0.10)", border: "1px solid rgba(19,187,175,0.22)",
                   display: "grid", placeItems: "center", color: "var(--accent-2)",
                 }}>
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -430,7 +438,7 @@ export default function HomePage() {
             }}>
               How it works
             </div>
-            <h2 style={{ fontSize: "clamp(28px, 4vw, 44px)", fontWeight: 700, letterSpacing: "-0.03em", color: "var(--ink)", margin: 0 }}>
+            <h2 style={{ fontSize: "clamp(28px, 4vw, 44px)", fontWeight: 700, letterSpacing: "-0.03em", color: "var(--ink)", margin: 0, fontFamily: "var(--font-display), system-ui" }}>
               Four steps from sign-in to verdict.
             </h2>
           </header>
@@ -442,10 +450,10 @@ export default function HomePage() {
                 border: "1px solid var(--border)",
               }}>
                 <div style={{
-                  fontFamily: "monospace", fontSize: 12, fontWeight: 700, letterSpacing: "0.08em",
-                  color: "var(--accent-2)", marginBottom: 14,
+                  fontFamily: "var(--font-display), monospace", fontSize: 12, fontWeight: 700, letterSpacing: "0.08em",
+                  color: "#13BBAF", marginBottom: 14,
                   padding: "5px 10px", borderRadius: 8, display: "inline-block",
-                  background: "rgba(139,92,246,0.10)", border: "1px solid rgba(139,92,246,0.20)",
+                  background: "rgba(19,187,175,0.10)", border: "1px solid rgba(19,187,175,0.22)",
                 }}>
                   {s.n}
                 </div>
@@ -460,7 +468,7 @@ export default function HomePage() {
       {/* ── CTA ── */}
       <section style={{ position: "relative", zIndex: 1, padding: "96px 32px" }}>
         <div style={{ maxWidth: 640, margin: "0 auto", textAlign: "center" }}>
-          <h2 style={{ fontSize: "clamp(28px, 4vw, 42px)", fontWeight: 700, letterSpacing: "-0.03em", color: "var(--ink)", margin: "0 0 16px" }}>
+          <h2 style={{ fontSize: "clamp(28px, 4vw, 42px)", fontWeight: 700, letterSpacing: "-0.03em", color: "var(--ink)", margin: "0 0 16px", fontFamily: "var(--font-display), system-ui" }}>
             Ready to see today&apos;s board?
           </h2>
           <p style={{ fontSize: 16, color: "var(--muted)", maxWidth: 480, margin: "0 auto 32px", lineHeight: 1.6 }}>
@@ -470,9 +478,9 @@ export default function HomePage() {
             <Link href="/auth" style={{
               display: "inline-flex", alignItems: "center", gap: 8,
               padding: "14px 32px", borderRadius: 12, fontSize: 16, fontWeight: 600,
-              background: "linear-gradient(135deg, #A78BFA 0%, #7C3AED 100%)",
-              color: "white", textDecoration: "none",
-              boxShadow: "0 8px 24px -6px rgba(124,58,237,0.5)",
+              background: "linear-gradient(180deg, #19D4C6 0%, #0EA89E 100%)",
+              color: "#020E0C", textDecoration: "none",
+              boxShadow: "0 8px 24px -6px rgba(19,187,175,0.5)",
             }}>
               Create your account
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -503,17 +511,16 @@ export default function HomePage() {
           flexWrap: "wrap", gap: 16,
         }}>
           <div>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, fontWeight: 600, fontSize: 14, color: "var(--ink)", marginBottom: 6 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, fontWeight: 700, fontSize: 14, color: "var(--ink)", marginBottom: 6, fontFamily: "var(--font-display), system-ui" }}>
               <div style={{
                 width: 24, height: 24, borderRadius: 7,
-                background: "linear-gradient(135deg, #A78BFA, #7C3AED)",
+                background: "linear-gradient(135deg, #13BBAF, #275A53)",
                 display: "grid", placeItems: "center", color: "white",
+                boxShadow: "0 4px 10px rgba(19,187,175,0.35)",
               }}>
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M12 2 14 9l7 2-7 2-2 7-2-7-7-2 7-2 2-7Z" />
-                </svg>
+                <SoccerBallSm />
               </div>
-              AI Sports Predictor
+              Soccer<em style={{ color: "#13BBAF", fontStyle: "italic" }}>AI</em> Predictor
             </div>
             <p style={{ fontSize: 12, color: "var(--muted-2)", margin: 0 }}>
               SportMonks data · Gemini reasoning · Firebase Auth

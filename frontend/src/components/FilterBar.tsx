@@ -23,11 +23,11 @@ function LeagueIcon() {
 }
 
 const LEAGUE_COLORS: Record<string, string> = {
-  "Premier League": "#9381FF",
-  "La Liga": "#EE8707",
-  "Serie A": "#4A9FFF",
-  "Bundesliga": "#D4021D",
-  "Ligue 1": "#4A9FFF",
+  "Premier League":    "#9381FF",
+  "La Liga":           "#EE8707",
+  "Serie A":           "#4A9FFF",
+  "Bundesliga":        "#D4021D",
+  "Ligue 1":           "#4A9FFF",
   "Major League Soccer": "#E82E2E",
 };
 
@@ -44,38 +44,20 @@ export default function FilterBar({ search, onSearchChange, league, onLeagueChan
   }, []);
 
   return (
-    <div
-      style={{
-        position: "sticky",
-        top: 60,
-        zIndex: 30,
-        background: "color-mix(in srgb, var(--bg) 85%, transparent)",
-        backdropFilter: "saturate(180%) blur(20px)",
-        WebkitBackdropFilter: "saturate(180%) blur(20px)",
-        borderBottom: "1px solid var(--border)",
-      }}
-    >
-      <div
-        style={{
-          maxWidth: 1240,
-          margin: "0 auto",
-          padding: "10px 32px",
-          display: "flex",
-          alignItems: "center",
-          gap: 10,
-        }}
-      >
+    <div style={{
+      position: "sticky", top: 60, zIndex: 30,
+      background: "color-mix(in srgb, var(--bg) 88%, transparent)",
+      backdropFilter: "saturate(180%) blur(20px)",
+      WebkitBackdropFilter: "saturate(180%) blur(20px)",
+      borderBottom: "1px solid var(--border)",
+    }}>
+      <div style={{ maxWidth: 1240, margin: "0 auto", padding: "10px 32px", display: "flex", alignItems: "center", gap: 10 }}>
+
         {/* Search */}
         <div style={{ flex: 1, position: "relative", maxWidth: 440 }}>
           <svg
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
+            width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
             style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--muted-2)", pointerEvents: "none" }}
           >
             <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
@@ -86,16 +68,10 @@ export default function FilterBar({ search, onSearchChange, league, onLeagueChan
             value={search}
             onChange={(e) => onSearchChange(e.target.value)}
             style={{
-              width: "100%",
-              padding: "9px 14px 9px 36px",
-              background: "var(--surface)",
-              border: "1px solid var(--border-s)",
-              borderRadius: 10,
-              color: "var(--ink)",
-              fontSize: 13,
-              outline: "none",
-              transition: "border-color 0.15s",
-              boxSizing: "border-box",
+              width: "100%", padding: "9px 14px 9px 36px",
+              background: "var(--surface)", border: "1px solid var(--border-s)",
+              borderRadius: 10, color: "var(--ink)", fontSize: 13, outline: "none",
+              transition: "border-color 0.15s", boxSizing: "border-box",
             }}
             onFocus={(e) => (e.currentTarget.style.borderColor = "var(--accent-edge)")}
             onBlur={(e) => (e.currentTarget.style.borderColor = "var(--border-s)")}
@@ -112,8 +88,7 @@ export default function FilterBar({ search, onSearchChange, league, onLeagueChan
               background: league ? "var(--accent-soft)" : "var(--surface)",
               border: `1px solid ${league ? "var(--accent-edge)" : "var(--border-s)"}`,
               color: league ? "var(--accent-2)" : "var(--ink-2)",
-              fontSize: 13, fontWeight: 500, cursor: "pointer",
-              whiteSpace: "nowrap",
+              fontSize: 13, fontWeight: 500, cursor: "pointer", whiteSpace: "nowrap",
             }}
           >
             <LeagueIcon />
@@ -128,21 +103,15 @@ export default function FilterBar({ search, onSearchChange, league, onLeagueChan
           </button>
 
           {dropdownOpen && (
-            <div
-              style={{
-                position: "absolute", top: "calc(100% + 8px)", left: 0,
-                minWidth: 180,
-                background: "var(--surface)",
-                borderRadius: 12,
-                boxShadow: "0 16px 40px -12px rgba(0,0,0,0.5), inset 0 0 0 1px var(--border-s)",
-                padding: "6px",
-                zIndex: 50,
-                animation: "dropIn 0.15s cubic-bezier(0.16,1,0.3,1)",
-              }}
-            >
+            <div style={{
+              position: "absolute", top: "calc(100% + 8px)", left: 0, minWidth: 180,
+              background: "var(--surface)", borderRadius: 12,
+              boxShadow: "0 16px 40px -12px rgba(0,0,0,0.5), inset 0 0 0 1px var(--border-s)",
+              padding: "6px", zIndex: 50,
+              animation: "dropIn 0.15s cubic-bezier(0.16,1,0.3,1)",
+            }}>
               <style>{`@keyframes dropIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}`}</style>
 
-              {/* All leagues */}
               <button
                 onClick={() => { onLeagueChange(""); setDropdownOpen(false); }}
                 style={{
@@ -173,7 +142,7 @@ export default function FilterBar({ search, onSearchChange, league, onLeagueChan
                 >
                   <span style={{
                     width: 8, height: 8, borderRadius: "50%",
-                    background: LEAGUE_COLORS[l] ?? "#8B5CF6",
+                    background: LEAGUE_COLORS[l] ?? "#13BBAF",
                     display: "inline-block", flexShrink: 0,
                   }} />
                   {l}
@@ -184,16 +153,10 @@ export default function FilterBar({ search, onSearchChange, league, onLeagueChan
         </div>
 
         {/* Date tabs */}
-        <div
-          style={{
-            display: "flex",
-            background: "var(--surface)",
-            border: "1px solid var(--border-s)",
-            borderRadius: 10,
-            padding: 3,
-            gap: 2,
-          }}
-        >
+        <div style={{
+          display: "flex", background: "var(--surface)",
+          border: "1px solid var(--border-s)", borderRadius: 10, padding: 3, gap: 2,
+        }}>
           {([["today", "Today"], ["tomorrow", "Tomorrow"]] as [DateTab, string][]).map(([t, label]) => (
             <button
               key={t}
@@ -202,8 +165,8 @@ export default function FilterBar({ search, onSearchChange, league, onLeagueChan
                 padding: "6px 14px", borderRadius: 7, border: "none", cursor: "pointer",
                 fontSize: 13, fontWeight: tab === t ? 600 : 400,
                 color: tab === t ? "var(--ink)" : "var(--muted)",
-                background: tab === t ? "var(--surface-3, #1E1E2E)" : "none",
-                boxShadow: tab === t ? "0 1px 4px rgba(0,0,0,0.3)" : "none",
+                background: tab === t ? "var(--surface-3)" : "none",
+                boxShadow: tab === t ? "0 1px 4px rgba(0,0,0,0.3), inset 0 0 0 1px var(--border-s)" : "none",
                 transition: "all 0.15s ease",
               }}
             >

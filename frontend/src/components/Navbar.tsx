@@ -5,10 +5,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 
-function SparkleLg() {
+function SoccerBallIcon() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-      <path d="M12 2 14 9l7 2-7 2-2 7-2-7-7-2 7-2 2-7Z" />
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10"/>
+      <path d="M12 2a10 10 0 0 0-6.88 2.77L12 12l7.47-4.5A10 10 0 0 0 12 2z" fill="currentColor" fillOpacity="0.3"/>
+      <path d="m12 12-7.47 4.5A10 10 0 0 0 12 22a10 10 0 0 0 7.47-5.5L12 12z" fill="currentColor" fillOpacity="0.15"/>
     </svg>
   );
 }
@@ -60,12 +62,10 @@ function AccountSettingsModal({
   const [error, setError]         = useState("");
   const overlayRef = useRef<HTMLDivElement>(null);
 
-  // Close on backdrop click
   const handleOverlayClick = (e: React.MouseEvent) => {
     if (e.target === overlayRef.current) onClose();
   };
 
-  // Close on Escape
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     document.addEventListener("keydown", handler);
@@ -97,7 +97,7 @@ function AccountSettingsModal({
       onClick={handleOverlayClick}
       style={{
         position: "fixed", inset: 0, zIndex: 200,
-        background: "rgba(0,0,0,0.55)",
+        background: "rgba(0,0,0,0.60)",
         backdropFilter: "blur(4px)",
         display: "grid", placeItems: "center",
         padding: 24,
@@ -109,16 +109,14 @@ function AccountSettingsModal({
         @keyframes slideUp { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
       `}</style>
 
-      <div
-        style={{
-          width: "100%", maxWidth: 420,
-          background: "var(--surface)",
-          borderRadius: 20,
-          boxShadow: "0 40px 80px -30px rgba(0,0,0,0.7), inset 0 0 0 1px rgba(255,255,255,0.10)",
-          padding: 28,
-          animation: "slideUp 0.2s cubic-bezier(0.16,1,0.3,1)",
-        }}
-      >
+      <div style={{
+        width: "100%", maxWidth: 420,
+        background: "var(--surface)",
+        borderRadius: 20,
+        boxShadow: "0 40px 80px -30px rgba(0,0,0,0.7), inset 0 0 0 1px rgba(19,187,175,0.15)",
+        padding: 28,
+        animation: "slideUp 0.2s cubic-bezier(0.16,1,0.3,1)",
+      }}>
         {/* Header */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 22 }}>
           <div>
@@ -146,10 +144,10 @@ function AccountSettingsModal({
         <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 24, padding: "14px 16px", borderRadius: 12, background: "var(--surface-2)", border: "1px solid var(--border)" }}>
           <div style={{
             width: 44, height: 44, borderRadius: "50%", flexShrink: 0,
-            background: "linear-gradient(135deg, #A78BFA, #7C3AED)",
+            background: "linear-gradient(135deg, #13BBAF, #275A53)",
             display: "grid", placeItems: "center",
             color: "white", fontWeight: 700, fontSize: 18,
-            boxShadow: "0 6px 16px -4px rgba(124,58,237,0.5)",
+            boxShadow: "0 6px 16px -4px rgba(19,187,175,0.4)",
           }}>
             {firstName ? firstName[0].toUpperCase() : initial}
           </div>
@@ -166,11 +164,8 @@ function AccountSettingsModal({
         {/* Form */}
         <form onSubmit={handleSave} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, minWidth: 0 }}>
-            {/* First name */}
             <div style={{ minWidth: 0 }}>
-              <label style={{ display: "block", fontSize: 12, fontWeight: 500, color: "var(--muted)", marginBottom: 6 }}>
-                First name
-              </label>
+              <label style={{ display: "block", fontSize: 12, fontWeight: 500, color: "var(--muted)", marginBottom: 6 }}>First name</label>
               <input
                 type="text"
                 value={firstName}
@@ -182,19 +177,14 @@ function AccountSettingsModal({
                   width: "100%", minWidth: 0, boxSizing: "border-box",
                   padding: "9px 12px", borderRadius: 10, fontSize: 14,
                   background: "var(--surface-2)", color: "var(--ink)",
-                  border: "1px solid var(--border-strong)",
-                  outline: "none",
+                  border: "1px solid var(--border-strong)", outline: "none",
                 }}
-                onFocus={(e) => (e.currentTarget.style.borderColor = "rgba(139,92,246,0.5)")}
+                onFocus={(e) => (e.currentTarget.style.borderColor = "rgba(19,187,175,0.5)")}
                 onBlur={(e)  => (e.currentTarget.style.borderColor = "var(--border-strong)")}
               />
             </div>
-
-            {/* Last name */}
             <div style={{ minWidth: 0 }}>
-              <label style={{ display: "block", fontSize: 12, fontWeight: 500, color: "var(--muted)", marginBottom: 6 }}>
-                Last name
-              </label>
+              <label style={{ display: "block", fontSize: 12, fontWeight: 500, color: "var(--muted)", marginBottom: 6 }}>Last name</label>
               <input
                 type="text"
                 value={lastName}
@@ -205,22 +195,20 @@ function AccountSettingsModal({
                   width: "100%", minWidth: 0, boxSizing: "border-box",
                   padding: "9px 12px", borderRadius: 10, fontSize: 14,
                   background: "var(--surface-2)", color: "var(--ink)",
-                  border: "1px solid var(--border-strong)",
-                  outline: "none",
+                  border: "1px solid var(--border-strong)", outline: "none",
                 }}
-                onFocus={(e) => (e.currentTarget.style.borderColor = "rgba(139,92,246,0.5)")}
+                onFocus={(e) => (e.currentTarget.style.borderColor = "rgba(19,187,175,0.5)")}
                 onBlur={(e)  => (e.currentTarget.style.borderColor = "var(--border-strong)")}
               />
             </div>
           </div>
 
           {error && (
-            <p style={{ margin: 0, fontSize: 13, color: "var(--lo)", padding: "8px 12px", borderRadius: 8, background: "rgba(248,113,113,0.08)", border: "1px solid rgba(248,113,113,0.2)" }}>
+            <p style={{ margin: 0, fontSize: 13, color: "var(--lo)", padding: "8px 12px", borderRadius: 8, background: "rgba(240,112,112,0.08)", border: "1px solid rgba(240,112,112,0.2)" }}>
               {error}
             </p>
           )}
 
-          {/* Actions */}
           <div style={{ display: "flex", gap: 10, marginTop: 2 }}>
             <button
               type="button"
@@ -239,24 +227,18 @@ function AccountSettingsModal({
               style={{
                 flex: 1, padding: "10px 16px", borderRadius: 10, fontSize: 14, fontWeight: 600,
                 background: saved
-                  ? "rgba(52,211,153,0.15)"
-                  : "linear-gradient(135deg, #A78BFA 0%, #7C3AED 100%)",
-                color: saved ? "#34D399" : "white",
-                border: saved ? "1px solid rgba(52,211,153,0.3)" : "none",
+                  ? "rgba(19,187,175,0.15)"
+                  : "linear-gradient(135deg, #19D4C6 0%, #0EA89E 100%)",
+                color: saved ? "#13BBAF" : "#020E0C",
+                border: saved ? "1px solid rgba(19,187,175,0.3)" : "none",
                 cursor: busy || saved ? "default" : "pointer",
                 display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-                boxShadow: saved ? "none" : "0 6px 16px -4px rgba(124,58,237,0.4)",
+                boxShadow: saved ? "none" : "0 6px 16px -4px rgba(19,187,175,0.35)",
                 transition: "all 0.2s",
                 opacity: busy ? 0.7 : 1,
               }}
             >
-              {saved ? (
-                <><CheckIcon /> Saved</>
-              ) : busy ? (
-                "Saving…"
-              ) : (
-                "Save changes"
-              )}
+              {saved ? (<><CheckIcon /> Saved</>) : busy ? "Saving…" : "Save changes"}
             </button>
           </div>
         </form>
@@ -293,24 +275,22 @@ function UserMenu({
 
   return (
     <div ref={ref} style={{ position: "relative" }}>
-      {/* Avatar button */}
       <button
         onClick={() => setOpen((o) => !o)}
         style={{
           width: 34, height: 34, borderRadius: "50%",
-          background: "linear-gradient(135deg, #A78BFA 0%, #7C3AED 100%)",
+          background: "linear-gradient(135deg, #13BBAF 0%, #275A53 100%)",
           display: "grid", placeItems: "center",
           color: "white", fontWeight: 700, fontSize: 13,
-          border: open ? "2px solid rgba(167,139,250,0.6)" : "2px solid transparent",
+          border: open ? "2px solid rgba(19,187,175,0.7)" : "2px solid transparent",
           cursor: "pointer", transition: "border-color 0.2s",
-          boxShadow: "0 6px 16px -4px rgba(124,58,237,0.5)",
+          boxShadow: "0 6px 16px -4px rgba(19,187,175,0.4)",
         }}
         aria-label="User menu"
       >
         {initial}
       </button>
 
-      {/* Dropdown */}
       {open && (
         <div style={{
           position: "absolute", top: "calc(100% + 10px)", right: 0,
@@ -321,11 +301,10 @@ function UserMenu({
         }}>
           <style>{`@keyframes dropIn { from { opacity:0; transform:translateY(-4px); } to { opacity:1; transform:translateY(0); } }`}</style>
 
-          {/* User info */}
           <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", marginBottom: 4 }}>
             <div style={{
               width: 36, height: 36, borderRadius: "50%",
-              background: "linear-gradient(135deg, #A78BFA, #7C3AED)",
+              background: "linear-gradient(135deg, #13BBAF, #275A53)",
               display: "grid", placeItems: "center",
               color: "white", fontWeight: 700, fontSize: 14, flexShrink: 0,
             }}>
@@ -345,7 +324,6 @@ function UserMenu({
 
           <div style={{ height: 1, background: "var(--border)", margin: "4px 6px" }} />
 
-          {/* Account settings */}
           <button
             onClick={() => { setOpen(false); onOpenSettings(); }}
             style={{
@@ -362,7 +340,6 @@ function UserMenu({
             Account settings
           </button>
 
-          {/* Sign out */}
           <button
             onClick={() => { setOpen(false); onSignOut(); }}
             style={{
@@ -372,7 +349,7 @@ function UserMenu({
               fontSize: 13, color: "var(--lo)", borderRadius: 8, textAlign: "left",
               transition: "background 0.15s",
             }}
-            onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.background = "rgba(248,113,113,0.1)")}
+            onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.background = "rgba(240,112,112,0.1)")}
             onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.background = "none")}
           >
             <span style={{ display: "inline-flex" }}><LogoutIcon /></span>
@@ -400,7 +377,7 @@ export default function Navbar() {
     <>
       <header style={{
         position: "fixed", top: 0, left: 0, right: 0, zIndex: 40,
-        background: "color-mix(in srgb, var(--bg) 78%, transparent)",
+        background: "color-mix(in srgb, var(--bg) 80%, transparent)",
         backdropFilter: "saturate(180%) blur(20px)",
         WebkitBackdropFilter: "saturate(180%) blur(20px)",
         borderBottom: "1px solid var(--border)",
@@ -417,14 +394,15 @@ export default function Navbar() {
           }}>
             <div style={{
               width: 28, height: 28, borderRadius: 8,
-              background: "linear-gradient(135deg, #A78BFA 0%, #7C3AED 100%)",
+              background: "linear-gradient(135deg, #13BBAF 0%, #275A53 100%)",
               display: "grid", placeItems: "center", color: "white",
-              boxShadow: "0 6px 16px -4px rgba(124,58,237,0.6), inset 0 1px 0 rgba(255,255,255,0.3)",
+              boxShadow: "0 6px 16px -4px rgba(19,187,175,0.5), inset 0 1px 0 rgba(255,255,255,0.25)",
             }}>
-              <SparkleLg />
+              <SoccerBallIcon />
             </div>
             <span>
-              AI Sports<span style={{ color: "var(--accent-2)" }}> Predictor</span>
+              Soccer<span style={{ color: "var(--accent-2)", fontStyle: "italic" }}> AI</span>
+              <span style={{ color: "var(--muted)", fontWeight: 400 }}> Predictor</span>
             </span>
           </Link>
 
@@ -453,7 +431,6 @@ export default function Navbar() {
         </div>
       </header>
 
-      {/* Settings modal — rendered outside header so it overlays everything */}
       {settingsOpen && user && (
         <AccountSettingsModal
           user={user}
