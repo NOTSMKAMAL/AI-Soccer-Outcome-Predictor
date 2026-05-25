@@ -1125,11 +1125,28 @@ function PredictionContent({ matchId }: { matchId: string }) {
     setPageState("generating");
     setErrorMsg("");
     setEnriched(null);
+    setEnrichedLoading(true);
 
     try {
       const token = await user.getIdToken(true);
-      const res = await generatePrediction(matchId, token);
-      const raw = res.data as Record<string, unknown>;
+
+      // Fire prediction and enriched fetch in parallel, don't wait for prediction before enriched
+      const [predRes, enrichedRes] = await Promise.all([
+        generatePrediction(matchId, token),
+        (async () => {
+          try {
+            const freshToken = await user.getIdToken(true);
+            return await fetch(
+              `${API_BASE}/api/fixtures/${matchId}/enriched`,
+              { headers: { Authorization: `Bearer ${freshToken}` } }
+            );
+          } catch {
+            return null;
+          }
+        })(),
+      ]);
+
+      const raw = predRes.data as Record<string, unknown>;
 
       const pred: Prediction = {
         winner: (raw.winner as string) || "Unknown",
@@ -1143,7 +1160,7 @@ function PredictionContent({ matchId }: { matchId: string }) {
         factors: (raw.factors as string[]) ?? undefined,
         riskFactors: (raw.riskFactors as string[]) ?? undefined,
         headToHead: raw.headToHead ? (raw.headToHead as Prediction["headToHead"]) : undefined,
-      
+
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         keyFactors: (raw.keyFactors as any) ?? undefined,
         // Dixon-Coles three-way probabilities (not in Prediction type — accessed via cast)
@@ -1160,23 +1177,19 @@ function PredictionContent({ matchId }: { matchId: string }) {
       setPrediction(pred);
       setPageState("predicted");
 
-      setEnrichedLoading(true);
-      try {
-        const freshToken = await user.getIdToken(true);
-        const enrichedRes = await fetch(
-          `${API_BASE}/api/fixtures/${matchId}/enriched`,
-          { headers: { Authorization: `Bearer ${freshToken}` } }
-        );
-        if (enrichedRes.ok) {
+      // Handle enriched data if response available
+      if (enrichedRes && enrichedRes.ok) {
+        try {
           const enrichedJson = await enrichedRes.json();
           setEnriched(enrichedJson.data as EnrichedData);
+        } catch {
+          // Enriched data is optional
         }
-      } catch {
-        // Enriched data is optional
-      } finally {
-        setEnrichedLoading(false);
       }
+
+      setEnrichedLoading(false);
     } catch (err: unknown) {
+      setEnrichedLoading(false);
       const msg = err instanceof Error ? err.message : "Prediction failed.";
       if (msg.includes("501")) {
         setErrorMsg("Prediction unavailable for this fixture — real SportMonks data required.");

@@ -11,6 +11,7 @@ load_dotenv()
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 _season_stats_cache: dict[int, dict] = {}
+_prediction_cache: dict[tuple, dict] = {}
 
 # Per-league home advantage coefficients (Dixon-Coles research)
 # MLS lower due to large travel distances and weaker crowd effects
@@ -459,6 +460,11 @@ def generate_prediction(
     team_a_name: str, team_b_name: str,
     enriched_data: dict = None,
 ) -> dict:
+    # Check prediction cache first — avoid duplicate Gemini calls
+    cache_key = (team_a_id, team_b_id, team_a_name, team_b_name)
+    if cache_key in _prediction_cache:
+        return _prediction_cache[cache_key]
+
     comparison = compare_matchup(team_a_id, team_b_id, team_a_name, team_b_name)
     if comparison["status"] != "success":
         return {"status": "prediction_error"}
@@ -695,6 +701,9 @@ Team B: {team_b_name}
             result_data["away_win_probability"] = l_p if winner_is_home else w_p
             result_data["probability_method"]   = "confidence-estimate"
 
-        return {"status": "success", "data": result_data}
+        # Cache successful prediction result
+        result = {"status": "success", "data": result_data}
+        _prediction_cache[cache_key] = result
+        return result
     except Exception as e:
         return {"status": "reasoning_failed", "message": str(e)}
