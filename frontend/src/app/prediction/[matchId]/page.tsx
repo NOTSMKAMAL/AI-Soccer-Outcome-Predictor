@@ -128,6 +128,10 @@ function confidenceColor(level: string): string {
   return "from-red-500 to-red-400";
 }
 
+// Display fallback only — used when the backend returns no probability fields at all
+// (i.e., hasThreeProbs is false). For all successful predictions the engine sets
+// home_win_probability, draw_probability, and away_win_probability, so ThreeSegmentBar
+// is shown instead and this function is never reached.
 function confidencePercent(level: string) {
   const c = level?.toLowerCase();
   if (c === "high") return 82;
@@ -348,7 +352,11 @@ function AIVerdictCard({
   const drawP = prediction.draw_probability ?? 0;
   const awayP = prediction.away_win_probability ?? 0;
 
-  // Fallback single-segment
+  // Fallback single-segment bar — only shown when hasThreeProbs is false.
+  // prediction.winProbability is not set by the engine; confidencePercent() is the
+  // last-resort estimate. In practice hasThreeProbs is always true for successful
+  // predictions because the engine sets all three probability fields in both the
+  // Dixon-Coles path (dc_probs) and the confidence-estimate fallback path.
   const pct = prediction.winProbability ?? confidencePercent(prediction.confidence);
 
   return (
@@ -402,7 +410,7 @@ function AIVerdictCard({
           </span>
         </div>
 
-        {/* ── Three-segment bar (primary) ── */}
+        {/* ── Three-segment bar (primary) — uses actual Dixon-Coles probabilities ── */}
         {hasThreeProbs ? (
           <ThreeSegmentBar
             homeP={homeP}
@@ -412,7 +420,8 @@ function AIVerdictCard({
             awayName={fixture.awayTeam.name}
           />
         ) : (
-          /* Fallback single-segment bar */
+          /* Fallback single-segment bar — shown only when all three probability
+             fields are missing from the API response (should not occur in practice) */
           <div className="mt-6 mx-auto max-w-xs">
             <div className="flex justify-between text-xs mb-2" style={{ color: "var(--muted)" }}>
               <span className="truncate max-w-[45%]">{fixture.homeTeam.name}</span>
