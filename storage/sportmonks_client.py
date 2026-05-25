@@ -27,12 +27,12 @@ LEAGUE_IDS = {
 # All leagues to include when filtering the date-range response.
 # Filtering happens in Python because SportMonks leagueId path filters
 # are not supported on all subscription tiers.
+# 5 leagues confirmed on subscription — Bundesliga excluded per task spec.
 FETCH_LEAGUE_IDS: set[int] = {
     LEAGUE_IDS["mls"],            # 779
     LEAGUE_IDS["premier_league"], # 8
     LEAGUE_IDS["la_liga"],        # 564
     LEAGUE_IDS["serie_a"],        # 384
-    LEAGUE_IDS["bundesliga"],     # 82
     LEAGUE_IDS["ligue_1"],        # 301
 }
 

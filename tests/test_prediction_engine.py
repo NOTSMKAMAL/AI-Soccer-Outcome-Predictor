@@ -741,3 +741,19 @@ class TestRegressionBaseline:
         # Allow small tolerance: 54.7% ± 0.5pp
         assert 0.542 <= api_baseline <= 0.552, \
             f"API baseline {api_baseline:.3f} drifted from 0.547 (±0.005)"
+
+    def test_all_active_leagues_in_home_advantage(self):
+        """Every league in FETCH_LEAGUE_IDS must have an explicit home advantage coefficient.
+
+        Per CS180 NITR structural oracle: prevents future leagues being added to
+        the fetch list without a calibrated coefficient, which causes silent fallback
+        to the default 1.15 value and less accurate predictions.
+        """
+        from storage.sportmonks_client import FETCH_LEAGUE_IDS
+        from engine.prediction_engine import _HOME_ADVANTAGE
+
+        for league_id in FETCH_LEAGUE_IDS:
+            assert league_id in _HOME_ADVANTAGE, (
+                f"League {league_id} is in FETCH_LEAGUE_IDS but missing from "
+                f"_HOME_ADVANTAGE — add a calibrated coefficient or remove the league."
+            )
