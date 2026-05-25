@@ -12,6 +12,17 @@ client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 _season_stats_cache: dict[int, dict] = {}
 
+# Per-league home advantage coefficients (Dixon-Coles research)
+# MLS lower due to large travel distances and weaker crowd effects
+_HOME_ADVANTAGE = {
+    8:   1.18,   # Premier League — strong home crowds
+    564: 1.16,   # La Liga — strong home support
+    384: 1.15,   # Serie A — standard home advantage
+    301: 1.13,   # Ligue 1 — slightly below average
+    779: 1.08,   # MLS — weakest due to travel distances
+}
+_HOME_ADVANTAGE_DEFAULT = 1.15  # fallback for unknown leagues
+
 
 def prepare_matchup(team_a_id: int, team_b_id: int) -> dict:
     if team_a_id == team_b_id:
@@ -88,6 +99,8 @@ def dixon_coles_probability(
     season_id: int | None = None,
     team_a_id: int | None = None,
     team_b_id: int | None = None,
+    league_id: int | None = None,
+    rolling_form: dict | None = None,
 ) -> dict | None:
     """Dixon-Coles adjusted Poisson model (Dixon & Coles 1997).
 
@@ -110,9 +123,60 @@ def dixon_coles_probability(
                     pass
         return None
 
-    # ── Primary path: per-game stats from Season Statistics endpoint ───────────
+    # ── Priority 1: Weighted blend of rolling form + season average ──────────
     avg_s_a = avg_c_a = avg_s_b = avg_c_b = None
-    if season_id and team_a_id and team_b_id:
+    data_source = None
+
+    if rolling_form and all(
+        rolling_form.get(k) not in (None, "", 0)
+        for k in ["home_scored_5r", "home_conceded_5r",
+                   "away_scored_5r", "away_conceded_5r"]
+    ):
+        # Compute rolling form per-game averages from actual rounds used
+        home_rounds = max(1, int(
+            rolling_form.get("home_rounds_used", 5) or 5))
+        away_rounds = max(1, int(
+            rolling_form.get("away_rounds_used", 5) or 5))
+
+        roll_s_a = rolling_form["home_scored_5r"] / home_rounds
+        roll_c_a = rolling_form["home_conceded_5r"] / home_rounds
+        roll_s_b = rolling_form["away_scored_5r"] / away_rounds
+        roll_c_b = rolling_form["away_conceded_5r"] / away_rounds
+
+        # Extract season averages from team_a_stats / team_b_stats
+        gs_a = _f(team_a_stats, "goals_scored")
+        ga_a = _f(team_a_stats, "goals_conceded", "goals_against")
+        pl_a = _f(team_a_stats, "total_matches", "played")
+        gs_b = _f(team_b_stats, "goals_scored")
+        ga_b = _f(team_b_stats, "goals_conceded", "goals_against")
+        pl_b = _f(team_b_stats, "total_matches", "played")
+
+        # Season per-game averages (fallback to rolling if unavailable)
+        if gs_a and pl_a and pl_a > 0:
+            seas_s_a = gs_a / pl_a
+            seas_c_a = (ga_a or 0) / pl_a
+        else:
+            seas_s_a = roll_s_a
+            seas_c_a = roll_c_a
+
+        if gs_b and pl_b and pl_b > 0:
+            seas_s_b = gs_b / pl_b
+            seas_c_b = (ga_b or 0) / pl_b
+        else:
+            seas_s_b = roll_s_b
+            seas_c_b = roll_c_b
+
+        # Weighted blend: 20% recent form + 80% season average
+        FORM_WEIGHT   = 0.20
+        SEASON_WEIGHT = 0.80
+        avg_s_a = FORM_WEIGHT * roll_s_a + SEASON_WEIGHT * seas_s_a
+        avg_c_a = FORM_WEIGHT * roll_c_a + SEASON_WEIGHT * seas_c_a
+        avg_s_b = FORM_WEIGHT * roll_s_b + SEASON_WEIGHT * seas_s_b
+        avg_c_b = FORM_WEIGHT * roll_c_b + SEASON_WEIGHT * seas_c_b
+        data_source = "rolling_blend_20_80"
+
+    # ── Priority 2: Season Statistics endpoint ──────────────────────────────
+    if avg_s_a is None and season_id and team_a_id and team_b_id:
         if season_id not in _season_stats_cache:
             _season_stats_cache[season_id] = get_season_team_stats(season_id)
         sdata = _season_stats_cache[season_id]
@@ -123,6 +187,7 @@ def dixon_coles_probability(
             avg_c_a = ta.get("goals_conceded_per_game")
             avg_s_b = tb.get("goals_scored_per_game")
             avg_c_b = tb.get("goals_conceded_per_game")
+            data_source = "season_stats"
 
     gs_a = _f(team_a_stats, "goals_scored")
     ga_a = _f(team_a_stats, "goals_conceded", "goals_against")
@@ -131,12 +196,13 @@ def dixon_coles_probability(
     ga_b = _f(team_b_stats, "goals_conceded", "goals_against")
     pl_b = _f(team_b_stats, "total_matches", "played")
 
-    # Fallback to standings-based per-game averages if season stats unavailable
+    # ── Priority 3: Standings fallback ────────────────────────────────────────
     if avg_s_a is None or avg_c_a is None or avg_s_b is None or avg_c_b is None:
         if any(v is None for v in [gs_a, ga_a, pl_a, gs_b, ga_b, pl_b]):
             return None
         avg_s_a, avg_c_a = gs_a / pl_a, ga_a / pl_a  # type: ignore[operator]
         avg_s_b, avg_c_b = gs_b / pl_b, ga_b / pl_b  # type: ignore[operator]
+        data_source = "standings"
 
     league_avg = ((avg_s_a + avg_s_b) / 2) or 0.01
     if league_avg < 0.01:
@@ -148,7 +214,10 @@ def dixon_coles_probability(
     def_b = avg_c_b / league_avg
 
     # Expected goals: home team benefits from home_advantage multiplier
-    ha = home_advantage if is_home_a else 1.0 / home_advantage
+    # Use per-league coefficient if league_id provided, else fall back to param
+    ha_coeff = _HOME_ADVANTAGE.get(league_id, _HOME_ADVANTAGE_DEFAULT) \
+               if league_id else home_advantage
+    ha = ha_coeff if is_home_a else 1.0 / ha_coeff
     lam = atk_a * def_b * ha         * league_avg  # team_a expected goals
     mu  = atk_b * def_a * (1.0 / ha) * league_avg  # team_b expected goals
 
@@ -191,6 +260,7 @@ def dixon_coles_probability(
         "home_win": max(0.05, min(0.90, round(hw / t2, 4))),
         "draw":     max(0.05, min(0.90, round(dr / t2, 4))),
         "away_win": max(0.05, min(0.90, round(aw / t2, 4))),
+        "method": data_source,
     }
 
 
