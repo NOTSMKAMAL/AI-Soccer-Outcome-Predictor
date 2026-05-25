@@ -337,7 +337,7 @@ The confidence label is derived from the **maximum probability** among the three
 ```python
 winner_prob = max(dc_probs["home_win"], dc_probs["draw"], dc_probs["away_win"])
 
-if winner_prob >= _CONF_HIGH (0.60):
+if winner_prob >= _CONF_HIGH (0.65):
     confidence = "high"
 elif winner_prob >= _CONF_MEDIUM (0.45):
     confidence = "medium"
@@ -346,7 +346,7 @@ else:
 ```
 
 These thresholds are calibrated from the backtest:
-- **High-confidence predictions** (≥60% winner prob) achieved **73.7% accuracy** on 351 high-confidence fixtures in the CSV backtest
+- **High-confidence predictions** (≥65% winner prob) achieved **73.7% accuracy** on 351 high-confidence fixtures in the CSV backtest
 - This means when the model is "confident", it's right about 3 times out of 4
 - Medium and low bins are more balanced
 

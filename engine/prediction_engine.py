@@ -26,7 +26,7 @@ _HOME_ADVANTAGE_DEFAULT = 1.15  # fallback for unknown leagues
 
 # Confidence thresholds based on winner probability
 # Calibrated from backtest: high-confidence (≥65%) accuracy was 73.7%
-_CONF_HIGH   = 0.60  # winner prob ≥ 60% → High
+_CONF_HIGH   = 0.65  # winner prob ≥ 65% → High
 _CONF_MEDIUM = 0.45  # winner prob ≥ 45% → Medium
                      # below 45% → Low
 

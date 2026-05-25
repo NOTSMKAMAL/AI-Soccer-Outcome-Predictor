@@ -288,11 +288,11 @@ class TestConfidenceLabelBranches:
     """Test confidence threshold boundaries and draw-as-max case."""
 
     def test_confidence_exactly_at_high_boundary(self):
-        """winner_prob = 0.60 exactly should return 'high'."""
+        """winner_prob = 0.65 exactly should return 'high'."""
         dc_probs = {
-            "home_win": 0.60,
+            "home_win": 0.65,
             "draw": 0.25,
-            "away_win": 0.15,
+            "away_win": 0.10,
         }
         winner_prob = max(dc_probs["home_win"], dc_probs["draw"], dc_probs["away_win"])
 
@@ -303,14 +303,14 @@ class TestConfidenceLabelBranches:
         else:
             confidence = "low"
 
-        assert confidence == "high", "0.60 exactly should be 'high'"
+        assert confidence == "high", "0.65 exactly should be 'high'"
 
     def test_confidence_just_below_high_boundary(self):
-        """winner_prob = 0.599 should return 'medium'."""
+        """winner_prob = 0.649 should return 'medium'."""
         dc_probs = {
-            "home_win": 0.599,
+            "home_win": 0.649,
             "draw": 0.251,
-            "away_win": 0.150,
+            "away_win": 0.100,
         }
         winner_prob = max(dc_probs["home_win"], dc_probs["draw"], dc_probs["away_win"])
 
@@ -321,7 +321,7 @@ class TestConfidenceLabelBranches:
         else:
             confidence = "low"
 
-        assert confidence == "medium", "0.599 should be 'medium'"
+        assert confidence == "medium", "0.649 should be 'medium'"
 
     def test_confidence_exactly_at_medium_boundary(self):
         """winner_prob = 0.45 exactly should return 'medium'."""
@@ -376,7 +376,7 @@ class TestConfidenceLabelBranches:
             confidence = "low"
 
         assert winner_prob == 0.50, "Winner prob should be 0.50 (draw is highest)"
-        assert confidence == "medium", "Draw at 0.50 should be 'medium' (>= 0.45 but < 0.60)"
+        assert confidence == "medium", "Draw at 0.50 should be 'medium' (>= 0.45 but < 0.65)"
 
 
 # ── GROUP 3: Winner Override Branch Coverage Tests ──────────────────────────────
