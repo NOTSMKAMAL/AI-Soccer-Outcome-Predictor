@@ -5,13 +5,20 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 
-function SoccerBallIcon() {
+function FutureFCLogo() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="10"/>
-      <path d="M12 2a10 10 0 0 0-6.88 2.77L12 12l7.47-4.5A10 10 0 0 0 12 2z" fill="currentColor" fillOpacity="0.3"/>
-      <path d="m12 12-7.47 4.5A10 10 0 0 0 12 22a10 10 0 0 0 7.47-5.5L12 12z" fill="currentColor" fillOpacity="0.15"/>
-    </svg>
+    <img
+      src="/future-fc-logo.png"
+      alt="FUTURE FC"
+      width={40}
+      height={40}
+      style={{
+        borderRadius: 4,
+        objectFit: "contain",
+        flexShrink: 0,
+        display: "block",
+      }}
+    />
   );
 }
 function LogoutIcon() {
@@ -392,18 +399,8 @@ export default function Navbar() {
             fontWeight: 600, fontSize: 15, letterSpacing: "-0.01em",
             color: "var(--ink)", textDecoration: "none",
           }}>
-            <div style={{
-              width: 28, height: 28, borderRadius: 8,
-              background: "linear-gradient(135deg, #13BBAF 0%, #275A53 100%)",
-              display: "grid", placeItems: "center", color: "white",
-              boxShadow: "0 6px 16px -4px rgba(19,187,175,0.5), inset 0 1px 0 rgba(255,255,255,0.25)",
-            }}>
-              <SoccerBallIcon />
-            </div>
-            <span>
-              Soccer<span style={{ color: "var(--accent-2)", fontStyle: "italic" }}> AI</span>
-              <span style={{ color: "var(--muted)", fontWeight: 400 }}> Predictor</span>
-            </span>
+            <FutureFCLogo />
+            <span>FUTURE FC</span>
           </Link>
 
           {/* Right */}

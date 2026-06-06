@@ -18,8 +18,8 @@ const plusJakarta = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Soccer AI Predictor",
-  description: "AI-powered match outcome predictions for the world's top leagues",
+  title: "FUTURE FC",
+  description: "AI-powered match predictions by FUTURE FC",
 };
 
 export default function RootLayout({
