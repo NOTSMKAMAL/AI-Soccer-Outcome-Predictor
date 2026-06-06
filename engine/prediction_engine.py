@@ -11,6 +11,7 @@ load_dotenv()
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 _season_stats_cache: dict[int, dict] = {}
+_prediction_cache: dict[tuple, dict] = {}
 
 # Per-league home advantage coefficients (Dixon-Coles research)
 # MLS lower due to large travel distances and weaker crowd effects
@@ -22,6 +23,12 @@ _HOME_ADVANTAGE = {
     779: 1.08,   # MLS — weakest due to travel distances
 }
 _HOME_ADVANTAGE_DEFAULT = 1.15  # fallback for unknown leagues
+
+# Confidence thresholds based on winner probability
+# Calibrated from backtest: high-confidence (≥65%) accuracy was 73.7%
+_CONF_HIGH   = 0.65  # winner prob ≥ 65% → High
+_CONF_MEDIUM = 0.45  # winner prob ≥ 45% → Medium
+                     # below 45% → Low
 
 
 def prepare_matchup(team_a_id: int, team_b_id: int) -> dict:
@@ -453,6 +460,11 @@ def generate_prediction(
     team_a_name: str, team_b_name: str,
     enriched_data: dict = None,
 ) -> dict:
+    # Check prediction cache first — avoid duplicate Gemini calls
+    cache_key = (team_a_id, team_b_id, team_a_name, team_b_name)
+    if cache_key in _prediction_cache:
+        return _prediction_cache[cache_key]
+
     comparison = compare_matchup(team_a_id, team_b_id, team_a_name, team_b_name)
     if comparison["status"] != "success":
         return {"status": "prediction_error"}
@@ -489,6 +501,19 @@ def generate_prediction(
             team_a_id=team_a_id,
             team_b_id=team_b_id,
         )
+
+    # Determine winner from Dixon-Coles before building prompt
+    # Inject into Gemini prompt so reasoning supports verdict, not contradicts it
+    winner_name = None
+    if dc_probs:
+        if dc_probs["home_win"] >= dc_probs["away_win"] and \
+           dc_probs["home_win"] >= dc_probs["draw"]:
+            winner_name = team_a_name
+        elif dc_probs["away_win"] >= dc_probs["home_win"] and \
+             dc_probs["away_win"] >= dc_probs["draw"]:
+            winner_name = team_b_name
+        else:
+            winner_name = team_a_name  # draw: home team
 
     if enriched_data:
         enriched_section = _build_enriched_section(
@@ -527,7 +552,30 @@ def generate_prediction(
             "Reasoning: <2-3 sentences explaining the key factors>"
         )
 
-    prompt = f"""You are a professional sports analyst AI for the AI Sports Outcome Predictor.
+    # Build prompt with or without PREDICTED WINNER instruction based on availability
+    if winner_name:
+        # Dixon-Coles determined winner — inject it upfront so reasoning supports it
+        predicted_winner_instruction = (
+            f"PREDICTED WINNER: {winner_name}\n"
+            f"The statistical model has determined that {winner_name} is predicted to win this match.\n\n"
+            f"Your task: Write a clear, factual explanation of WHY {winner_name} is predicted to win,\n"
+            f"using the data provided below. Cite specific statistics. Do NOT argue for the other team\n"
+            f"winning. Do NOT contradict the predicted winner. Your Winner field MUST be: {winner_name}\n\n"
+        )
+        prompt = f"""You are a professional sports analyst AI for the AI Sports Outcome Predictor.
+
+{predicted_winner_instruction}Match data:
+
+Team A: {team_a_name}
+Team B: {team_b_name}
+
+{data_block}
+
+{response_format}
+"""
+    else:
+        # No Dixon-Coles prediction — Gemini decides freely
+        prompt = f"""You are a professional sports analyst AI for the AI Sports Outcome Predictor.
 Analyze ALL data below and predict the winner. Your reasoning MUST cite specific statistics.
 
 Team A: {team_a_name}
@@ -615,6 +663,29 @@ Team B: {team_b_name}
             result_data["draw_probability"]     = dc_probs["draw"]
             result_data["away_win_probability"] = dc_probs["away_win"]
             result_data["probability_method"]   = "dixon-coles"
+
+            # Override winner with Dixon-Coles prediction
+
+            if dc_probs["home_win"] >= dc_probs["away_win"] and \
+               dc_probs["home_win"] >= dc_probs["draw"]:
+                result_data["winner"] = team_a_name
+            elif dc_probs["away_win"] >= dc_probs["home_win"] and \
+                 dc_probs["away_win"] >= dc_probs["draw"]:
+                result_data["winner"] = team_b_name
+
+            # Override confidence with probability-derived label
+            # Gemini's confidence label is qualitative and inconsistent —
+            # computed label is reproducible and consistent with probability bars
+            winner_prob = max(dc_probs["home_win"],
+                              dc_probs["draw"],
+                              dc_probs["away_win"])
+            if winner_prob >= _CONF_HIGH:
+                result_data["confidence"] = "high"
+            elif winner_prob >= _CONF_MEDIUM:
+                result_data["confidence"] = "medium"
+            else:
+                result_data["confidence"] = "low"
+
         else:
             # Confidence-label fallback: assign probabilities based on predicted winner
             _fb: dict[str, tuple[float, float, float]] = {
@@ -630,6 +701,9 @@ Team B: {team_b_name}
             result_data["away_win_probability"] = l_p if winner_is_home else w_p
             result_data["probability_method"]   = "confidence-estimate"
 
-        return {"status": "success", "data": result_data}
+        # Cache successful prediction result
+        result = {"status": "success", "data": result_data}
+        _prediction_cache[cache_key] = result
+        return result
     except Exception as e:
         return {"status": "reasoning_failed", "message": str(e)}
