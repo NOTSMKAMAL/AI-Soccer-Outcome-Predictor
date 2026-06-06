@@ -11,7 +11,7 @@ import ErrorState from "@/components/ErrorState";
 import { getTopLeagueFixtures } from "@/lib/api";
 import { MOCK_FIXTURES } from "@/lib/mockData";
 import type { Fixture } from "@/lib/types";
-import { parseFixtureDate, toLADateStr, todayLA, tomorrowLA } from "@/lib/dateUtils";
+import { parseFixtureDate, toLADateStr, isUpcomingLA } from "@/lib/dateUtils";
 
 type LoadState = "loading" | "success" | "error";
 
@@ -93,7 +93,7 @@ function DashboardContent() {
 
   const [search, setSearch] = useState("");
   const [league, setLeague] = useState("");
-  const [tab, setTab] = useState<DateTab>("today");
+  const [tab, setTab] = useState<DateTab>("upcoming");
 
   const fetchFixtures = async () => {
     setState("loading");
@@ -131,8 +131,11 @@ function DashboardContent() {
 
   const filtered = useMemo(() => {
     let list = fixtures;
-    const targetDate = tab === "today" ? todayLA() : tomorrowLA();
-    list = list.filter((f) => toLADateStr(parseFixtureDate(f.startingAt)) === targetDate);
+    if (tab === "live") {
+      list = list.filter((f) => ["live", "inplay", "halftime"].includes(f.status?.toLowerCase() ?? ""));
+    } else {
+      list = list.filter((f) => isUpcomingLA(parseFixtureDate(f.startingAt)));
+    }
     if (league) list = list.filter((f) => f.leagueName === league);
     if (search.trim()) {
       const q = search.toLowerCase();
@@ -175,7 +178,7 @@ function DashboardContent() {
                 letterSpacing: "-0.025em", margin: "0 0 4px", color: "var(--ink)",
                 fontFamily: "var(--font-display), system-ui",
               }}>
-                {tab === "today" ? "Today's Fixtures" : "Tomorrow's Fixtures"}
+                {tab === "live" ? "Live Fixtures" : "Upcoming Fixtures"}
               </h1>
               <p style={{ fontSize: 13, color: "var(--muted)", margin: 0 }}>
                 Select a fixture to generate an AI-powered match prediction.
@@ -273,7 +276,7 @@ function DashboardContent() {
 
         {/* Empty for filtered view */}
         {state === "success" && filtered.length === 0 && fixtures.length > 0 && (() => {
-          const dayLabel = tab === "today" ? "today" : "tomorrow";
+          const dayLabel = tab === "live" ? "live right now" : "the upcoming schedule";
           return (
             <div style={{ textAlign: "center", padding: "60px 0" }}>
               <div style={{ fontSize: 40, marginBottom: 12 }}>📅</div>

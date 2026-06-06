@@ -36,13 +36,21 @@ export async function getTeams() {
   return request<{ status: string; data: unknown[] }>("/api/teams");
 }
 
-/**
- * Returns upcoming fixtures for top leagues.
- * Backed by GET /api/fixtures — wired to storage/sportmonks_client.py
- * once the main-branch engine/storage layer is merged into this branch.
- */
+// Session cache: resets on page reload. Max staleness: 5 minutes.
+// To force a refresh during demo, reload the page.
+let _fixturesCache: { data: unknown[]; ts: number } | null = null;
+const FIXTURES_TTL_MS = 5 * 60 * 1000;
+
 export async function getTopLeagueFixtures() {
-  return request<{ status: string; data: unknown[] }>("/api/fixtures");
+  const now = Date.now();
+  if (_fixturesCache && now - _fixturesCache.ts < FIXTURES_TTL_MS) {
+    return { status: "success", data: _fixturesCache.data, source: "cache" };
+  }
+  const result = await request<{ status: string; data: unknown[] }>("/api/fixtures");
+  if (result.data?.length) {
+    _fixturesCache = { data: result.data, ts: now };
+  }
+  return result;
 }
 
 /**

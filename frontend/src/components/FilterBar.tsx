@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 
-export type DateTab = "today" | "tomorrow";
+export type DateTab = "live" | "upcoming";
 
 interface Props {
   search: string;
@@ -157,7 +157,7 @@ export default function FilterBar({ search, onSearchChange, league, onLeagueChan
           display: "flex", background: "var(--surface)",
           border: "1px solid var(--border-s)", borderRadius: 10, padding: 3, gap: 2,
         }}>
-          {([["today", "Today"], ["tomorrow", "Tomorrow"]] as [DateTab, string][]).map(([t, label]) => (
+          {([["live", "Live"], ["upcoming", "Upcoming"]] as [DateTab, string][]).map(([t, label]) => (
             <button
               key={t}
               onClick={() => onTabChange(t)}
