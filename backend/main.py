@@ -11,7 +11,6 @@ from pydantic import BaseModel
 from backend.soccer_api import SoccerApiClient, MOCK_TEAMS
 from backend.agent import run_prediction_agent
 from backend.firebase_config import verify_id_token
-from backend.firebase_db import delete_prediction, get_user_predictions, save_prediction
 from storage.sportmonks_client import (
     get_upcoming_mls_fixtures,
     get_fixture_detail,
@@ -245,16 +244,6 @@ def get_current_user(authorization: str | None = Header(None)) -> dict:
 class PredictRequest(BaseModel):
     team_a_id: int
     team_b_id: int
-
-
-class SavePredictionRequest(BaseModel):
-    fixture_id: int | None = None
-    home_team: str
-    away_team: str
-    predicted_winner: str
-    confidence: int
-    reasoning: str
-    match_datetime: str | None = None
 
 
 # ── Public endpoints ──────────────────────────────────────────────────────────
@@ -553,41 +542,3 @@ def verify_token(user: dict = Depends(get_current_user)) -> dict[str, Any]:
             "email_verified": user.get("email_verified", False),
         },
     }
-
-
-# ── Protected prediction history endpoints ────────────────────────────────────
-
-@app.post("/api/predictions", status_code=status.HTTP_201_CREATED)
-def create_prediction(
-    body: SavePredictionRequest,
-    user: dict = Depends(get_current_user),
-) -> dict[str, Any]:
-    user_id: str = user["uid"]
-    doc_id = save_prediction(user_id, body.model_dump())
-    if doc_id is None:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Firestore is not configured or unavailable.",
-        )
-    return {"status": "success", "data": {"id": doc_id}}
-
-
-@app.get("/api/predictions")
-def list_predictions(user: dict = Depends(get_current_user)) -> dict[str, Any]:
-    user_id: str = user["uid"]
-    predictions = get_user_predictions(user_id)
-    return {"status": "success", "data": predictions}
-
-
-@app.delete("/api/predictions/{prediction_id}", status_code=status.HTTP_200_OK)
-def remove_prediction(
-    prediction_id: str,
-    user: dict = Depends(get_current_user),
-) -> dict[str, Any]:
-    deleted = delete_prediction(prediction_id)
-    if not deleted:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Prediction not found or already deleted.",
-        )
-    return {"status": "success", "data": {"id": prediction_id}}
