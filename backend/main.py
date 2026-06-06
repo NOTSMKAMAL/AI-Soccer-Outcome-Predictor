@@ -1,4 +1,5 @@
 import asyncio
+import time
 from datetime import datetime, timedelta, timezone
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -46,6 +47,11 @@ soccer_client = SoccerApiClient()
 # ── In-memory caches ──────────────────────────────────────────────────────────
 _fixture_cache: dict[str, dict] = {}
 _enriched_cache: dict[str, dict] = {}
+
+# Server-side TTL cache for the full fixture list.
+# Distinct from _fixture_cache (per-ID dict used for individual lookups).
+_fixtures_ttl: dict = {}        # keys: "data", "source", "ts"
+FIXTURES_TTL_SECONDS = 300      # 5 minutes — resets on server restart
 
 # Mock MLS fixtures used when SportMonks returns no data.
 # These IDs are NOT real SportMonks IDs — prediction will fail gracefully for them.
@@ -271,30 +277,27 @@ def predict(body: PredictRequest) -> dict[str, Any]:
 
 @app.get("/api/fixtures")
 def list_fixtures() -> dict[str, Any]:
-    global _fixture_cache
+    global _fixture_cache, _fixtures_ttl
 
-    sportmonks_error: str | None = None
+    now = time.time()
+    if _fixtures_ttl.get("data") and now - _fixtures_ttl.get("ts", 0) < FIXTURES_TTL_SECONDS:
+        return {"status": "success", "data": _fixtures_ttl["data"], "source": "cache"}
+
     try:
         result = get_upcoming_mls_fixtures()
         if result["status"] == "success" and result["data"]:
             normalized = [_normalize_fixture(f) for f in result["data"]]
             _fixture_cache = {f["id"]: f for f in normalized}
+            _fixtures_ttl = {"data": normalized, "source": "sportmonks", "ts": now}
             return {"status": "success", "data": normalized, "source": "sportmonks"}
-        # SportMonks returned an error dict or an empty list
-        sportmonks_error = result.get("message", "SportMonks returned 0 fixtures (status 200)")
+        sportmonks_error = result.get("message", "SportMonks returned 0 fixtures")
     except Exception as exc:
-        sportmonks_error = f"Unexpected error calling SportMonks: {exc}"
+        sportmonks_error = f"SportMonks call failed: {exc}"
 
-    # Fallback: return mock fixtures so the dashboard is never completely empty,
-    # but include _diagnostic so callers can see exactly why real data failed.
+    # Fall back to mock — do NOT populate _fixtures_ttl so next request retries SportMonks
     mock_fixtures = _get_mock_mls_fixtures()
     _fixture_cache = {f["id"]: f for f in mock_fixtures}
-    return {
-        "status": "success",
-        "data": mock_fixtures,
-        "source": "mock",
-        "_diagnostic": sportmonks_error,
-    }
+    return {"status": "success", "data": mock_fixtures, "source": "mock", "_diagnostic": sportmonks_error}
 
 
 @app.get("/api/fixtures/{match_id}")
