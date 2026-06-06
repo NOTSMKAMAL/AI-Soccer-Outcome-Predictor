@@ -70,35 +70,3 @@ export async function generatePrediction(matchId: string, token: string) {
     { method: "POST" }
   );
 }
-
-/** Fetches the authenticated user's saved prediction history. */
-export async function getUserPredictions(token: string) {
-  return authRequest<{ status: string; data: unknown[] }>(
-    "/api/predictions",
-    token
-  );
-}
-
-/** Persists a prediction result to the user's Firestore history. */
-export async function saveUserPrediction(
-  token: string,
-  payload: Record<string, unknown>
-) {
-  return authRequest<{ status: string; data: { id: string } }>(
-    "/api/predictions",
-    token,
-    { method: "POST", body: JSON.stringify(payload) }
-  );
-}
-
-/** Removes a saved prediction by its Firestore document ID. */
-export async function deleteUserPrediction(
-  token: string,
-  predictionId: string
-) {
-  return authRequest<{ status: string; data: { id: string } }>(
-    `/api/predictions/${predictionId}`,
-    token,
-    { method: "DELETE" }
-  );
-}
