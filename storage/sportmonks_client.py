@@ -1,4 +1,6 @@
 import os
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import date
 import requests
 from dotenv import load_dotenv
 
@@ -152,6 +154,30 @@ def _parse_scores(scores_list: list) -> dict | None:
     return None
 
 
+def _fetch_fixtures_for_date(target_date: date, params: dict) -> list[dict]:
+    """Fetch and filter fixtures for a single date. Returns [] on any error."""
+    try:
+        resp = requests.get(
+            f"{BASE_URL}/fixtures/date/{target_date}",
+            params=params,
+            timeout=15,
+        )
+        if not resp.ok:
+            print(f"[SportMonks] /fixtures/date/{target_date}: HTTP {resp.status_code}")
+            return []
+        try:
+            all_day = resp.json().get("data", [])
+        except ValueError:
+            print(f"[SportMonks] Non-JSON response ({resp.status_code}), body: {resp.text[:200]}")
+            return []
+        filtered = [f for f in all_day if f.get("league_id") in FETCH_LEAGUE_IDS]
+        print(f"[SportMonks] /fixtures/date/{target_date}: {len(all_day)} total, {len(filtered)} in leagues")
+        return filtered
+    except requests.exceptions.RequestException as exc:
+        print(f"[SportMonks] /fixtures/date/{target_date} failed: {exc}")
+        return []
+
+
 def _fetch_upcoming_per_league(api_key: str) -> list[dict]:
     """Try /fixtures/upcoming/leagueId/{id} then /fixtures/date/{date} fallbacks.
 
@@ -204,22 +230,19 @@ def _fetch_upcoming_per_league(api_key: str) -> list[dict]:
     if league_upcoming_ok:
         return combined
 
-    # Strategy B: /fixtures/date/{YYYY-MM-DD} for today + tomorrow
-    print("[SportMonks] Trying /fixtures/date/{date} for today and tomorrow")
-    for offset in (0, 1):
-        target = date.today() + timedelta(days=offset)
-        url = f"{BASE_URL}/fixtures/date/{target}"
-        try:
-            resp = requests.get(url, params=params_base, timeout=15)
-            if not resp.ok:
-                print(f"[SportMonks] /fixtures/date/{target}: HTTP {resp.status_code}")
-                continue
-            all_day = _safe_json(resp)
-            day_filtered = [f for f in all_day if f.get("league_id") in FETCH_LEAGUE_IDS]
-            print(f"[SportMonks] /fixtures/date/{target}: {len(all_day)} total, {len(day_filtered)} in our leagues")
-            _add(day_filtered)
-        except requests.exceptions.RequestException as exc:
-            print(f"[SportMonks] /fixtures/date/{target} failed: {exc}")
+    # Strategy B: concurrent fetch — 61 days, 10 workers
+    # API cost: up to 61 SportMonks calls per invocation. Budget: 2,000/day.
+    print("[SportMonks] Strategy B: concurrent /fixtures/date fetch over 61-day window")
+    start_day = date.today()
+    end_day   = start_day + timedelta(days=60)
+    dates     = [start_day + timedelta(days=i) for i in range(61)]
+
+    with ThreadPoolExecutor(max_workers=10) as pool:
+        futures = {pool.submit(_fetch_fixtures_for_date, d, params_base): d for d in dates}
+        for future in as_completed(futures):
+            _add(future.result())
+
+    print(f"[SportMonks] Fetched {len(combined)} fixtures over 61-day window ({start_day} → {end_day})")
 
     return combined
 
