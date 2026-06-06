@@ -241,18 +241,8 @@ export default function AuthPage() {
         <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", height: "100%", maxWidth: 520, margin: "0 auto", width: "100%" }}>
           {/* Brand */}
           <Link href="/" className="flex items-center gap-3 mb-14">
-            <div
-              style={{
-                width: 34, height: 34, borderRadius: 10,
-                background: "linear-gradient(135deg, #13BBAF 0%, #275A53 100%)",
-                display: "grid", placeItems: "center",
-                boxShadow: "0 4px 16px rgba(19,187,175,0.4), inset 0 1px 0 rgba(255,255,255,0.2)",
-              }}
-            >
-              <SoccerBall />
-            </div>
             <span style={{ fontWeight: 700, fontSize: 15, letterSpacing: "-0.01em", fontFamily: "var(--font-display), system-ui" }}>
-              Soccer<em style={{ color: "#13BBAF", fontStyle: "italic" }}>AI</em> Predictor
+              FUTURE FC
             </span>
           </Link>
 
@@ -332,18 +322,8 @@ export default function AuthPage() {
       >
         {/* Mobile brand */}
         <div className="hidden max-lg:flex mb-6 items-center gap-2.5">
-          <div
-            style={{
-              width: 28, height: 28, borderRadius: 8,
-              background: "linear-gradient(135deg, #13BBAF, #275A53)",
-              display: "grid", placeItems: "center", color: "white",
-              boxShadow: "0 4px 12px rgba(19,187,175,0.35)",
-            }}
-          >
-            <SoccerBall />
-          </div>
           <span style={{ fontWeight: 700, fontSize: 15, color: "var(--ink)", fontFamily: "var(--font-display), system-ui" }}>
-            Soccer<em style={{ color: "#13BBAF", fontStyle: "italic" }}>AI</em> Predictor
+            FUTURE FC
           </span>
         </div>
 

@@ -196,15 +196,19 @@ export default function HomePage() {
         }}>
           {/* Brand */}
           <a href="#" style={{ display: "flex", alignItems: "center", gap: 10, fontWeight: 700, fontSize: 15, color: "var(--ink)", textDecoration: "none", letterSpacing: "-0.01em", fontFamily: "var(--font-display), system-ui" }}>
-            <div style={{
-              width: 28, height: 28, borderRadius: 8,
-              background: "linear-gradient(135deg, #13BBAF 0%, #275A53 100%)",
-              display: "grid", placeItems: "center", color: "white",
-              boxShadow: "0 6px 16px -4px rgba(19,187,175,0.5), inset 0 1px 0 rgba(255,255,255,0.25)",
-            }}>
-              <SoccerBallSm />
-            </div>
-            Soccer<em style={{ color: "#13BBAF", fontStyle: "italic" }}>AI</em> Predictor
+            <img
+              src="/future-fc-logo.png"
+              alt="FUTURE FC"
+              width={36}
+              height={36}
+              style={{
+                borderRadius: "50%",
+                objectFit: "cover",
+                flexShrink: 0,
+                display: "block",
+              }}
+            />
+            FUTURE FC
           </a>
 
           {/* Nav links */}
@@ -301,7 +305,7 @@ export default function HomePage() {
             </h1>
 
             <p style={{ fontSize: 18, lineHeight: 1.6, color: "var(--muted)", margin: "0 0 36px", maxWidth: 500 }}>
-              Soccer AI Predictor analyzes fixtures, team form, head-to-head history and match context to generate
+              FUTURE FC analyzes fixtures, team form, head-to-head history and match context to generate
               structured predictions for the top football leagues.
             </p>
 
@@ -520,7 +524,7 @@ export default function HomePage() {
               }}>
                 <SoccerBallSm />
               </div>
-              Soccer<em style={{ color: "#13BBAF", fontStyle: "italic" }}>AI</em> Predictor
+              FUTURE FC
             </div>
             <p style={{ fontSize: 12, color: "var(--muted-2)", margin: 0 }}>
               SportMonks data · Gemini reasoning · Firebase Auth
