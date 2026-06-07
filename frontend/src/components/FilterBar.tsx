@@ -26,7 +26,6 @@ const LEAGUE_COLORS: Record<string, string> = {
   "Premier League":    "#9381FF",
   "La Liga":           "#EE8707",
   "Serie A":           "#4A9FFF",
-  "Bundesliga":        "#D4021D",
   "Ligue 1":           "#4A9FFF",
   "Major League Soccer": "#E82E2E",
 };
