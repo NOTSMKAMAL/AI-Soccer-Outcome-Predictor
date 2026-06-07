@@ -22,7 +22,6 @@ LEAGUE_IDS = {
     "ligue_1": 301,
     "la_liga": 564,
     "serie_a": 384,
-    "bundesliga": 82,
     "mls": 779,
 }
 
@@ -44,7 +43,6 @@ LEAGUE_NAMES: dict[int, str] = {
     LEAGUE_IDS["ligue_1"]:        "Ligue 1",
     LEAGUE_IDS["la_liga"]:        "La Liga",
     LEAGUE_IDS["serie_a"]:        "Serie A",
-    LEAGUE_IDS["bundesliga"]:     "Bundesliga",
     LEAGUE_IDS["mls"]:            "Major League Soccer",
 }
 
