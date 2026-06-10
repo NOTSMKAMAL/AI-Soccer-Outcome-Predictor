@@ -46,8 +46,8 @@ Covers all three functionalities (User Authentication, Fixture Discovery, Match 
 
 ## Demo Video
 
-Watch the Demo Video: https://youtu.be/PLACEHOLDER
-*(Update this link before final submission)*
+Watch the Demo Video: [https://youtu.be/PLACEHOLDER](https://www.youtube.com/watch?v=s4UfIk_ctJw)
+
 
 ---
 
