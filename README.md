@@ -46,7 +46,7 @@ Covers all three functionalities (User Authentication, Fixture Discovery, Match 
 
 ## Demo Video
 
-Watch the Demo Video: [https://youtu.be/PLACEHOLDER](https://www.youtube.com/watch?v=s4UfIk_ctJw)
+Watch the Demo Video: [https://youtu.be/CS180DEMO](https://www.youtube.com/watch?v=s4UfIk_ctJw)
 
 
 ---
