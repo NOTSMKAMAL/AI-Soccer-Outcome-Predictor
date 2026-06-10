@@ -1,4 +1,4 @@
-# AI Sports Outcome Predictor
+# FUTURE FC (Soccer Outcome Predictor)
 
 **Course**: CS180 Final Project
 **Team**: SM Kamal, Brian Garcia
