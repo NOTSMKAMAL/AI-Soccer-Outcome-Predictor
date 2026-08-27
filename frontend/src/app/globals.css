@@ -201,7 +201,7 @@ html {
   }
 
   /* ── Source badges ── */
-  .badge-sportmonks {
+  .badge-football-data {
     display: inline-flex; align-items: center; gap: 5px;
     background: rgba(19,187,175,0.10); color: var(--accent-3);
     border: 1px solid rgba(19,187,175,0.22);

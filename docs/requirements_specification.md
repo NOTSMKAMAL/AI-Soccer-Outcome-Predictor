@@ -36,20 +36,20 @@
 
 **Input:**
 - `GET /api/fixtures` (no authentication required)
-- Implicit inputs: current date in America/Los_Angeles, SPORTMONKS_API_KEY from environment
+- Implicit inputs: current date in America/Los_Angeles, FOOTBALL_DATA_API_KEY from environment
 
 **Output:**
 - JSON list of normalized fixture objects, each containing: `id`, `name`, `homeTeam {id, name, logo}`, `awayTeam {id, name, logo}`, `startingAt` (UTC string), `leagueId`, `leagueName`, `seasonId`, `status`, `venue`, `_isMock`
-- `source` field indicating `"sportmonks"` (live data) or `"mock"` (fallback)
+- `source` field indicating `"football-data"` (live data) or `"mock"` (fallback)
 
 **Success:**
-- SportMonks returns fixtures for the date window (14 days back, 60 days ahead) → backend normalizes and merges with demo fixtures → frontend filters to today/tomorrow in LA time → fixture cards rendered grouped by league
+- football-data.org returns fixtures for the window (3 days back, 180 days ahead) per competition → backend normalizes and caches them → frontend groups them by day in LA time → fixture cards rendered grouped by league
 - User can switch between Today and Tomorrow tabs; filter by league name; search by team name
 
 **Failure / Edge Cases:**
-- SportMonks API key missing → backend logs error, returns demo fixtures with `source: "mock"`
-- SportMonks returns only past fixtures (all `starting_at` before today) → demo fixtures (which always have dynamic today/tomorrow dates) are still present in the merged response and pass the frontend date filter
-- SportMonks HTTP 403 → fallback strategy tries `/fixtures/upcoming/leagueId/{id}` per league; if all fail → demo fixtures returned
+- football-data.org API key missing → backend logs the error and returns demo fixtures with `source: "mock"`
+- A competition has no upcoming fixtures (off-season) → the wide 180-day window still surfaces the next published fixtures; if every competition is empty, demo fixtures with dynamic today/tomorrow dates are returned instead
+- football-data.org HTTP 403/429 (free-tier limit) → the cached fixture list is served if warm; if every competition fails → demo fixtures returned
 - Backend unreachable from frontend → `catch` block in `fetchFixtures()` sets fixtures to `MOCK_FIXTURES` from `mockData.ts`; "Preview Data" badge shown
 
 ---
@@ -71,10 +71,10 @@
 - `headToHead`: historical W/D/L record and 5 most recent results between the two teams
 
 **Success:**
-- Backend resolves fixture → runs 7 parallel SportMonks enrichment calls → Dixon-Coles computes `{home_win, draw, away_win}` → winner determined → Gemini prompt constructed with DC winner + full enriched context → Gemini returns parsed response → DC winner and confidence override Gemini's qualitative labels → JSON returned to frontend → probability bar, verdict card, reasoning, and key factors rendered
+- Backend resolves fixture → runs 7 parallel football-data.org enrichment calls → Dixon-Coles computes `{home_win, draw, away_win}` → winner determined → Gemini prompt constructed with DC winner + full enriched context → Gemini returns parsed response → DC winner and confidence override Gemini's qualitative labels → JSON returned to frontend → probability bar, verdict card, reasoning, and key factors rendered
 
 **Failure / Edge Cases:**
-- Fixture not in cache and not found on SportMonks → HTTP 404 "Fixture not found"
+- Fixture not in cache and not found on football-data.org → HTTP 404 "Fixture not found"
 - `GEMINI_API_KEY` not set or engine import fails → HTTP 501 "Prediction engine unavailable"
 - Individual enrichment calls fail (e.g., xG returns 403 on Starter plan) → `_safe()` wrapper returns `None`; pipeline continues with available data; missing fields simply absent from Gemini prompt
 - Dixon-Coles returns `None` (insufficient stats data — e.g., team has 0 matches played) → falls back to confidence-estimate probability mapping `{high: (0.72, 0.18, 0.10), medium: (0.52, 0.23, 0.25), low: (0.38, 0.28, 0.34)}`
@@ -113,12 +113,12 @@
 - `src/components/MatchCard.tsx`: displays fixture card; links to `/prediction/[id]`
 
 **Engine responsibilities:**
-- `backend/main.py` `list_fixtures()`: seeds `_fixture_cache` with demo fixtures first; calls `get_upcoming_mls_fixtures()`; merges real fixtures around demo fixtures; returns combined list with `source` field
-- `backend/main.py` `_normalize_fixture()`: converts raw SportMonks fixture dict to frontend-compatible shape (`homeTeam`, `awayTeam`, `startingAt`, `leagueName`, `status`, `score`, `_isMock`)
-- `backend/main.py` `_get_mock_mls_fixtures()`: generates demo fixtures with dynamic today/tomorrow UTC kickoff times using `_mock_fixture_at()`
+- `backend/main.py` `list_fixtures()`: serves a 5-minute TTL cache; otherwise calls `get_upcoming_fixtures()` and seeds `_fixture_cache`; falls back to demo fixtures with `source: "mock"`
+- `storage/league_data_client.py` `_normalize_match()`: converts a raw football-data.org match into the frontend-compatible shape (`homeTeam`, `awayTeam`, `startingAt`, `leagueName`, `status`, `score`, `_isMock`)
+- `backend/main.py` `_get_mock_fixtures()`: generates demo fixtures with dynamic today/tomorrow UTC kickoff times using `_mock_fixture_at()`
 
 **Storage responsibilities:**
-- `storage/sportmonks_client.py` `get_upcoming_mls_fixtures()`: primary call to `/fixtures/between/{start}/{end}` (14 days back, 60 days ahead); fallback to `/fixtures/upcoming/leagueId/{id}` per league; merges and deduplicates by fixture ID
+- `storage/league_data_client.py` `get_upcoming_fixtures()`: one `/competitions/{code}/matches` call per competition over a today−3 → today+180 window; keeps the soonest non-finished fixtures per competition; caches the merged list for 5 minutes (free tier is 10 requests/minute)
 
 ---
 
@@ -134,7 +134,7 @@
 - `engine/prediction_engine.py` `_build_enriched_section()`: formats enriched data (form, standings, xG, trends, injuries, lineups, top scorers, squad depth) into labeled prompt sections
 
 **Storage responsibilities:**
-- `storage/sportmonks_client.py`: provides all 7 enrichment functions — `get_fixtures_between_for_team()` (recent form), `get_season_standings()` (standings + team stats), `get_fixture_with_xg()` (xG + trends), `get_fixture_lineups()` (confirmed lineups), `get_topscorers_with_names()` (top scorers), `get_squad()` (squad depth), `get_head_to_head()` (H2H history)
+- `storage/league_data_client.py`: provides all 7 enrichment functions — `get_fixtures_between_for_team()` (recent form), `get_season_standings()` (standings + team stats), `get_fixture_with_xg()` and `get_fixture_lineups()` (empty payloads — not on the free tier), `get_topscorers_with_names()` (top scorers), `get_squad()` (squad depth), `get_head_to_head()` (H2H history)
 
 ---
 
@@ -186,7 +186,7 @@ Return payload/status:
 ```json
 {
   "status": "success",
-  "source": "sportmonks | mock",
+  "source": "football-data | mock",
   "data": [ { "id": "…", "homeTeam": {…}, "awayTeam": {…}, "startingAt": "…", "leagueName": "…", "status": "NS", "_isMock": false } ]
 }
 ```
@@ -197,18 +197,18 @@ Failure statuses:
 
 **engine → storage**
 
-Function(s): `get_upcoming_mls_fixtures()`
+Function(s): `get_upcoming_fixtures()`
 
-Input payload: none (reads `SPORTMONKS_API_KEY` from environment)
+Input payload: none (reads `FOOTBALL_DATA_API_KEY` from environment)
 
 Return payload/status:
 ```json
-{ "status": "success", "data": [ <raw SportMonks fixture dicts> ] }
+{ "status": "success", "data": [ <normalized fixture dicts> ], "source": "football-data" }
 ```
 
 Failure statuses:
-- `{"status": "error", "message": "SPORTMONKS_API_KEY is not set…"}` → mock fallback
-- `{"status": "error", "message": "HTTP 403 Forbidden…"}` → per-league fallback attempted
+- `{"status": "error", "message": "FOOTBALL_DATA_API_KEY is not set…"}` → mock fallback
+- `{"status": "error", "message": "HTTP 403 Forbidden…"}` → cached list served when warm
 - All strategies return empty → `{"status": "error", "message": "…0 fixtures…"}` → mock fallback
 
 ---
@@ -245,13 +245,15 @@ Return payload/status:
 
 Failure statuses:
 - `HTTP 401` — invalid or missing token
-- `HTTP 404` — fixture not found in cache or SportMonks
+- `HTTP 403` — signed-in account is not on the `ALLOWED_EMAILS` allowlist
+- `HTTP 429` — per-user or shared daily prediction cap reached (resets 00:00 UTC)
+- `HTTP 404` — fixture not found in cache or on football-data.org
 - `HTTP 501` — "Prediction engine unavailable — GEMINI_API_KEY may not be set"
 - `HTTP 500` — "Prediction engine error: {exception message}"
 
 **engine → storage**
 
-Function(s): 7 SportMonks calls via `_gather_enriched()` (all wrapped in `_safe()`):
+Function(s): 7 football-data.org calls via `_gather_enriched()` (all wrapped in `_safe()`):
 - `get_fixtures_between_for_team(team_id, start, end, 5)`
 - `get_season_standings(season_id)`
 - `get_fixture_with_xg(fixture_id)`

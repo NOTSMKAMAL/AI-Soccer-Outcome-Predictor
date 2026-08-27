@@ -21,6 +21,7 @@ const LEAGUE_ACCENTS: Record<string, string> = {
   "Premier League":        "#9381FF",
   "La Liga":               "#EE8707",
   "Serie A":               "#4A9FFF",
+  "Bundesliga":            "#E82E2E",
   "Ligue 1":               "#4A9FFF",
   "Champions League":      "#F8C25C",
   "UEFA Champions League": "#F8C25C",
@@ -109,7 +110,7 @@ function DashboardContent() {
       } else {
         setFixtures(data);
         if (source === "mock") setIsMockData(true);
-        else if (source === "sportmonks") setIsLiveData(true);
+        else if (source === "football-data" || source === "cache") setIsLiveData(true);
       }
       setState("success");
     } catch (err: unknown) {
@@ -187,7 +188,7 @@ function DashboardContent() {
               {isLiveData && (
                 <span className="badge-live">
                   <span className="live-dot" style={{ width: 6, height: 6 }} />
-                  SportMonks Live
+                  football-data.org Live
                 </span>
               )}
               {isMockData && !isLiveData && (
@@ -226,7 +227,7 @@ function DashboardContent() {
                 stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
             <p style={{ margin: 0, fontSize: 13, color: "#F8C25C" }}>
-              Showing preview fixtures because live SportMonks data is not available.
+              Showing preview fixtures because live football-data.org data is not available.
             </p>
           </div>
         )}

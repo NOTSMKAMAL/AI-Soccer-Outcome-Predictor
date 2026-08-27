@@ -6,8 +6,8 @@
 export const LA_TZ = "America/Los_Angeles";
 
 /**
- * Parse a SportMonks date string into a JS Date.
- * Handles all three formats SportMonks may return:
+ * Parse a football-data.org date string into a JS Date.
+ * Handles all three formats football-data.org may return:
  *   "YYYY-MM-DD HH:MM:SS"   → no offset → treat as UTC
  *   "YYYY-MM-DD"            → bare date → midnight UTC
  *   ISO-8601 with T/offset  → passed through as-is

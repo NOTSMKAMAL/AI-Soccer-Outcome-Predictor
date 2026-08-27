@@ -56,7 +56,7 @@ function HeroPreviewCard() {
             background: "var(--surface-2)",
             border: "1px solid var(--border)",
           }}>
-            SportMonks live
+            football-data.org live
           </span>
         </div>
 
@@ -128,19 +128,20 @@ function HeroPreviewCard() {
 // ── Data ──────────────────────────────────────────────────────────────────────
 
 const LEAGUES = [
-  { name: "Premier League", country: "England", color: "#9381FF" },
-  { name: "La Liga",         country: "Spain",   color: "#EE8707" },
-  { name: "Serie A",         country: "Italy",   color: "#4A9FFF" },
-  { name: "Major League Soccer", country: "United States", color: "#00B2A9" },
-  { name: "Ligue 1",         country: "France",  color: "#4A9FFF" },
+  { name: "Premier League",   country: "England", color: "#9381FF" },
+  { name: "La Liga",          country: "Spain",   color: "#EE8707" },
+  { name: "Serie A",          country: "Italy",   color: "#4A9FFF" },
+  { name: "Bundesliga",       country: "Germany", color: "#EE8707" },
+  { name: "Ligue 1",          country: "France",  color: "#4A9FFF" },
+  { name: "Champions League", country: "Europe",  color: "#00B2A9" },
 ];
 
 const FEATURES = [
   {
     icon: <path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />,
     title: "Real match data",
-    desc: "Live SportMonks fixtures, lineups and stats. No guessing, no scraped tables.",
-    meta: "SportMonks v3",
+    desc: "Live football-data.org fixtures, lineups and stats. No guessing, no scraped tables.",
+    meta: "football-data.org",
   },
   {
     icon: <path d="M13 10V3L4 14h7v7l9-11h-7z" />,
@@ -157,14 +158,14 @@ const FEATURES = [
   {
     icon: <path d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />,
     title: "League-focused dashboard",
-    desc: "Premier League, La Liga, Serie A, Ligue 1, MLS — live fixtures across all five, every day.",
-    meta: "5 top leagues",
+    desc: "Premier League, La Liga, Serie A, Bundesliga, Ligue 1 and the Champions League — live fixtures every day.",
+    meta: "6 competitions",
   },
 ];
 
 const STEPS = [
   { n: "01", title: "Sign in",                   desc: "Email / password or Google. Firebase Auth handles the rest." },
-  { n: "02", title: "Browse today's matches",    desc: "Real fixtures across all five leagues, filtered by date and league." },
+  { n: "02", title: "Browse today's matches",    desc: "Real fixtures across all six competitions, filtered by date and league." },
   { n: "03", title: "Generate an AI prediction", desc: "One click sends the fixture context to Gemini for a structured verdict." },
   { n: "04", title: "Review the breakdown",      desc: "Confidence band, reasoning, weighted factors and risk — every input on display." },
 ];
@@ -334,7 +335,7 @@ export default function HomePage() {
 
             {/* Trust row */}
             <div style={{ display: "flex", flexWrap: "wrap", gap: "8px 20px" }}>
-              {["No credit card", "Live SportMonks data", "Gemini reasoning"].map((t) => (
+              {["No credit card", "Live football-data.org data", "Gemini reasoning"].map((t) => (
                 <span key={t} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--muted)" }}>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#13BBAF" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M20 6L9 17l-5-5" />
@@ -354,7 +355,7 @@ export default function HomePage() {
       <section id="leagues" style={{ position: "relative", zIndex: 1, borderTop: "1px solid var(--border)", borderBottom: "1px solid var(--border)", background: "var(--surface)" }}>
         <div style={{ maxWidth: 1200, margin: "0 auto", padding: "20px 32px", display: "flex", alignItems: "center", gap: 24, flexWrap: "wrap" }}>
           <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--muted-2)", flexShrink: 0 }}>
-            Covers the top five leagues
+            Covers Europe's top competitions
           </span>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             {LEAGUES.map((l) => (
@@ -476,7 +477,7 @@ export default function HomePage() {
             Ready to see today&apos;s board?
           </h2>
           <p style={{ fontSize: 16, color: "var(--muted)", maxWidth: 480, margin: "0 auto 32px", lineHeight: 1.6 }}>
-            Sign in to access live fixtures and AI predictions across all five leagues.
+            Sign in to access live fixtures and AI predictions across all six competitions.
           </p>
           <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
             <Link href="/auth" style={{
@@ -527,7 +528,7 @@ export default function HomePage() {
               FUTURE FC
             </div>
             <p style={{ fontSize: 12, color: "var(--muted-2)", margin: 0 }}>
-              SportMonks data · Gemini reasoning · Firebase Auth
+              football-data.org data · Gemini reasoning · Firebase Auth
             </p>
           </div>
           <p style={{ fontSize: 12, color: "var(--muted-2)", margin: 0, maxWidth: 360, textAlign: "right" }}>

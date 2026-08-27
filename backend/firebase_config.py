@@ -1,4 +1,6 @@
+import json
 import os
+
 import firebase_admin
 from firebase_admin import auth, credentials
 from firebase_admin.auth import (
@@ -16,10 +18,12 @@ _init_attempted: bool = False
 def _get_app() -> firebase_admin.App | None:
     """Initialize Firebase Admin SDK once and cache the result.
 
-    Tries two strategies in order:
-      1. Service account JSON file (FIREBASE_SERVICE_ACCOUNT_PATH in .env,
+    Tries three strategies in order:
+      1. Inline service account JSON (FIREBASE_SERVICE_ACCOUNT_JSON) — the one
+         that works on hosts where you can set env vars but not upload a file.
+      2. Service account JSON file (FIREBASE_SERVICE_ACCOUNT_PATH in .env,
          default ./serviceAccountKey.json).
-      2. Application Default Credentials + FIREBASE_PROJECT_ID env var
+      3. Application Default Credentials + FIREBASE_PROJECT_ID env var
          (requires `gcloud auth application-default login` or running on GCP).
 
     Prints safe diagnostics so the issue is visible in the uvicorn terminal.
@@ -32,7 +36,18 @@ def _get_app() -> firebase_admin.App | None:
         return None
     _init_attempted = True
 
-    # ── Strategy 1: service account JSON file ────────────────────────────────
+    # ── Strategy 1: inline service account JSON (hosting-friendly) ───────────
+    inline = (os.getenv("FIREBASE_SERVICE_ACCOUNT_JSON") or "").strip()
+    if inline:
+        try:
+            cred = credentials.Certificate(json.loads(inline))
+            _app = firebase_admin.initialize_app(cred)
+            print("[Firebase] Initialized from FIREBASE_SERVICE_ACCOUNT_JSON — token verification ready")
+            return _app
+        except Exception as exc:
+            print(f"[Firebase] ERROR initializing from FIREBASE_SERVICE_ACCOUNT_JSON: {exc}")
+
+    # ── Strategy 2: service account JSON file ────────────────────────────────
     sa_path = FIREBASE_SERVICE_ACCOUNT_PATH or "./serviceAccountKey.json"
     sa_exists = os.path.exists(sa_path)
     print(f"[Firebase] Service account path: '{sa_path}', file exists: {sa_exists}")
@@ -46,7 +61,7 @@ def _get_app() -> firebase_admin.App | None:
         except Exception as exc:
             print(f"[Firebase] ERROR initializing with service account file: {exc}")
 
-    # ── Strategy 2: Application Default Credentials + project ID ─────────────
+    # ── Strategy 3: Application Default Credentials + project ID ─────────────
     project_id = os.getenv("FIREBASE_PROJECT_ID") or os.getenv("GOOGLE_CLOUD_PROJECT")
     print(
         f"[Firebase] Trying Application Default Credentials, "
@@ -63,15 +78,16 @@ def _get_app() -> firebase_admin.App | None:
         except Exception as exc:
             print(f"[Firebase] ERROR initializing with Application Default Credentials: {exc}")
 
-    # ── Neither strategy worked ───────────────────────────────────────────────
+    # ── No strategy worked ────────────────────────────────────────────────────
     print(
         "[Firebase] CRITICAL: Firebase Admin SDK could not be initialized.\n"
         "  Token verification will reject ALL requests with 401.\n"
         "  Fix ONE of the following:\n"
-        "  Option A (recommended): Download serviceAccountKey.json from Firebase Console\n"
+        "  Option A (local): Download serviceAccountKey.json from Firebase Console\n"
         "    → Firebase Console → Project Settings → Service Accounts\n"
         "    → 'Generate new private key' → save as ./serviceAccountKey.json\n"
-        "  Option B: Set FIREBASE_PROJECT_ID=your-project-id in .env\n"
+        "  Option B (hosting): paste that same JSON into FIREBASE_SERVICE_ACCOUNT_JSON\n"
+        "  Option C: Set FIREBASE_PROJECT_ID=your-project-id in .env\n"
         "    then run: gcloud auth application-default login"
     )
     return None

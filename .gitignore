@@ -36,9 +36,6 @@ htmlcov/
 .DS_Store
 Thumbs.db
 
-# Streamlit
-.streamlit/secrets.toml
-
 # Claude Code
 .claude/
 
@@ -52,6 +49,13 @@ frontend/tsconfig.tsbuildinfo
 frontend/*.log
 frontend/.next-dev*.log
 
-venv/
-.env
+# Generated backtest artifacts (large / re-derivable)
+scripts/data/reliability_*.html
+scripts/data/backtest_csv_results_leaky.json
+
+# SQLite prediction-history system of record (accumulates at runtime, re-derivable)
+scripts/data/predictions.db
+scripts/data/predictions.db-journal
+scripts/data/predictions.db-wal
+scripts/data/predictions.db-shm
 

@@ -274,9 +274,9 @@ function MatchHeaderCard({ fixture }: { fixture: Fixture }) {
       <div className="relative z-10">
         {/* Badges */}
         <div className="mb-5 flex flex-wrap items-center gap-2">
-          <span className="badge-sportmonks flex items-center gap-1.5">
+          <span className="badge-football-data flex items-center gap-1.5">
             <span className="h-1.5 w-1.5 rounded-full" style={{ background: "var(--accent-2)" }} />
-            SportMonks
+            football-data.org
           </span>
           <span className="badge-gemini flex items-center gap-1.5">
             <svg width="10" height="10" viewBox="0 0 24 24" fill="none">
@@ -473,7 +473,7 @@ function H2HTimeline({ h2h, teamA, teamB }: { h2h: Prediction["headToHead"]; tea
     <div className="card-glass p-6">
       <div className="flex items-center justify-between mb-4">
         <h3 className="section-label">Head to Head History</h3>
-        <SectionBadge label="HISTORICAL DATA • SportMonks v3" />
+        <SectionBadge label="HISTORICAL DATA • football-data.org" />
       </div>
       <div className="flex gap-6 mb-4 text-center">
         {[
@@ -628,7 +628,7 @@ function RecentFormSection({ formA, formB, teamA, teamB, teamAId, teamBId }: {
     <div className="card-glass p-6">
       <div className="flex items-center justify-between mb-4">
         <h3 className="section-label">Recent Form</h3>
-        <SectionBadge label="SCHEDULES & RESULTS • SportMonks v3" />
+        <SectionBadge label="SCHEDULES & RESULTS • football-data.org" />
       </div>
       <div className="grid grid-cols-2 gap-4">
         {[
@@ -665,7 +665,7 @@ function XGSection({ xg, teamA, teamB }: { xg: { team_a_xg: number; team_b_xg: n
     <div className="card-glass p-6">
       <div className="flex items-center justify-between mb-4">
         <h3 className="section-label">xG Match Analysis</h3>
-        <SectionBadge label="EXPECTED GOALS (xG) • SportMonks v3" />
+        <SectionBadge label="EXPECTED GOALS (xG) • football-data.org" />
       </div>
       <p className="text-xs mb-5" style={{ color: "var(--muted)" }}>
         xG = Expected Goals — measures quality of chances regardless of scoreline.
@@ -732,7 +732,7 @@ function InjurySection({ injuries, teamA, teamB }: { injuries: { team_a: InjuryP
     <div className="card-glass p-6">
       <div className="flex items-center justify-between mb-4">
         <h3 className="section-label">Injuries &amp; Suspensions</h3>
-        <SectionBadge label="INJURIES & SUSPENSIONS • SportMonks v3" />
+        <SectionBadge label="INJURIES & SUSPENSIONS • football-data.org" />
       </div>
       {!injuries ? <DataUnavailable /> : (
         <div className="grid grid-cols-2 gap-6">
@@ -796,7 +796,7 @@ function SeasonStatsSection({ statsA, statsB, teamA, teamB }: { statsA: TeamStat
     <div className="card-glass p-6">
       <div className="flex items-center justify-between mb-4">
         <h3 className="section-label">Season Statistics</h3>
-        <SectionBadge label="STATISTICS • SportMonks v3" />
+        <SectionBadge label="STATISTICS • football-data.org" />
       </div>
       {noData ? <DataUnavailable /> : (
         <>
@@ -827,7 +827,7 @@ function StandingsSection({ standings, teamAId, teamBId }: { standings: Standing
     <div className="card-glass p-6 overflow-x-auto">
       <div className="flex items-center justify-between mb-4">
         <h3 className="section-label">League Standings</h3>
-        <SectionBadge label="STANDINGS • SportMonks v3" />
+        <SectionBadge label="STANDINGS • football-data.org" />
       </div>
       <table className="w-full text-xs" style={{ color: "var(--muted)" }}>
         <thead>
@@ -888,7 +888,7 @@ function TrendsSection({ trends, teamA, teamB }: { trends: { team_a: string[]; t
     <div className="card-glass p-6">
       <div className="flex items-center justify-between mb-4">
         <h3 className="section-label">Current Trends</h3>
-        <SectionBadge label="LIVESCORES & EVENTS • SportMonks v3" />
+        <SectionBadge label="LIVESCORES & EVENTS • football-data.org" />
       </div>
       <div className="grid grid-cols-2 gap-6">
         {[{ name: teamA, items: trends.team_a }, { name: teamB, items: trends.team_b }].map(({ name, items }) => (
@@ -989,7 +989,7 @@ function PredictionSummaryPanel({ fixture, prediction }: { fixture: Fixture; pre
           { term: "Confidence", value: prediction.confidence ? prediction.confidence.charAt(0).toUpperCase() + prediction.confidence.slice(1) : "Unknown" },
           { term: "Match", value: fixture.name },
           { term: "League", value: fixture.leagueName },
-          { term: "Fixture Source", value: fixture._isMock ? "Preview (mock)" : "SportMonks v3" },
+          { term: "Fixture Source", value: fixture._isMock ? "Preview (mock)" : "football-data.org" },
           { term: "AI Engine", value: "Google Gemini 2.5 Flash" },
         ].map(({ term, value }) => (
           <div key={term} className="flex items-start justify-between gap-3 text-sm">
@@ -1015,7 +1015,7 @@ function DataAvailabilitySection() {
         <div>
           <h4 className="font-semibold text-sm mb-1" style={{ color: "var(--ink)" }}>Advanced Stats</h4>
           <p className="text-xs leading-relaxed" style={{ color: "var(--muted)" }}>
-            xG, form tables, standings, injuries, and top scorers are sourced live from SportMonks v3. Player stats and predicted line-ups pending backend expansion.
+            xG, form tables, standings, injuries, and top scorers are sourced live from football-data.org. Player stats and predicted line-ups pending backend expansion.
           </p>
         </div>
       </div>
@@ -1026,7 +1026,7 @@ function DataAvailabilitySection() {
 function Disclaimer() {
   return (
     <p className="text-center text-xs leading-relaxed max-w-md mx-auto" style={{ color: "var(--muted-2)" }}>
-      Predictions are for analytics and entertainment only. Not betting advice. AI analysis generated by Google Gemini using SportMonks fixture data.
+      Predictions are for analytics and entertainment only. Not betting advice. AI analysis generated by Google Gemini using football-data.org fixture data.
     </p>
   );
 }
@@ -1200,11 +1200,16 @@ function PredictionContent({ matchId }: { matchId: string }) {
     } catch (err: unknown) {
       setEnrichedLoading(false);
       const msg = err instanceof Error ? err.message : "Prediction failed.";
+      const detail = msg.replace(/^API \d+:\s*/, "");
       if (msg.includes("501")) {
-        setErrorMsg("Prediction unavailable for this fixture — real SportMonks data required.");
+        setErrorMsg("Prediction unavailable for this fixture — real football-data.org data required.");
+        setPageState("unavailable");
+      } else if (msg.includes("403") || msg.includes("429")) {
+        // Access allowlist or daily prediction limit — show the backend's reason.
+        setErrorMsg(detail);
         setPageState("unavailable");
       } else {
-        setErrorMsg(msg);
+        setErrorMsg(detail);
         setPageState("error");
       }
     }
@@ -1341,7 +1346,7 @@ function PredictionContent({ matchId }: { matchId: string }) {
             <div>
               <h3 className="font-semibold" style={{ color: "var(--ink)" }}>Prediction Unavailable</h3>
               <p className="mt-2 text-sm max-w-sm" style={{ color: "var(--muted)" }}>
-                {errorMsg || "Backend endpoint pending — real SportMonks data required for this fixture."}
+                {errorMsg || "Backend endpoint pending — real football-data.org data required for this fixture."}
               </p>
             </div>
             <Link href="/dashboard" className="btn-ghost text-sm px-6 py-2.5">← Back to matches</Link>

@@ -567,27 +567,46 @@ class TestRegressionInvariants:
         assert log_loss < 1.10, \
             f"Log loss {log_loss:.4f} should be < 1.10 (random baseline)"
 
-    def test_high_confidence_accuracy(self):
-        """High-confidence predictions must achieve >70% accuracy."""
+    def test_high_confidence_predictions_beat_overall(self):
+        """
+        Confidence must be informative: high-confidence (>=65%) predictions must
+        be MORE accurate than the overall rate. The honest point-in-time baseline
+        is ~59.3% high-conf vs ~48.4% overall. The old >0.70 bar defended the
+        lookahead-contaminated 73.7% and is intentionally retired.
+        """
         backtest_file = Path(__file__).parent.parent / "scripts" / "data" / "backtest_csv_results.json"
         with open(backtest_file) as fh:
             data = json.load(fh)
 
         calibration_acc = float(data.get("calibration_accuracy", 0))
+        overall_acc = float(data["overall_accuracy"])
 
-        assert calibration_acc > 0.70, \
-            f"Calibration accuracy {calibration_acc:.4f} should be > 0.70"
+        assert calibration_acc > overall_acc, \
+            f"High-confidence accuracy {calibration_acc:.4f} should exceed overall {overall_acc:.4f}"
+
+    def test_csv_baseline_is_point_in_time(self):
+        """Guard: the canonical baseline must be the honest, no-lookahead run."""
+        backtest_file = Path(__file__).parent.parent / "scripts" / "data" / "backtest_csv_results.json"
+        with open(backtest_file) as fh:
+            data = json.load(fh)
+
+        assert data.get("point_in_time") is True, \
+            "backtest_csv_results.json must be the point-in-time (no-lookahead) baseline, " \
+            "not the leaky full-season-aggregate run."
 
     def test_csv_fixture_count(self):
-        """CSV backtest must cover 1747 fixtures."""
+        """
+        Point-in-time evaluated set: 1747 loaded minus per-team warm-up skips.
+        1526 is the honest no-lookahead count.
+        """
         backtest_file = Path(__file__).parent.parent / "scripts" / "data" / "backtest_csv_results.json"
         with open(backtest_file) as fh:
             data = json.load(fh)
 
         total = int(data["total_fixtures"])
 
-        assert total == 1747, \
-            f"CSV backtest should have 1747 fixtures, got {total}"
+        assert total == 1526, \
+            f"Point-in-time CSV backtest should evaluate 1526 fixtures, got {total}"
 
     def test_all_leagues_represented(self):
         """Backtest should cover all 5 leagues."""
@@ -725,10 +744,14 @@ class TestRegressionBaseline:
 
         assert "overall_accuracy" in data, "Missing 'overall_accuracy' in baseline"
         accuracy = float(data["overall_accuracy"])
-        assert accuracy > 0.50, \
-            f"CSV baseline accuracy {accuracy:.2%} is below 50% — regression detected"
-        assert data["total_fixtures"] == 1747, \
-            "Baseline should be from 1747 fixtures (CSV mode)"
+        home_baseline = float(data["home_baseline_accuracy"])
+        # Honest point-in-time accuracy (~48.4%) is BELOW 50% — the old >0.50 bar
+        # defended the lookahead-inflated number. The real guardrail is that the
+        # model still beats the always-pick-home baseline.
+        assert accuracy > home_baseline, \
+            f"CSV baseline accuracy {accuracy:.2%} must beat home baseline {home_baseline:.2%}"
+        assert data["total_fixtures"] == 1526, \
+            "Point-in-time baseline should evaluate 1526 fixtures (CSV mode)"
 
     def test_api_baseline_preserved(self):
         """API baseline must stay at exactly 54.7% (±0.5pp)."""
@@ -743,17 +766,17 @@ class TestRegressionBaseline:
             f"API baseline {api_baseline:.3f} drifted from 0.547 (±0.005)"
 
     def test_all_active_leagues_in_home_advantage(self):
-        """Every league in FETCH_LEAGUE_IDS must have an explicit home advantage coefficient.
+        """Every active competition must have an explicit home advantage coefficient.
 
         Per CS180 NITR structural oracle: prevents future leagues being added to
-        the fetch list without a calibrated coefficient, which causes silent fallback
-        to the default 1.15 value and less accurate predictions.
+        the supported list without a calibrated coefficient, which causes silent
+        fallback to the default 1.15 value and less accurate predictions.
         """
-        from storage.sportmonks_client import FETCH_LEAGUE_IDS
+        from storage.league_data_client import COMPETITION_IDS
         from engine.prediction_engine import _HOME_ADVANTAGE
 
-        for league_id in FETCH_LEAGUE_IDS:
+        for league_id in COMPETITION_IDS.values():
             assert league_id in _HOME_ADVANTAGE, (
-                f"League {league_id} is in FETCH_LEAGUE_IDS but missing from "
+                f"Competition {league_id} is supported but missing from "
                 f"_HOME_ADVANTAGE — add a calibrated coefficient or remove the league."
             )

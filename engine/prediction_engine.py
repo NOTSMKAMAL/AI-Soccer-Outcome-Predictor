@@ -4,7 +4,8 @@ from datetime import date as _date
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
-from storage.sportmonks_client import check_team_data, get_head_to_head, get_recent_fixtures, get_season_team_stats
+from storage.league_data_client import check_team_data, get_head_to_head, get_recent_fixtures, get_season_team_stats
+from engine import scoring
 
 load_dotenv()
 
@@ -13,19 +14,29 @@ client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 _season_stats_cache: dict[int, dict] = {}
 _prediction_cache: dict[tuple, dict] = {}
 
-# Per-league home advantage coefficients (Dixon-Coles research)
-# MLS lower due to large travel distances and weaker crowd effects
+# Per-league home advantage coefficients (Dixon-Coles research).
+# Keyed by football-data.org competition ids (the live data source). Legacy
+# Historical league ids are retained so the offline backtest dataset resolves.
 _HOME_ADVANTAGE = {
-    8:   1.18,   # Premier League — strong home crowds
-    564: 1.16,   # La Liga — strong home support
-    384: 1.15,   # Serie A — standard home advantage
-    301: 1.13,   # Ligue 1 — slightly below average
-    779: 1.08,   # MLS — weakest due to travel distances
+    # football-data.org competition ids
+    2021: 1.18,  # Premier League — strong home crowds
+    2002: 1.15,  # Bundesliga — standard home advantage
+    2014: 1.16,  # La Liga — strong home support
+    2019: 1.15,  # Serie A — standard home advantage
+    2015: 1.13,  # Ligue 1 — slightly below average
+    2001: 1.15,  # Champions League — mixed venues, treat as standard
+    # historical ids used by scripts/data/enriched_fixtures.csv
+    8:   1.18,   # Premier League
+    564: 1.16,   # La Liga
+    384: 1.15,   # Serie A
+    301: 1.13,   # Ligue 1
+    779: 1.08,   # MLS
 }
 _HOME_ADVANTAGE_DEFAULT = 1.15  # fallback for unknown leagues
 
-# Confidence thresholds based on winner probability
-# Calibrated from backtest: high-confidence (≥65%) accuracy was 73.7%
+# Confidence thresholds based on winner probability.
+# Point-in-time backtest: high-confidence (≥65%) predictions hit 59.3% accuracy
+# versus 48.4% overall — the label is informative but over-confident.
 _CONF_HIGH   = 0.65  # winner prob ≥ 65% → High
 _CONF_MEDIUM = 0.45  # winner prob ≥ 45% → Medium
                      # below 45% → Low
@@ -486,7 +497,7 @@ def generate_prediction(
     else:
         h2h_section = (
             "No head-to-head history exists between these teams in the database. "
-            "Use your general knowledge of these MLS teams to make a prediction."
+            "Use your general knowledge of these teams to make a prediction."
         )
 
     # Dixon-Coles probabilities — computed from standings data, never from Gemini
@@ -673,18 +684,13 @@ Team B: {team_b_name}
                  dc_probs["away_win"] >= dc_probs["draw"]:
                 result_data["winner"] = team_b_name
 
-            # Override confidence with probability-derived label
+            # Override confidence with probability-derived label (shared scoring).
             # Gemini's confidence label is qualitative and inconsistent —
-            # computed label is reproducible and consistent with probability bars
+            # the computed label is reproducible and consistent with probability bars.
             winner_prob = max(dc_probs["home_win"],
                               dc_probs["draw"],
                               dc_probs["away_win"])
-            if winner_prob >= _CONF_HIGH:
-                result_data["confidence"] = "high"
-            elif winner_prob >= _CONF_MEDIUM:
-                result_data["confidence"] = "medium"
-            else:
-                result_data["confidence"] = "low"
+            result_data["confidence"] = scoring.confidence_from_prob(winner_prob)
 
         else:
             # Confidence-label fallback: assign probabilities based on predicted winner
@@ -700,6 +706,16 @@ Team B: {team_b_name}
             result_data["draw_probability"]     = dr_p
             result_data["away_win_probability"] = l_p if winner_is_home else w_p
             result_data["probability_method"]   = "confidence-estimate"
+
+        # Unified scoring fields (parity with the WC engine via engine/scoring.py).
+        result_data["risk_level"] = scoring.compute_risk_level(
+            result_data.get("confidence", "low"),
+            result_data.get("draw_probability"),
+        )
+        # No league betting market is wired into this path yet, so value_signal is
+        # None until a market-implied probability is available (Phase 3 records the
+        # market snapshots that drive edge/CLV).
+        result_data.setdefault("value_signal", None)
 
         # Cache successful prediction result
         result = {"status": "success", "data": result_data}

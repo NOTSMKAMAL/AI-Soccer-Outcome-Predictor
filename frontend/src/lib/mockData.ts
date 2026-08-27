@@ -1,7 +1,8 @@
 /**
  * MOCK FALLBACK ONLY.
  * Used in the frontend when the backend returns an empty fixture list or is unreachable.
- * Remove this file once the backend /api/fixtures endpoint returns real SportMonks data.
+ * The backend serves the same shape from football-data.org; these keep the
+ * dashboard populated (flagged as preview data) when it is unreachable.
  */
 import type { Fixture } from "./types";
 
@@ -32,49 +33,49 @@ const fixtureAt = (offsetDays: number, laHour: number): string => {
 export const MOCK_FIXTURES: Fixture[] = [
   // Today — finished (shows score)
   {
-    id: "mock-mls-today-1",
-    name: "LA Galaxy vs LAFC",
-    homeTeam: { id: 246, name: "LA Galaxy" },
-    awayTeam: { id: 1436, name: "LAFC" },
-    startingAt: fixtureAt(0, 14),   // 2 PM PDT today
-    leagueId: 779,
-    leagueName: "MLS",
+    id: "mock-pl-today-1",
+    name: "Arsenal FC vs Chelsea FC",
+    homeTeam: { id: 57, name: "Arsenal FC" },
+    awayTeam: { id: 61, name: "Chelsea FC" },
+    startingAt: fixtureAt(0, 9),    // 9 AM PDT today
+    leagueId: 2021,
+    leagueName: "Premier League",
     status: "finished",
     score: { home: 2, away: 1 },
     _isMock: true,
   },
   // Today — upcoming (prediction enabled)
   {
-    id: "mock-mls-today-2",
-    name: "Inter Miami CF vs Atlanta United",
-    homeTeam: { id: 14163, name: "Inter Miami CF" },
-    awayTeam: { id: 13847, name: "Atlanta United" },
-    startingAt: fixtureAt(0, 19),   // 7 PM PDT today
-    leagueId: 779,
-    leagueName: "MLS",
+    id: "mock-pl-today-2",
+    name: "Liverpool FC vs Manchester City FC",
+    homeTeam: { id: 64, name: "Liverpool FC" },
+    awayTeam: { id: 65, name: "Manchester City FC" },
+    startingAt: fixtureAt(0, 12),   // 12 PM PDT today
+    leagueId: 2021,
+    leagueName: "Premier League",
     status: "upcoming",
     _isMock: true,
   },
   // Tomorrow — upcoming
   {
-    id: "mock-mls-tmrw-1",
-    name: "Seattle Sounders vs Portland Timbers",
-    homeTeam: { id: 13862, name: "Seattle Sounders" },
-    awayTeam: { id: 13868, name: "Portland Timbers" },
-    startingAt: fixtureAt(1, 17),   // 5 PM PDT tomorrow
-    leagueId: 779,
-    leagueName: "MLS",
+    id: "mock-pd-tmrw-1",
+    name: "Real Madrid CF vs FC Barcelona",
+    homeTeam: { id: 86, name: "Real Madrid CF" },
+    awayTeam: { id: 81, name: "FC Barcelona" },
+    startingAt: fixtureAt(1, 12),   // 12 PM PDT tomorrow
+    leagueId: 2014,
+    leagueName: "La Liga",
     status: "upcoming",
     _isMock: true,
   },
   {
-    id: "mock-mls-tmrw-2",
-    name: "NYC FC vs Red Bull New York",
-    homeTeam: { id: 13869, name: "NYC FC" },
-    awayTeam: { id: 347, name: "Red Bull New York" },
-    startingAt: fixtureAt(1, 20),   // 8 PM PDT tomorrow
-    leagueId: 779,
-    leagueName: "MLS",
+    id: "mock-sa-tmrw-2",
+    name: "FC Internazionale Milano vs AC Milan",
+    homeTeam: { id: 108, name: "FC Internazionale Milano" },
+    awayTeam: { id: 98, name: "AC Milan" },
+    startingAt: fixtureAt(1, 11),   // 11 AM PDT tomorrow
+    leagueId: 2019,
+    leagueName: "Serie A",
     status: "upcoming",
     _isMock: true,
   },

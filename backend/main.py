@@ -1,4 +1,5 @@
 import asyncio
+import os
 import time
 from datetime import datetime, timedelta, timezone
 from typing import Any
@@ -6,13 +7,12 @@ from zoneinfo import ZoneInfo
 
 from fastapi import Depends, FastAPI, Header, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
 
-from backend.soccer_api import SoccerApiClient, MOCK_TEAMS
-from backend.agent import run_prediction_agent
+from backend.access import enforce as enforce_prediction_access, quota
 from backend.firebase_config import verify_id_token
-from storage.sportmonks_client import (
-    get_upcoming_mls_fixtures,
+from storage import _fdorg
+from storage.league_data_client import (
+    get_upcoming_fixtures,
     get_fixture_detail,
     get_fixtures_between_for_team,
     get_season_standings,
@@ -20,9 +20,6 @@ from storage.sportmonks_client import (
     get_fixture_lineups,
     get_topscorers_with_names,
     get_squad,
-    LEAGUE_IDS,
-    LEAGUE_NAMES,
-    _parse_scores,
 )
 
 # Lazy import — engine needs GEMINI_API_KEY; catch missing-key errors at call time
@@ -32,17 +29,26 @@ try:
 except Exception:
     _engine_available = False
 
+try:
+    from engine import tracking as _tracking
+    _tracking_available = True
+except Exception:
+    _tracking_available = False
+
+
 app = FastAPI(title="AI Sports Outcome Predictor", version="1.0.0")
 
+# Browser origins allowed to call this API. Set ALLOWED_ORIGINS (comma-separated)
+# to your deployed frontend URL; unset means "any origin", which is fine locally
+# because every expensive endpoint additionally requires a Firebase ID token.
+_origins = [o.strip() for o in os.getenv("ALLOWED_ORIGINS", "").split(",") if o.strip()]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_origins or ["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-soccer_client = SoccerApiClient()
 
 # ── In-memory caches ──────────────────────────────────────────────────────────
 _fixture_cache: dict[str, dict] = {}
@@ -53,57 +59,58 @@ _enriched_cache: dict[str, dict] = {}
 _fixtures_ttl: dict = {}        # keys: "data", "source", "ts"
 FIXTURES_TTL_SECONDS = 300      # 5 minutes — resets on server restart
 
-# Mock MLS fixtures used when SportMonks returns no data.
-# These IDs are NOT real SportMonks IDs — prediction will fail gracefully for them.
-MOCK_MLS_FIXTURES: list[dict] = [
+# Demo fixtures used only when football-data.org returns nothing (no API key, or
+# every competition errored). The page still loads and is clearly flagged as
+# preview data. These IDs are NOT real football-data.org IDs, so prediction
+# fails gracefully for them by design.
+MOCK_FIXTURES: list[dict] = [
     {
-        "id": "mock-mls-1",
-        "name": "LA Galaxy vs LAFC",
-        "homeTeam": {"id": 246, "name": "LA Galaxy"},
-        "awayTeam": {"id": 1436, "name": "LAFC"},
-        "startingAt": "2025-06-01 02:30:00",
-        "leagueId": 779,
-        "leagueName": "MLS",
+        "id": "mock-pl-1",
+        "name": "Arsenal FC vs Chelsea FC",
+        "homeTeam": {"id": 57, "name": "Arsenal FC"},
+        "awayTeam": {"id": 61, "name": "Chelsea FC"},
+        "startingAt": "2026-01-01 17:00:00",
+        "leagueId": 2021,
+        "leagueName": "Premier League",
         "status": "upcoming",
         "_isMock": True,
     },
     {
-        "id": "mock-mls-2",
-        "name": "Inter Miami CF vs Atlanta United",
-        "homeTeam": {"id": 14163, "name": "Inter Miami CF"},
-        "awayTeam": {"id": 13847, "name": "Atlanta United"},
-        "startingAt": "2025-06-01 23:00:00",
-        "leagueId": 779,
-        "leagueName": "MLS",
+        "id": "mock-pl-2",
+        "name": "Liverpool FC vs Manchester City FC",
+        "homeTeam": {"id": 64, "name": "Liverpool FC"},
+        "awayTeam": {"id": 65, "name": "Manchester City FC"},
+        "startingAt": "2026-01-01 20:00:00",
+        "leagueId": 2021,
+        "leagueName": "Premier League",
         "status": "upcoming",
         "_isMock": True,
     },
     {
-        "id": "mock-mls-3",
-        "name": "Seattle Sounders vs Portland Timbers",
-        "homeTeam": {"id": 13862, "name": "Seattle Sounders"},
-        "awayTeam": {"id": 13868, "name": "Portland Timbers"},
-        "startingAt": "2025-06-02 03:00:00",
-        "leagueId": 779,
-        "leagueName": "MLS",
+        "id": "mock-pd-1",
+        "name": "Real Madrid CF vs FC Barcelona",
+        "homeTeam": {"id": 86, "name": "Real Madrid CF"},
+        "awayTeam": {"id": 81, "name": "FC Barcelona"},
+        "startingAt": "2026-01-02 20:00:00",
+        "leagueId": 2014,
+        "leagueName": "La Liga",
         "status": "upcoming",
         "_isMock": True,
     },
     {
-        "id": "mock-mls-4",
-        "name": "NYC FC vs Red Bull New York",
-        "homeTeam": {"id": 13868, "name": "NYC FC"},
-        "awayTeam": {"id": 347, "name": "Red Bull New York"},
-        "startingAt": "2025-06-03 00:00:00",
-        "leagueId": 779,
-        "leagueName": "MLS",
+        "id": "mock-sa-1",
+        "name": "FC Internazionale Milano vs AC Milan",
+        "homeTeam": {"id": 108, "name": "FC Internazionale Milano"},
+        "awayTeam": {"id": 98, "name": "AC Milan"},
+        "startingAt": "2026-01-02 19:00:00",
+        "leagueId": 2019,
+        "leagueName": "Serie A",
         "status": "upcoming",
         "_isMock": True,
     },
 ]
 
 LA_TZ = ZoneInfo("America/Los_Angeles")
-
 
 def _mock_fixture_at(offset_days: int, la_hour: int) -> str:
     """Return a UTC kickoff string whose calendar day is based on Los Angeles."""
@@ -115,110 +122,31 @@ def _mock_fixture_at(offset_days: int, la_hour: int) -> str:
     return kickoff_la.astimezone(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
 
 
-def _get_mock_mls_fixtures() -> list[dict]:
-    fixtures = [dict(f) for f in MOCK_MLS_FIXTURES]
-    fixtures[0].update(
-        {
-            "id": "mock-mls-today-1",
-            "startingAt": _mock_fixture_at(0, 14),
-            "status": "finished",
-            "score": {"home": 2, "away": 1},
-        }
-    )
-    fixtures[1].update(
-        {
-            "id": "mock-mls-today-2",
-            "startingAt": _mock_fixture_at(0, 19),
-            "status": "upcoming",
-        }
-    )
-    fixtures[2].update(
-        {
-            "id": "mock-mls-tomorrow-1",
-            "startingAt": _mock_fixture_at(1, 17),
-            "status": "upcoming",
-        }
-    )
-    fixtures[3].update(
-        {
-            "id": "mock-mls-tomorrow-2",
-            "homeTeam": {"id": 13869, "name": "NYC FC"},
-            "startingAt": _mock_fixture_at(1, 20),
-            "status": "upcoming",
-        }
-    )
+def _get_mock_fixtures() -> list[dict]:
+    """Demo fixtures with kickoff times pinned to today/tomorrow in LA time."""
+    fixtures = [dict(f) for f in MOCK_FIXTURES]
+    fixtures[0].update({
+        "id": "mock-pl-today-1",
+        "startingAt": _mock_fixture_at(0, 9),
+        "status": "finished",
+        "score": {"home": 2, "away": 1},
+    })
+    fixtures[1].update({
+        "id": "mock-pl-today-2",
+        "startingAt": _mock_fixture_at(0, 12),
+        "status": "upcoming",
+    })
+    fixtures[2].update({
+        "id": "mock-pd-tomorrow-1",
+        "startingAt": _mock_fixture_at(1, 12),
+        "status": "upcoming",
+    })
+    fixtures[3].update({
+        "id": "mock-sa-tomorrow-1",
+        "startingAt": _mock_fixture_at(1, 11),
+        "status": "upcoming",
+    })
     return fixtures
-
-
-def _normalize_fixture(sm_fixture: dict) -> dict:
-    """Convert a raw SportMonks v3 fixture dict to our API shape.
-
-    Reads league and state from the SportMonks `include=league;state` response
-    objects when present, with safe fallbacks for subscriptions that don't
-    return those includes.
-    """
-    participants = sm_fixture.get("participants") or []
-    home = next(
-        (p for p in participants if (p.get("meta") or {}).get("location") == "home"),
-        participants[0] if participants else {},
-    )
-    away = next(
-        (p for p in participants if (p.get("meta") or {}).get("location") == "away"),
-        participants[1] if len(participants) > 1 else {},
-    )
-
-    # League — prefer the included object, fall back to the raw league_id field
-    league_obj = sm_fixture.get("league") or {}
-    league_id: int = (
-        sm_fixture.get("league_id")
-        or league_obj.get("id")
-        or LEAGUE_IDS["mls"]
-    )
-    league_name: str = (
-        league_obj.get("name")
-        or league_obj.get("short_code")
-        or LEAGUE_NAMES.get(league_id, f"League {league_id}")
-    )
-
-    # Status — prefer the included state object's short name
-    state_obj = sm_fixture.get("state") or {}
-    match_status: str = (
-        state_obj.get("short_name")
-        or state_obj.get("name")
-        or "NS"
-    )
-
-    # Scores — only present when the `scores` include was requested
-    scores_list = sm_fixture.get("scores") or []
-    score = _parse_scores(scores_list)
-
-    venue_obj = sm_fixture.get("venue") or {}
-    venue_name: str | None = venue_obj.get("name") or None
-
-    normalized: dict = {
-        "id": str(sm_fixture.get("id", "")),
-        "name": sm_fixture.get("name", ""),
-        "homeTeam": {
-            "id": home.get("id", 0),
-            "name": home.get("name", "Unknown"),
-            "logo": home.get("image_path") or None,
-        },
-        "awayTeam": {
-            "id": away.get("id", 0),
-            "name": away.get("name", "Unknown"),
-            "logo": away.get("image_path") or None,
-        },
-        "startingAt": sm_fixture.get("starting_at", ""),
-        "leagueId": league_id,
-        "leagueName": league_name,
-        "seasonId": sm_fixture.get("season_id"),
-        "status": match_status,
-        "venue": venue_name,
-        "_isMock": False,
-    }
-    if score is not None:
-        normalized["score"] = score
-    return normalized
 
 
 # ── Auth ─────────────────────────────────────────────────────────────────────
@@ -239,38 +167,17 @@ def get_current_user(authorization: str | None = Header(None)) -> dict:
     return claims
 
 
-# ── Request / response models ─────────────────────────────────────────────────
-
-class PredictRequest(BaseModel):
-    team_a_id: int
-    team_b_id: int
-
-
 # ── Public endpoints ──────────────────────────────────────────────────────────
 
 @app.get("/health")
-def health() -> dict[str, str]:
-    return {"status": "ok"}
-
-
-@app.get("/api/teams")
-def get_teams() -> dict[str, Any]:
-    try:
-        teams = soccer_client.get_teams()
-        return {"status": "success", "data": teams}
-    except Exception:
-        return {"status": "success", "data": MOCK_TEAMS}
-
-
-@app.post("/api/predict")
-def predict(body: PredictRequest) -> dict[str, Any]:
-    if body.team_a_id == body.team_b_id:
-        raise HTTPException(status_code=400, detail="Team A and Team B must be different.")
-    try:
-        result = run_prediction_agent(body.team_a_id, body.team_b_id)
-        return {"status": "success", "data": result}
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc))
+def health() -> dict[str, Any]:
+    """Liveness plus the two budgets worth watching: Gemini quota and the
+    football-data.org request allowance reported by its response headers."""
+    return {
+        "status": "ok",
+        "quota": quota.snapshot(),
+        "football_data": _fdorg.snapshot(),
+    }
 
 
 # ── Fixture endpoints ─────────────────────────────────────────────────────────
@@ -284,32 +191,32 @@ def list_fixtures() -> dict[str, Any]:
         return {"status": "success", "data": _fixtures_ttl["data"], "source": "cache"}
 
     try:
-        result = get_upcoming_mls_fixtures()
+        result = get_upcoming_fixtures()
         if result["status"] == "success" and result["data"]:
-            normalized = [_normalize_fixture(f) for f in result["data"]]
+            normalized = result["data"]  # league_data_client returns normalized fixtures
             _fixture_cache = {f["id"]: f for f in normalized}
-            _fixtures_ttl = {"data": normalized, "source": "sportmonks", "ts": now}
-            return {"status": "success", "data": normalized, "source": "sportmonks"}
-        sportmonks_error = result.get("message", "SportMonks returned 0 fixtures")
+            _fixtures_ttl = {"data": normalized, "source": "football-data", "ts": now}
+            return {"status": "success", "data": normalized, "source": result.get("source", "football-data")}
+        provider_error = result.get("message", "football-data.org returned 0 fixtures")
     except Exception as exc:
-        sportmonks_error = f"SportMonks call failed: {exc}"
+        provider_error = f"football-data.org call failed: {exc}"
 
-    # Fall back to mock — do NOT populate _fixtures_ttl so next request retries SportMonks
-    mock_fixtures = _get_mock_mls_fixtures()
+    # Fall back to mock — do NOT populate _fixtures_ttl so the next request retries the API
+    mock_fixtures = _get_mock_fixtures()
     _fixture_cache = {f["id"]: f for f in mock_fixtures}
-    return {"status": "success", "data": mock_fixtures, "source": "mock", "_diagnostic": sportmonks_error}
+    return {"status": "success", "data": mock_fixtures, "source": "mock", "_diagnostic": provider_error}
 
 
 @app.get("/api/fixtures/{match_id}")
 def get_fixture(match_id: str) -> dict[str, Any]:
     if match_id in _fixture_cache:
         return {"status": "success", "data": _fixture_cache[match_id]}
-    # Try SportMonks if the ID looks like an integer
+    # Try football-data.org if the ID looks like an integer
     try:
         fixture_id = int(match_id)
         result = get_fixture_detail(fixture_id)
         if result["status"] == "success" and result["data"]:
-            normalized = _normalize_fixture(result["data"])
+            normalized = result["data"]
             _fixture_cache[match_id] = normalized
             return {"status": "success", "data": normalized}
     except (ValueError, Exception):
@@ -321,12 +228,14 @@ async def _gather_enriched(
     team_a_id: int, team_b_id: int,
     season_id: int | None, fixture_id_int: int,
 ) -> dict:
-    """Fetch all enrichment data in parallel (6 calls, within 9-call budget).
+    """Fetch all enrichment data in parallel from football-data.org.
 
-    Recent form: 3 x /fixtures/date/{date}?include=participants;scores;statistics.type
-    Standings:   1 x /standings/seasons/{id}?include=participant;details
-    Injuries:    1 x /injuries/fixtures/{id}  (returns empty list on 404)
-    xG/Trends:   1 x /fixtures/{id}?include=xGFixture;trends;participants
+    Recent form: 2 x /teams/{id}/matches?status=FINISHED  (per team)
+    Standings:   1 x /competitions/{code}/standings  (also yields per-team stats)
+    Top scorers: 1 x /competitions/{code}/scorers
+    Squad:       1 x /teams/{id}
+    xG/lineups/injuries are not on the free tier — graceful empty payloads.
+    season_id here is the football-data.org competition code (e.g. "PL").
     """
     from datetime import date, timedelta
 
@@ -392,8 +301,8 @@ async def _gather_enriched(
     team_a_stats = _team_stats_from_standings(team_a_id)
     team_b_stats = _team_stats_from_standings(team_b_id)
 
-    # Injuries endpoint returns 404 on Starter plan — skip the call and
-    # show "Full squad available" for both teams (same outcome as the 404 path).
+    # Injuries are not on the free tier — show "Full squad available" for both
+    # teams. The pluggable injury provider can fill this in when configured.
     injuries: dict = {"team_a": [], "team_b": []}
 
     xg_result = _ok(xg_r) or {}
@@ -428,19 +337,23 @@ async def fixture_prediction(
             detail="Prediction engine unavailable — GEMINI_API_KEY may not be set.",
         )
 
-    # Resolve fixture from cache, or try SportMonks
+    # Allowlist + daily quota — the only endpoint that spends Gemini credit.
+    quota_key = enforce_prediction_access(user)
+
+    # Resolve fixture from cache, or try football-data.org
     fixture = _fixture_cache.get(match_id)
     if not fixture:
         try:
             fixture_id = int(match_id)
             result = get_fixture_detail(fixture_id)
             if result["status"] == "success" and result["data"]:
-                fixture = _normalize_fixture(result["data"])
+                fixture = result["data"]
                 _fixture_cache[match_id] = fixture
         except (ValueError, Exception):
             pass
 
     if not fixture:
+        quota.refund(quota_key)
         raise HTTPException(
             status_code=404,
             detail="Fixture not found. Call GET /api/fixtures first to seed the cache.",
@@ -474,13 +387,28 @@ async def fixture_prediction(
             enriched_data,
         )
     except Exception as exc:
+        quota.refund(quota_key)
         raise HTTPException(status_code=500, detail=f"Prediction engine error: {exc}")
 
     if prediction["status"] != "success":
+        quota.refund(quota_key)
         raise HTTPException(
             status_code=500,
             detail=f"Prediction failed: {prediction.get('status', 'unknown')} — {prediction.get('message', '')}",
         )
+
+    # Record the prediction in the SQLite history (best-effort).
+    if _tracking_available:
+        try:
+            league_context = {
+                "match_id":    str(match_id),
+                "competition": fixture.get("leagueName") or fixture.get("seasonId") or "league",
+                "stage":       None,
+                "match_date":  (fixture.get("startingAt") or "")[:10] or None,
+            }
+            _tracking.log_prediction(league_context, home["name"], away["name"], prediction["data"])
+        except Exception:
+            pass
 
     return {"status": "success", "data": prediction["data"]}
 
@@ -501,7 +429,7 @@ async def fixture_enriched(
             fixture_id = int(match_id)
             result = get_fixture_detail(fixture_id)
             if result["status"] == "success" and result["data"]:
-                fixture = _normalize_fixture(result["data"])
+                fixture = result["data"]
                 _fixture_cache[match_id] = fixture
         except (ValueError, Exception):
             pass
@@ -542,3 +470,80 @@ def verify_token(user: dict = Depends(get_current_user)) -> dict[str, Any]:
             "email_verified": user.get("email_verified", False),
         },
     }
+
+
+# ── Prediction tracking + analytics ───────────────────────────────────────────
+
+def _resolve_finished_predictions() -> None:
+    """Resolve outcomes for logged predictions from already-cached fixtures.
+
+    Best-effort and budget-aware: it only reads finished fixtures that
+    /api/fixtures already cached — it never makes extra football-data.org calls
+    just to resolve, so analytics never burns the free-tier rate limit.
+    """
+    if not _tracking_available:
+        return
+    finished: list[dict] = []
+    for f in (_fixtures_ttl.get("data") or []):
+        if (f.get("status") or "").lower() == "finished" and f.get("score"):
+            finished.append(f)
+    if finished:
+        try:
+            _tracking.resolve_results(finished)
+        except Exception:
+            pass
+
+
+@app.get("/api/analytics/calibration")
+def get_calibration_endpoint(competition: str | None = None) -> dict[str, Any]:
+    """Accuracy / Brier / log-loss / ECE over resolved predictions.
+
+    Optional `competition` filter (e.g. Premier League). Omit for all.
+    """
+    if not _tracking_available:
+        return {"status": "unavailable", "message": "Prediction tracking is not enabled."}
+    try:
+        _resolve_finished_predictions()
+        return {"status": "success", "data": _tracking.calibration_report(competition)}
+    except Exception as exc:
+        return {"status": "error", "message": str(exc)}
+
+
+@app.get("/api/analytics/betting")
+def get_betting_endpoint(competition: str | None = None) -> dict[str, Any]:
+    """ROI / win-rate / average-edge / CLV over resolved value bets."""
+    if not _tracking_available:
+        return {"status": "unavailable", "message": "Prediction tracking is not enabled."}
+    try:
+        _resolve_finished_predictions()
+        return {"status": "success", "data": _tracking.betting_report(competition)}
+    except Exception as exc:
+        return {"status": "error", "message": str(exc)}
+
+
+@app.get("/api/analytics")
+def get_analytics_endpoint(competition: str | None = None) -> dict[str, Any]:
+    """Combined analytics payload across all competitions.
+
+    Summary + reliability bins + over-time series. Optional `competition` filter.
+    """
+    if not _tracking_available:
+        return {"status": "unavailable", "message": "Prediction tracking is not enabled."}
+    try:
+        _resolve_finished_predictions()
+        return {"status": "success", "data": _tracking.analytics_report(competition)}
+    except Exception as exc:
+        return {"status": "error", "message": str(exc)}
+
+
+@app.get("/api/predictions/{match_id}/history")
+def get_prediction_history_endpoint(match_id: str) -> dict[str, Any]:
+    """All stored predictions for a match (across model variants), with outcomes."""
+    if not _tracking_available:
+        return {"status": "unavailable", "message": "Prediction tracking is not enabled."}
+    try:
+        from storage import prediction_db
+        rows = [r for r in prediction_db.read_rows() if str(r.get("match_id")) == str(match_id)]
+        return {"status": "success", "data": rows}
+    except Exception as exc:
+        return {"status": "error", "message": str(exc)}

@@ -1,195 +1,186 @@
 # AI Sports Outcome Predictor
 
-**Course**: CS180 Final Project
-**Team**: SM Kamal, Brian Garcia
+Predicts football match outcomes by combining a **Dixon-Coles statistical model** with
+**Gemini** reasoning: the model produces the probabilities, Gemini explains them. Live
+fixtures, form and standings come from the free tier of **football-data.org**.
+
+**Stack:** Next.js 14 + TypeScript (frontend) · FastAPI (API) · Firebase Auth · SQLite
+(prediction history) · Gemini 2.5 Flash.
+
+Originally built for CS180 by SM Kamal and Brian Garcia.
 
 ---
 
-## Source Code
+## What it does
+
+- **Fixture discovery** — upcoming matches across the Premier League, Bundesliga,
+  La Liga, Serie A, Ligue 1 and the Champions League, grouped by day and league.
+- **Match prediction** — a three-way probability (home / draw / away) from Dixon-Coles,
+  a confidence label derived from that probability, and a written rationale from Gemini
+  built on recent form, standings, head-to-head record, top scorers and squad depth.
+- **Honest evaluation** — every prediction is stored, resolved against the real result
+  once the match finishes, and scored (accuracy / Brier / log-loss / ECE / reliability)
+  through `/api/analytics`.
+- **Offline backtest** — `scripts/backtest.py` re-runs the model over 1,526 historical
+  fixtures with no lookahead, so a model change can be checked for regressions.
+
+### How good is it, honestly
+
+From the point-in-time backtest (`python scripts/backtest.py`, no lookahead):
+
+| Metric | Value |
+|---|---|
+| Accuracy | **48.4%** (±2.5% at 95% CI, n=1,526) |
+| Always-pick-home baseline | 44.3% |
+| Accuracy when confidence is "high" (≥65%) | 59.3% (n=344) |
+| Brier score / log loss | 0.635 / 1.059 |
+
+Football is genuinely hard to predict; the model beats the home-team baseline by about
+4 points and its confidence label carries real signal, and that is the claim it makes.
+The `--leaky` mode reproduces the flattering 52.8% number that end-of-season
+aggregates produce, purely as a contrast.
+
+---
+
+## Source code
 
 | Layer | Path |
 |---|---|
 | Frontend (Next.js) | [`frontend/src/`](frontend/src/) |
-| Backend API (FastAPI) | [`backend/`](backend/) |
-| Prediction Engine (Dixon-Coles + Gemini) | [`engine/`](engine/) |
-| Storage / SportMonks Client | [`storage/`](storage/) |
+| API (FastAPI) | [`backend/`](backend/) |
+| Prediction engine (Dixon-Coles + Gemini) | [`engine/`](engine/) |
+| Data clients + prediction store | [`storage/`](storage/) |
+| Offline evaluation | [`scripts/`](scripts/) |
+
+### API endpoints
+
+| Method | Path | Auth | Notes |
+|---|---|---|---|
+| GET | `/health` | — | status + today's quota usage |
+| GET | `/api/fixtures` | — | upcoming fixtures (cached 5 min) |
+| GET | `/api/fixtures/{id}` | — | single fixture |
+| POST | `/api/fixtures/{id}/prediction` | Firebase | **the only endpoint that spends Gemini credit** |
+| GET | `/api/fixtures/{id}/enriched` | Firebase | form / standings / stats used by the prompt |
+| POST | `/api/auth/verify` | Firebase | token check |
+| GET | `/api/analytics` | — | accuracy, reliability bins, over-time series |
+| GET | `/api/analytics/calibration` | — | accuracy / Brier / log-loss / ECE |
+| GET | `/api/analytics/betting` | — | ROI / win-rate / edge (empty without market data) |
+| GET | `/api/predictions/{id}/history` | — | stored predictions for a match |
 
 ---
 
 ## Tests
 
-All tests are located in [`tests/`](tests/).
-
-| File | What it covers |
-|---|---|
-| [`tests/test_prediction_engine.py`](tests/test_prediction_engine.py) | Dixon-Coles math, confidence labels, winner logic, edge cases, regression invariants |
-| [`tests/test_sportmonks_client.py`](tests/test_sportmonks_client.py) | SportMonks storage layer (HTTP success, 404 error, team data check) |
-
-Run all tests from the project root:
-
 ```bash
 pytest tests/
 ```
 
----
-
-## Requirements Specification and Design Document
-
-[`docs/requirements_specification.md`](docs/requirements_specification.md)
-
-Covers all three functionalities (User Authentication, Fixture Discovery, Match Prediction) in Lab 4 format:
-- **Part A** - Inputs, outputs, success paths, and failure/edge cases
-- **Part B** - Architecture mapping (interface / engine / storage responsibilities)
-- **Part C** - Interface contracts with exact function signatures, payloads, and failure statuses
+| File | What it covers |
+|---|---|
+| [`tests/test_prediction_engine.py`](tests/test_prediction_engine.py) | Dixon-Coles math, confidence labels, winner logic, edge cases, backtest regression invariants |
+| [`tests/test_league_data_client.py`](tests/test_league_data_client.py) | football-data.org client (mocked HTTP, normalization, graceful failure) |
+| [`tests/test_access.py`](tests/test_access.py) | email allowlist + per-user and global daily quota |
+| [`tests/test_prediction_db.py`](tests/test_prediction_db.py) | SQLite prediction store (upsert, resolve, read) |
+| [`tests/test_scoring_confidence_signal.py`](tests/test_scoring_confidence_signal.py) | shared confidence / risk / value-signal scoring |
 
 ---
 
-## Demo Video
+## Demo video
 
-Watch the Demo Video: https://youtu.be/PLACEHOLDER
-*(Update this link before final submission)*
+https://www.youtube.com/watch?v=s4UfIk_ctJw
 
 ---
 
-## Setup and Execution Instructions
+## Documentation
+
+- [`docs/prediction_pipeline.md`](docs/prediction_pipeline.md) — end-to-end walkthrough:
+  fixture → enrichment → Dixon-Coles → Gemini → response, plus the accuracy analysis.
+- [`docs/requirements_specification.md`](docs/requirements_specification.md) — inputs,
+  outputs, failure cases and interface contracts per functionality.
+- [`DEPLOY.md`](DEPLOY.md) — putting it online for a small, invited group without
+  running up a Gemini bill.
+
+---
+
+## Setup
 
 ### Prerequisites
 
 - Python 3.11+
 - Node.js 18+
-- npm 9+
 
----
-
-### 1. Clone the Repository
+### 1. Clone
 
 ```bash
-git clone https://github.com/your-org/final-project-sm-kamal-brian-garcia.git
-cd final-project-sm-kamal-brian-garcia
+git clone https://github.com/<your-username>/ai-sports-predictor.git
+cd ai-sports-predictor
 ```
 
----
-
-### 2. Backend Setup
-
-#### 2a. Create and activate a virtual environment
+### 2. Backend
 
 ```bash
-# macOS / Linux
-python3 -m venv venv
-source venv/bin/activate
-
-# Windows
 python -m venv venv
-venv\Scripts\activate
-```
-
-#### 2b. Install Python dependencies
-
-```bash
+source venv/bin/activate        # Windows: venv\Scripts\activate
 pip install -r requirements.txt
-```
-
-#### 2c. Configure environment variables
-
-Copy the example file and fill in your keys:
-
-```bash
 cp .env.example .env
 ```
 
-Edit `.env`:
+Fill in `.env`:
 
-```
-SPORTMONKS_API_KEY=your_sportmonks_api_key
-GEMINI_API_KEY=your_gemini_api_key
-FIREBASE_SERVICE_ACCOUNT_PATH=./serviceAccountKey.json
-```
+| Variable | Where to get it |
+|---|---|
+| `GEMINI_API_KEY` | https://aistudio.google.com → Get API key (free tier) |
+| `FOOTBALL_DATA_API_KEY` | https://www.football-data.org/client/register (free tier) |
+| `FIREBASE_SERVICE_ACCOUNT_PATH` | Firebase Console → Project Settings → Service Accounts → Generate new private key → save as `serviceAccountKey.json` in the project root |
 
-- **SportMonks API key**: sportmonks.com -> Account -> API Tokens
-- **Gemini API key**: aistudio.google.com -> Get API key
-- **Firebase service account**: Firebase Console -> Project Settings -> Service Accounts -> Generate new private key -> save as serviceAccountKey.json in the project root
+Optional but recommended before sharing a link — see [`DEPLOY.md`](DEPLOY.md):
 
-#### 2d. Start the backend server
+| Variable | Effect |
+|---|---|
+| `ALLOWED_EMAILS` | only these accounts may generate predictions (empty = any signed-in user) |
+| `PREDICTIONS_PER_USER_PER_DAY` | per-account daily cap (default 25) |
+| `PREDICTIONS_PER_DAY_TOTAL` | shared daily cap across all users (default 200) |
+| `ALLOWED_ORIGINS` | browser origins allowed to call the API |
+
+Start it:
 
 ```bash
 uvicorn backend.main:app --reload --port 8000
 ```
 
-The API will be available at http://localhost:8000
-
----
-
-### 3. Frontend Setup
-
-#### 3a. Install dependencies
+### 3. Frontend
 
 ```bash
 cd frontend
 npm install
-```
-
-#### 3b. Configure environment variables
-
-```bash
 cp .env.example .env.local
 ```
 
-Edit `frontend/.env.local`:
-
-```
-NEXT_PUBLIC_FIREBASE_API_KEY=your_firebase_api_key
-NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
-NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project_id
-NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_project.appspot.com
-NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
-NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
-NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
-```
-
-All Firebase values are found in Firebase Console -> Project Settings -> Your apps -> Web app -> SDK config.
-
-#### 3c. Start the frontend
+Fill `frontend/.env.local` with your Firebase web-app config (Firebase Console →
+Project Settings → Your apps → SDK setup) and `NEXT_PUBLIC_API_BASE_URL=http://localhost:8000`.
 
 ```bash
 npm run dev
 ```
 
-The app will be available at http://localhost:3000
+Open http://localhost:3000.
+
+### 4. Running both
+
+Two terminals — backend (`uvicorn backend.main:app --reload --port 8000`) and frontend
+(`cd frontend && npm run dev`).
+
+Without API keys the app still runs: the dashboard serves mock fixtures marked as
+preview data, and predictions are disabled for them.
 
 ---
 
-### 4. Running Both Together
-
-Open two terminals:
-
-**Terminal 1 - Backend:**
-```bash
-source venv/bin/activate
-uvicorn backend.main:app --reload --port 8000
-```
-
-**Terminal 2 - Frontend:**
-```bash
-cd frontend
-npm run dev
-```
-
-Then open http://localhost:3000 in your browser.
-
----
-
-### 5. Running Tests
-
-From the project root (with the virtual environment activated):
+## Offline evaluation
 
 ```bash
-pytest tests/
+python scripts/backtest.py            # point-in-time — the honest baseline
+python scripts/backtest.py --leaky    # lookahead contrast, for comparison only
 ```
 
-To run a specific test file:
-
-```bash
-pytest tests/test_prediction_engine.py -v
-pytest tests/test_sportmonks_client.py -v
-```
+Results are written to `scripts/data/backtest_csv_results.json`, which
+`tests/test_prediction_engine.py` asserts against as a regression baseline.

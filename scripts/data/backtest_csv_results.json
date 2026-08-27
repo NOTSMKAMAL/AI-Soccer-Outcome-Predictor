@@ -1,37 +1,108 @@
 {
-  "evaluation_date": "2026-05-24",
+  "evaluation_date": "2026-08-26",
   "mode": "csv",
-  "total_fixtures": 1747,
-  "overall_accuracy": 0.5283,
-  "confidence_interval_95": 0.0234,
-  "home_baseline_accuracy": 0.4482,
-  "improvement_over_baseline_pp": 8.01,
+  "total_fixtures": 1526,
+  "overall_accuracy": 0.4836,
+  "confidence_interval_95": 0.0251,
+  "home_baseline_accuracy": 0.443,
+  "improvement_over_baseline_pp": 4.06,
   "by_outcome": {
-    "home_win": 0.5569,
-    "draw": 0.3636,
-    "away_win": 0.4764
+    "home_win": 0.522,
+    "draw": 0.3143,
+    "away_win": 0.4304
   },
   "by_league": {
-    "8": 0.5301,
-    "301": 0.5541,
-    "564": 0.5351,
-    "384": 0.5418,
-    "779": 0.4934
+    "8": 0.4519,
+    "301": 0.461,
+    "564": 0.4894,
+    "384": 0.5015,
+    "779": 0.4961
   },
-  "calibration_accuracy": 0.7179,
-  "calibration_n": 351,
+  "calibration_accuracy": 0.593,
+  "calibration_n": 344,
   "confidence_threshold": 0.65,
-  "brier_score": 0.5937,
-  "log_loss": 0.997,
-  "limitations": [
-    "matches_played derived from goals (2.7 avg/match) \u2014 may deviate from true if team scoring rate differs from league avg",
-    "end-of-season standings proxy \u2014 not match-day standings",
-    "draws systematically underweighted by Poisson model",
-    "sample size 1747 may be insufficient for statistical significance"
+  "brier_score": 0.6353,
+  "log_loss": 1.0592,
+  "point_in_time": true,
+  "reliability_ece": 0.0725,
+  "multiclass_ece": 0.0499,
+  "reliability_bins": [
+    {
+      "lo": 0.0,
+      "hi": 0.1,
+      "count": 0,
+      "mean_conf": null,
+      "accuracy": null
+    },
+    {
+      "lo": 0.1,
+      "hi": 0.2,
+      "count": 0,
+      "mean_conf": null,
+      "accuracy": null
+    },
+    {
+      "lo": 0.2,
+      "hi": 0.3,
+      "count": 0,
+      "mean_conf": null,
+      "accuracy": null
+    },
+    {
+      "lo": 0.3,
+      "hi": 0.4,
+      "count": 198,
+      "mean_conf": 0.3769,
+      "accuracy": 0.4141
+    },
+    {
+      "lo": 0.4,
+      "hi": 0.5,
+      "count": 437,
+      "mean_conf": 0.4483,
+      "accuracy": 0.4256
+    },
+    {
+      "lo": 0.5,
+      "hi": 0.6,
+      "count": 398,
+      "mean_conf": 0.5473,
+      "accuracy": 0.4447
+    },
+    {
+      "lo": 0.6,
+      "hi": 0.7,
+      "count": 284,
+      "mean_conf": 0.6472,
+      "accuracy": 0.5739
+    },
+    {
+      "lo": 0.7,
+      "hi": 0.8,
+      "count": 142,
+      "mean_conf": 0.7423,
+      "accuracy": 0.5845
+    },
+    {
+      "lo": 0.8,
+      "hi": 0.9,
+      "count": 63,
+      "mean_conf": 0.8376,
+      "accuracy": 0.6984
+    },
+    {
+      "lo": 0.9,
+      "hi": 1.0,
+      "count": 4,
+      "mean_conf": 0.9,
+      "accuracy": 0.75
+    }
   ],
-  "source_file": "/Users/briangarcia/CS180_PROJECT/final-project-sm-kamal-brian-garcia/scripts/data/enriched_fixtures.csv",
-  "skipped_fixtures": 0,
-  "api_baseline_accuracy": 0.5467,
-  "api_baseline_n": 75,
-  "delta_vs_baseline_pp": -1.84
+  "limitations": [
+    "point-in-time: first 4 games/team skipped as warm-up",
+    "single season only \u2014 no cross-season rating carryover yet",
+    "draws systematically underweighted by Poisson model"
+  ],
+  "source_file": "C:\\Users\\smkam\\Projects\\final-project-sm-kamal-brian-garcia\\scripts\\data\\enriched_fixtures.csv",
+  "skipped_fixtures": 220
 }

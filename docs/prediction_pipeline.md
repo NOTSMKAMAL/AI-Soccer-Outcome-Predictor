@@ -10,19 +10,17 @@ The AI Sports Outcome Predictor combines statistical modeling (Dixon-Coles) with
 
 ### Where Fixtures Come From
 
-Fixtures originate from the **SportMonks API v3** (https://docs.sportmonks.com/football/api/fixtures), which is the authoritative source of live sports data. The app fetches upcoming and recent fixtures for 6 leagues:
-- Premier League (league_id 8)
-- Ligue 1 (league_id 301)
-- La Liga (league_id 564)
-- Serie A (league_id 384)
-- Bundesliga (league_id 82)
-- Major League Soccer (league_id 779)
+Fixtures come from the **football-data.org v4 API** (https://www.football-data.org/documentation/quickstart) on its free tier, which allows 10 requests per minute. The app fetches the soonest upcoming (and very recent) fixtures for 6 competitions:
+- Premier League (`PL`, id 2021)
+- Bundesliga (`BL1`, id 2002)
+- La Liga (`PD`, id 2014)
+- Serie A (`SA`, id 2019)
+- Ligue 1 (`FL1`, id 2015)
+- Champions League (`CL`, id 2001)
 
-The backend's `/api/fixtures` endpoint calls `get_upcoming_mls_fixtures()` which tries two strategies:
-1. **Primary**: Date-range endpoint `/fixtures/between/{start}/{end}` (14 days back, 60 days ahead)
-2. **Fallback**: Per-league endpoint `/fixtures/upcoming/leagueId/{id}` if the date-range returns no upcoming fixtures
+The backend's `/api/fixtures` endpoint calls `get_upcoming_fixtures()` in `storage/league_data_client.py`, which asks each competition for its matches over a wide forward window (today−3 → today+180) and keeps the soonest non-finished fixtures per competition. The wide window matters in the European off-season: the next season's opening fixtures still appear instead of the page falling back to mocks.
 
-If both fail, the app gracefully returns mock fixtures so the dashboard is never empty.
+Results are cached (5-minute TTL in the client, 5 minutes again in the backend) because of the 10 requests/minute free-tier limit. If the API key is missing or every competition errors, the app returns demo fixtures flagged with `_isMock: true` so the dashboard is never empty — those fixtures deliberately cannot be predicted, since there is no real data behind them.
 
 ### What Data Is in a Fixture Object
 
@@ -32,9 +30,9 @@ A normalized fixture contains:
 - `homeTeam`: `{id, name, logo}` — home team object
 - `awayTeam`: `{id, name, logo}` — away team object
 - `startingAt`: ISO 8601 kickoff time (string)
-- `leagueId`: SportMonks league identifier (integer)
+- `leagueId`: football-data.org competition id (integer)
 - `leagueName`: Human-readable league name (string)
-- `seasonId`: Season identifier for standings/stats lookups
+- `seasonId`: football-data.org competition code (e.g. `PL`) used for standings/stats lookups
 - `status`: Match state ("NS" upcoming, "LIVE" in-play, match result status when finished)
 - `score`: `{home: int, away: int}` — goal count if match has been played
 - `venue`: Stadium name (string or null)
@@ -55,69 +53,46 @@ A normalized fixture contains:
 
 ### Overview
 
-Before making a prediction, the backend enriches the fixture with 7 parallel SportMonks API calls. These calls fetch recent form, current standings, expected goals (xG), lineups, squad depth, and top scorers. All 7 calls run in parallel using Python's `asyncio.gather()`, so the total wall-clock time is the slowest single call (~8 seconds), not the sum of all calls.
+Before making a prediction, the backend enriches the fixture with 7 parallel football-data.org calls. They fetch recent form, current standings, squad depth and top scorers. All 7 run concurrently via `asyncio.gather()`, so the wall-clock cost is the slowest single call, not the sum. Every call is individually wrapped so a failure degrades that one field instead of failing the prediction.
 
 ### Which Calls Run (and When)
 
-All 7 calls execute in parallel as soon as the backend's `/api/fixtures/{match_id}/prediction` endpoint is invoked (assuming the fixture is real, not mocked). The calls are:
+All 7 calls execute in parallel as soon as `/api/fixtures/{match_id}/prediction` is invoked (assuming the fixture is real, not mocked). The calls are:
 
 **1. Recent Form: Team A**
 ```
-GET /v3/football/fixtures/between/{start_date}/{end_date}/{team_a_id}
-include=participants;scores;statistics.type
-per_page=100
+GET /v4/teams/{team_a_id}/matches?status=FINISHED&dateFrom={start}&dateTo={end}
 ```
-Returns the last 60 days of completed fixtures for team A, limited to 5 most recent. Parsed to extract:
-- Opponent, kickoff date, result (Win/Draw/Loss)
-- Individual match statistics (shots, possession, passes, corners, fouls, cards)
+Returns team A's completed fixtures over the last 60 days, newest first, capped at 5. Parsed to extract opponent, kickoff date and result (Win/Draw/Loss).
 
 **2. Recent Form: Team B**
-Same endpoint as #1, but for `team_b_id`. Returns 5 most recent fixtures for team B.
+Same endpoint as #1 for `team_b_id`.
 
 **3. Season Standings**
 ```
-GET /v3/football/standings/seasons/{season_id}
-include=participant;details
+GET /v4/competitions/{code}/standings
 ```
-Returns full standings table for the season with:
-- Position, points, W/D/L, goals scored, goals conceded, goal difference, form string
-- Extracted to compute per-team stats: `goals_scored_per_game`, `goals_conceded_per_game`
-- These stats are also returned to the frontend for display
+Returns the full table: position, points, W/D/L, goals scored, goals conceded, goal difference. The backend derives each team's season stats (`goals_scored`, `goals_conceded`, `total_matches`, `avg_goals_per_game`) directly from this response — zero extra API calls — and also returns the table to the frontend.
 
-**4. Fixture xG and Trends**
-```
-GET /v3/football/fixtures/{fixture_id}
-include=xGFixture;trends;participants
-```
-Returns expected goals (xG) for both teams — a measure of chance quality independent of actual goals. Also returns current trends (form indicators) for each team.
+**4. xG and Trends**
+Expected goals are **not on the free tier**. `get_fixture_with_xg()` returns a graceful empty payload (`xg: null`, `trends: null`), and the prompt simply omits that section.
 
 **5. Confirmed Lineups**
-```
-GET /v3/football/fixtures/{fixture_id}
-include=lineups
-```
-Returns confirmed starting lineups (type_id 11) for both teams:
-- Player names, position IDs, jersey numbers
-- Only populated a few hours before kickoff; returns empty if lineups not yet confirmed
+Also **not on the free tier**. `get_fixture_lineups()` returns `{team_a_starters: [], team_b_starters: [], confirmed: false}`.
 
 **6. Top Scorers**
 ```
-GET /v3/football/topscorers/seasons/{season_id}
-include=player;participant
-per_page=20
+GET /v4/competitions/{code}/scorers?limit=10
 ```
-Returns the 10 leading goal scorers in the season:
-- Player name, team name, goals, rank
-- Used by Gemini to identify if any top scorers are starting today
+Returns the leading scorers in the competition — player name, team, goals — used by Gemini as squad context.
 
 **7. Squad Depth**
 ```
-GET /v3/football/squads/teams/{team_a_id}
-include=player
+GET /v4/teams/{team_a_id}
 ```
-Returns full squad for team A:
-- Player names, position IDs (24=goalkeeper), captain flag
-- Used to detect if first-choice goalkeeper or captain is missing from lineups
+Returns team A's squad list (names, positions), used as depth context in the prompt.
+
+Injuries follow the same pattern: not available on the free tier, so both teams report "Full squad available" rather than inventing absences.
 
 ### Parallel Execution
 
@@ -131,11 +106,11 @@ All 7 calls fire simultaneously. The returned data is processed into a single `e
   "team_b_stats": {goals_scored, goals_conceded, wins, draws, losses, total_matches},
   "xg": {team_a_xg: float, team_b_xg: float} or None,
   "trends": {team_a: list[str], team_b: list[str]} or None,
-  "injuries": {team_a: list[dict], team_b: list[dict]} — empty for Starter plan,
+  "injuries": {team_a: list[dict], team_b: list[dict]} — empty on the free tier,
   "lineup": {team_a_starters: list[dict], team_b_starters: list[dict], confirmed: bool},
   "topscorers_with_names": list[dict],
   "squad_a": list[dict],
-  "season_id": int
+  "season_id": str — football-data.org competition code
 }
 ```
 
@@ -224,7 +199,7 @@ Research (Dixon & Coles, verified in backtest) shows home advantage varies by le
 | Bundesliga | 564 | 1.16 | Passionate fans |
 | Serie A | 384 | 1.15 | Moderate home advantage |
 | Ligue 1 | 301 | 1.13 | Slight home advantage |
-| MLS | 779 | 1.08 | Weakest — large travel distances, less crowd effect |
+| MLS (historical backtest data only) | 779 | 1.08 | Weakest — large travel distances, less crowd effect |
 | Default (unknown) | — | 1.15 | Conservative middle estimate |
 
 The home advantage multiplier is applied only to the **home team's expected goals**:
@@ -345,10 +320,10 @@ else:
     confidence = "low"
 ```
 
-These thresholds are calibrated from the backtest:
-- **High-confidence predictions** (≥65% winner prob) achieved **73.7% accuracy** on 351 high-confidence fixtures in the CSV backtest
-- This means when the model is "confident", it's right about 3 times out of 4
-- Medium and low bins are more balanced
+These thresholds come from the backtest:
+- **High-confidence predictions** (≥65% winner prob) hit **59.3% accuracy** on 344 fixtures in the point-in-time backtest, versus 48.4% overall
+- So "high" means clearly favoured — roughly 3 right out of 5, not 3 out of 4
+- Medium and low bins are closer to a coin flip between two of the three outcomes
 
 ---
 
@@ -377,7 +352,7 @@ Recent results:
   - {fixture name} ({date}): {result_info}
   - ...
 ```
-Retrieved from `compare_matchup()`, which queries SportMonks for historical fixtures between the two teams.
+Retrieved from `compare_matchup()`, which derives head-to-head history from each team's recent football-data.org fixtures.
 
 **3. Enriched Data Section** (built by `_build_enriched_section()`)
 
@@ -618,43 +593,39 @@ The bars are always rendered because probabilities are always returned (either f
 
 ### What the Backtest Is
 
-The backtest evaluates the model on **historical fixtures with known outcomes**. The script `scripts/backtest.py` loads completed matches from two sources:
+The backtest evaluates the model on **historical fixtures with known outcomes**. `scripts/backtest.py` runs fully offline against the bundled dataset `scripts/data/enriched_fixtures.csv` (1,747 completed fixtures across 5 leagues) — no API key, no network, so the baseline is reproducible on any machine.
 
-1. **CSV Mode**: `enriched_fixtures.csv` — 1747 completed fixtures from 2023-2024 seasons across 5 leagues
-   - Stands matches-played from end-of-season standings (not match-day standings)
-   - No rolling form data (early-season fixtures use standings only)
-   - Most realistic production scenario
+It has two modes:
 
-2. **API Mode**: Fetches 75 recent completed fixtures live from SportMonks
-   - Uses live standings + rolling form when available
-   - Smaller sample, higher variance
+1. **Point-in-time (default)** — each fixture is predicted using ONLY matches played before it, with the first 4 games per team skipped as warm-up. This is the honest number.
+2. **Leaky (`--leaky`)** — reproduces the older run that used end-of-season aggregates for every fixture, including matches that had not been played yet. Kept only as a contrast, to show how much lookahead flatters a backtest.
 
 ### Current Accuracy Numbers
 
-**CSV Baseline (1747 fixtures):**
-- Overall accuracy: **52.8%**
-- Home baseline (always predict home): 44.8%
-- Improvement: +8.0 percentage points
-- Brier score: 0.594 (lower is better)
-- Log loss: 0.997 (lower is better)
+**Point-in-time baseline (1,526 fixtures evaluated, 220 skipped as warm-up):**
+- Overall accuracy: **48.4%** (±2.5% at 95% CI)
+- Home baseline (always predict home): 44.3%
+- Improvement: +4.1 percentage points
+- Brier score: 0.635 (lower is better)
+- Log loss: 1.059 (lower is better)
+- Top-label ECE: 0.073 | multiclass ECE: 0.050
 
-**API Baseline (75 fixtures):**
-- Overall accuracy: **54.7%**
-- Home baseline: 42.7%
-- Improvement: +12.0 percentage points
-- Brier score: 0.572
-- Log loss: 0.962
+**Leaky contrast (same code, full-season aggregates, 1,747 fixtures):**
+- Overall accuracy: 52.8% | Brier 0.594 | Log loss 0.997
+- The ~4.5pp gap between the two rows *is* the lookahead effect. Any accuracy figure quoted for this project should be the point-in-time one.
 
-**Breakdown by League (CSV):**
-- Premier League (8): 53.0%
-- Ligue 1 (301): 55.4%
-- La Liga (564): 53.5%
-- Serie A (384): 54.2%
-- MLS (779): 49.3% (weakest — higher variance, new players)
+**Breakdown by league (point-in-time):**
+- Premier League: 45.2%
+- Ligue 1: 46.1%
+- La Liga: 48.9%
+- Serie A: 50.2%
+- MLS (in the historical dataset only): 49.6%
 
-**High-Confidence Accuracy:**
-- Predictions with winner_prob ≥ 65%: **73.7% accuracy** (351 fixtures)
-- This is the key metric — when the model is "confident", it's right 3 times out of 4
+**By outcome:** home wins 52.2% | draws 31.4% | away wins 43.0% — draws remain the hardest class, as expected from a Poisson-family model.
+
+**High-confidence accuracy:**
+- Predictions with winner probability ≥ 65%: **59.3%** on 344 fixtures.
+- That is well above the 48.4% overall rate, so the confidence label carries real signal — but it is materially lower than the 73.7% the earlier lookahead-contaminated run reported.
 
 ### What Brier Score and Log Loss Measure
 
@@ -666,7 +637,7 @@ BS = (1/N) * Σ (p_predicted - p_actual)²
 - 0 = perfect predictions
 - 0.333 = random prediction of one outcome
 - 0.667 = random uniform (no information)
-- **Actual (0.594)**: Better than random, but room for improvement
+- **Actual (0.635, point-in-time)**: Better than uniform guessing, with clear room to improve
 
 **Log Loss** = negative average log likelihood
 ```
@@ -675,17 +646,16 @@ LL = -(1/N) * Σ log(p_actual_outcome)
 - Range: [0, ∞]
 - 0 = perfect predictions
 - 1.099 = random uniform (no information)
-- **Actual (0.997)**: Slightly better than random, model provides some signal
+- **Actual (1.059, point-in-time)**: Close to uniform — the model's edge is real but modest
 
-Both metrics show the model has **genuine predictive power** beyond home-team guessing, but acknowledges **inherent football uncertainty** — matches are not fully predictable from historical data alone.
+Both metrics show the model has **genuine predictive power** beyond home-team guessing, while acknowledging **inherent football uncertainty** — matches are not fully predictable from historical data alone.
 
-### What "High-Confidence Accuracy 73.7%" Means
+### What the Confidence Label Means
 
 The calibration analysis shows:
-- When the model predicts a 60%+ winner probability, the predicted team actually wins **73.7% of the time**
-- This validates the confidence threshold (_CONF_HIGH = 0.60)
-- Users should trust "high" confidence predictions significantly more than "medium" or "low"
-- For UI purposes: high-confidence predictions warrant bold statements, medium warrant cautious recommendations, low warrant "it could go either way"
+- When the model predicts a ≥65% winner probability, that team actually wins **59.3% of the time** (344 fixtures, point-in-time).
+- The label is therefore informative but over-confident: a "high" prediction should be read as "clearly favoured", not "near-certain".
+- For UI purposes: high-confidence predictions warrant a firm statement, medium a cautious one, low an explicit "this could go either way".
 
 ---
 
@@ -694,7 +664,7 @@ The calibration analysis shows:
 ```
 User selects fixture
     ↓
-Backend loads fixture from SportMonks (7 enrichment calls in parallel)
+Backend loads fixture from football-data.org (7 enrichment calls in parallel)
     ↓
 Dixon-Coles computes win/draw/away probabilities
     ↓
@@ -709,4 +679,4 @@ Backend overrides Gemini confidence with DC-derived label
 Frontend renders three-way probability bar + verdict + reasoning
 ```
 
-Each step is independent and testable. The model is **deterministic** (same input → same output), **calibrated** (backtested on 1747 matches), and **transparent** (users see probabilities, not just a binary guess).
+Each step is independent and testable. The model is **deterministic** (same input → same output), **evaluated** (point-in-time backtest over 1,526 matches, no lookahead), and **transparent** (users see probabilities, not just a binary guess).

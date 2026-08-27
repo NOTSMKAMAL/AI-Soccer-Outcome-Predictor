@@ -268,7 +268,7 @@ export default function AuthPage() {
           <ol style={{ listStyle: "none", padding: 0, margin: "0 0 auto", display: "flex", flexDirection: "column", gap: 10 }}>
             {[
               { n: "01", title: "Create your account", desc: "Email / password or Google — Firebase handles auth." },
-              { n: "02", title: "Browse live fixtures", desc: "Real SportMonks data across MLS, PL, LaLiga and more." },
+              { n: "02", title: "Browse live fixtures", desc: "Real football-data.org data across MLS, PL, LaLiga and more." },
               { n: "03", title: "Generate predictions", desc: "One-click Gemini reasoning with confidence and risk factors." },
             ].map((s) => (
               <li

@@ -9,7 +9,17 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     ...options,
   });
   if (!res.ok) {
-    throw new Error(`API ${res.status}: ${await res.text()}`);
+    // FastAPI puts the human-readable reason in `detail` (allowlist / quota /
+    // not-found messages). Fall back to the raw body when it is not JSON.
+    const body = await res.text();
+    let detail = body;
+    try {
+      const parsed = JSON.parse(body) as { detail?: string };
+      if (parsed?.detail) detail = parsed.detail;
+    } catch {
+      /* not JSON — keep the raw body */
+    }
+    throw new Error(`API ${res.status}: ${detail}`);
   }
   return res.json() as Promise<T>;
 }
@@ -31,11 +41,6 @@ async function authRequest<T>(
 
 // ── Public endpoints (no auth required) ──────────────────────────────────────
 
-/** Returns the list of supported teams from the backend. */
-export async function getTeams() {
-  return request<{ status: string; data: unknown[] }>("/api/teams");
-}
-
 // Session cache: resets on page reload. Max staleness: 5 minutes.
 // To force a refresh during demo, reload the page.
 let _fixturesCache: { data: unknown[]; ts: number } | null = null;
@@ -53,11 +58,7 @@ export async function getTopLeagueFixtures() {
   return result;
 }
 
-/**
- * Returns a single fixture by ID.
- * Backed by GET /api/fixtures/{matchId} — wired to storage/sportmonks_client.py
- * once the main-branch engine/storage layer is merged.
- */
+/** Returns a single fixture by ID. Backed by GET /api/fixtures/{matchId}. */
 export async function getFixtureById(matchId: string) {
   return request<{ status: string; data: unknown }>(
     `/api/fixtures/${matchId}`
@@ -68,8 +69,7 @@ export async function getFixtureById(matchId: string) {
 
 /**
  * Triggers a prediction for the given fixture.
- * Backed by POST /api/fixtures/{matchId}/prediction — wired to
- * engine/prediction_engine.py once the main-branch layer is merged.
+ * Backed by POST /api/fixtures/{matchId}/prediction (Firebase ID token required).
  */
 export async function generatePrediction(matchId: string, token: string) {
   return authRequest<{ status: string; data: unknown }>(

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 
 function FutureFCLogo() {
@@ -373,6 +373,7 @@ function UserMenu({
 export default function Navbar() {
   const { user, logout } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   const handleLogout = async () => {
@@ -407,12 +408,24 @@ export default function Navbar() {
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             {user ? (
               <>
-                <span
-                  style={{ fontSize: 13, color: "var(--muted)", maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
-                  className="hidden sm:block"
-                >
-                  {user.displayName || user.email}
-                </span>
+                {/* Nav links for authenticated users */}
+                <nav style={{ display: "flex", alignItems: "center", gap: 4 }} className="hidden sm:flex">
+                  <Link
+                    href="/dashboard"
+                    style={{
+                      display: "inline-flex", alignItems: "center", gap: 4,
+                      padding: "6px 12px", borderRadius: 8,
+                      fontSize: 13, fontWeight: 600, textDecoration: "none",
+                      color: pathname === "/dashboard" ? "var(--ink)" : "var(--muted)",
+                      background: pathname === "/dashboard" ? "var(--surface-2)" : "transparent",
+                      transition: "color 0.15s, background 0.15s",
+                    }}
+                    onMouseEnter={(e) => { if (pathname !== "/dashboard") (e.currentTarget as HTMLAnchorElement).style.color = "var(--ink-2)"; }}
+                    onMouseLeave={(e) => { if (pathname !== "/dashboard") (e.currentTarget as HTMLAnchorElement).style.color = "var(--muted)"; }}
+                  >
+                    Fixtures
+                  </Link>
+                </nav>
                 <UserMenu
                   user={user}
                   onSignOut={handleLogout}
