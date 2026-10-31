@@ -171,7 +171,7 @@ function AccountSettingsModal({
             <div style={{ fontSize: 14, fontWeight: 600, color: "var(--ink)", marginBottom: 2 }}>
               {[firstName, lastName].filter(Boolean).join(" ") || "Your name"}
             </div>
-            <div style={{ fontSize: 12, color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            <div style={{ fontSize: 12, color: "var(--muted)", overflowWrap: "anywhere" }}>
               {user.email}
             </div>
           </div>
@@ -323,7 +323,7 @@ function UserMenu({
       {open && (
         <div style={{
           position: "absolute", top: "calc(100% + 10px)", right: 0,
-          minWidth: 220, background: "var(--surface)", borderRadius: 14,
+          width: 260, maxWidth: "calc(100vw - 32px)", background: "var(--surface)", borderRadius: 14,
           boxShadow: "inset 0 0 0 1px var(--border-s)",
           padding: "6px", zIndex: 50,
           animation: "dropIn 0.18s cubic-bezier(0.16,1,0.3,1)",
@@ -340,11 +340,11 @@ function UserMenu({
               {initial}
             </div>
             <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)", overflowWrap: "anywhere" }}>
                 {displayName || email}
               </div>
               {displayName && (
-                <div style={{ fontSize: 12, color: "var(--muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 160 }}>
+                <div style={{ fontSize: 12, color: "var(--muted)", overflowWrap: "anywhere" }}>
                   {email}
                 </div>
               )}
@@ -411,7 +411,7 @@ export default function Navbar() {
         backgroundImage: "var(--nav-bar)",
       }}>
         <div style={{
-          maxWidth: 1240, margin: "0 auto", padding: "13px 32px",
+          maxWidth: 1240, margin: "0 auto", padding: "13px clamp(16px, 4vw, 32px)",
           display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16,
         }}>
           {/* Logo */}

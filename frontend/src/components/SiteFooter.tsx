@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-const LINK_STYLE = { color: "var(--primary-text)", textDecoration: "none", fontWeight: 600 };
+const LINK_STYLE = { display: "inline-flex", alignItems: "center", minHeight: 24, color: "var(--primary-text)", textDecoration: "none", fontWeight: 600 };
 
 /** Required attributions and legal links, shown on every page from the root layout. */
 export default function SiteFooter() {

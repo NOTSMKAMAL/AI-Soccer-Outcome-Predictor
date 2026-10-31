@@ -111,7 +111,7 @@ function HeroPreviewCard() {
           marginTop: 4,
         }}>
           <span style={{ fontSize: 12, color: "var(--muted)" }}>Illustrative, not real matches</span>
-          <Link href="/auth" replace style={{ fontSize: 12, color: "var(--primary-text)", fontWeight: 600, textDecoration: "none" }}>
+          <Link href="/auth" replace style={{ display: "inline-flex", alignItems: "center", minHeight: 24, fontSize: 12, color: "var(--primary-text)", fontWeight: 600, textDecoration: "none" }}>
             View all →
           </Link>
         </div>
@@ -250,7 +250,7 @@ function LandingPage() {
       {/* ── Hero ── */}
       <section className="depth" style={{ position: "relative", zIndex: 1 }}>
         <div style={{
-          maxWidth: 1200, margin: "0 auto", padding: "72px 32px 80px",
+          maxWidth: 1200, margin: "0 auto", padding: "72px clamp(16px, 4vw, 32px) 80px",
           display: "flex", alignItems: "center", gap: 64, flexWrap: "wrap",
         }}>
           {/* Left copy */}
@@ -335,7 +335,7 @@ function LandingPage() {
 
       {/* ── Leagues strip ── */}
       <section id="leagues" style={{ position: "relative", zIndex: 1, borderTop: "1px solid var(--border)", borderBottom: "1px solid var(--border)", background: "var(--surface)" }}>
-        <div style={{ maxWidth: 1200, margin: "0 auto", padding: "20px 32px", display: "flex", alignItems: "center", gap: 24, flexWrap: "wrap" }}>
+        <div style={{ maxWidth: 1200, margin: "0 auto", padding: "20px clamp(16px, 4vw, 32px)", display: "flex", alignItems: "center", gap: 24, flexWrap: "wrap" }}>
           <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--muted-2)", flexShrink: 0 }}>
             Covers Europe's top competitions
           </span>
@@ -356,7 +356,7 @@ function LandingPage() {
       </section>
 
       {/* ── Features ── */}
-      <section id="features" style={{ position: "relative", zIndex: 1, padding: "96px 32px" }}>
+      <section id="features" style={{ position: "relative", zIndex: 1, padding: "96px clamp(16px, 4vw, 32px)" }}>
         <div style={{ maxWidth: 1200, margin: "0 auto" }}>
           <header style={{ textAlign: "center", marginBottom: 56 }}>
             <div style={{
@@ -413,7 +413,7 @@ function LandingPage() {
 
       {/* ── How it works ── */}
       <section id="how-it-works" style={{
-        position: "relative", zIndex: 1, padding: "96px 32px",
+        position: "relative", zIndex: 1, padding: "96px clamp(16px, 4vw, 32px)",
         background: "var(--surface)",
         borderTop: "1px solid var(--border)", borderBottom: "1px solid var(--border)",
       }}>
@@ -453,7 +453,7 @@ function LandingPage() {
       </section>
 
       {/* ── CTA ── */}
-      <section style={{ position: "relative", zIndex: 1, padding: "96px 32px" }}>
+      <section style={{ position: "relative", zIndex: 1, padding: "96px clamp(16px, 4vw, 32px)" }}>
         <div style={{ maxWidth: 640, margin: "0 auto", textAlign: "center" }}>
           <h2 style={{ fontSize: "clamp(28px, 4vw, 42px)", fontWeight: 700, letterSpacing: "-0.03em", color: "var(--ink)", margin: "0 0 16px", fontFamily: "var(--font-display), system-ui" }}>
             Ready to see today&apos;s board?

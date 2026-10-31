@@ -196,8 +196,8 @@ export default function MatchCard({ fixture }: Props) {
 
         {/* Footer */}
         <div style={{ marginTop: "auto", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, paddingTop: 4, borderTop: "1px solid var(--border)" }}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0, overflow: "hidden" }}>
-            <span style={{ fontSize: 11, color: "var(--muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
+            <span style={{ fontSize: 11, color: "var(--muted)" }}>
               {fullDate}{!isFinished && !isLive ? ` · ${time}` : ""}
             </span>
             {fixture.venue && (
@@ -205,7 +205,7 @@ export default function MatchCard({ fixture }: Props) {
                 <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--muted-2)", flexShrink: 0 }}>
                   <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" />
                 </svg>
-                <span style={{ fontSize: 10, color: "var(--muted-2)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                <span style={{ fontSize: 10, color: "var(--muted-2)", overflowWrap: "anywhere" }}>
                   {fixture.venue}
                 </span>
               </div>

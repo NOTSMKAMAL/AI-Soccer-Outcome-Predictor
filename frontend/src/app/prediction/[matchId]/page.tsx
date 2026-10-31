@@ -174,9 +174,9 @@ function ThreeSegmentBar({
     <div className="mt-6 mx-auto w-full max-w-xs space-y-2">
       {/* Labels */}
       <div className="grid grid-cols-3 text-center text-xs" style={{ color: "var(--muted)" }}>
-        <span className="truncate px-1 text-left">{homeName}</span>
+        <span className="break-words px-1 text-left">{homeName}</span>
         <span>Draw</span>
-        <span className="truncate px-1 text-right">{awayName}</span>
+        <span className="break-words px-1 text-right">{awayName}</span>
       </div>
 
       {/* Bar */}
@@ -436,15 +436,15 @@ function H2HTimeline({ h2h, teamA, teamB }: { h2h: Prediction["headToHead"]; tea
         <h3 className="section-label">Head to Head History</h3>
         <SectionBadge label="HISTORICAL DATA • football-data.org" />
       </div>
-      <div className="flex gap-6 mb-4 text-center">
+      <div className="grid grid-cols-3 gap-2 mb-4 text-center">
         {[
           { val: h2h.teamAWins, label: teamA },
           { val: h2h.draws, label: "Draws" },
           { val: h2h.teamBWins, label: teamB },
         ].map(({ val, label }) => (
-          <div key={label} className="stat-cell flex-1">
+          <div key={label} className="stat-cell min-w-0" style={{ padding: "12px 8px" }}>
             <p className="text-2xl font-bold" style={{ color: "var(--ink)", fontFamily: "var(--font-display), system-ui" }}>{val}</p>
-            <p className="text-[11px] mt-0.5 truncate" style={{ color: "var(--muted)" }}>{label}</p>
+            <p className="text-[11px] mt-0.5 break-words" style={{ color: "var(--muted)" }}>{label}</p>
           </div>
         ))}
       </div>
@@ -456,7 +456,7 @@ function H2HTimeline({ h2h, teamA, teamB }: { h2h: Prediction["headToHead"]; tea
               <div key={i} className={`flex items-center gap-3 rounded-lg border-l-2 px-3 py-2.5 text-xs ${rowBorder(r.result_info)}`}
                 style={{ background: "var(--surface-2)" }}>
                 <span className="shrink-0 w-20" style={{ color: "var(--muted)" }}>{r.date}</span>
-                <span className="flex-1 truncate" style={{ color: "var(--ink-2)" }}>{r.name}</span>
+                <span className="flex-1 min-w-0" style={{ color: "var(--ink-2)" }}>{r.name}</span>
                 <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-bold ${badge.cls}`}>
                   {badge.label}
                 </span>
@@ -548,24 +548,26 @@ function MatchCardInner({ fixture, teamId, defaultExpanded }: { fixture: RecentF
     <div className="rounded-xl overflow-hidden mb-2" style={{ border: "1px solid var(--border)", background: "var(--surface-2)" }}>
       <button
         onClick={() => setExpanded((e) => !e)}
-        className="w-full flex items-center gap-2 px-4 py-3 text-left transition-colors"
+        className="w-full flex flex-wrap items-center gap-2 px-4 py-3 text-left transition-colors"
         style={{ cursor: "pointer" }}
         onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.background = "var(--surface-3)")}
         onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.background = "transparent")}
       >
         <TeamBadge name={myTeam.name} size={24} />
-        <span className="text-xs flex-1 truncate" style={{ color: "var(--ink-2)" }}>{myTeam.name}</span>
+        <span className="text-xs flex-1 min-w-0 break-words" style={{ color: "var(--ink-2)" }}>{myTeam.name}</span>
         <span className="text-sm font-bold px-2 shrink-0" style={{ color: "var(--ink)" }}>{scoreStr}</span>
-        <span className="text-xs flex-1 text-right truncate" style={{ color: "var(--ink-2)" }}>{oppTeam.name}</span>
+        <span className="text-xs flex-1 min-w-0 text-right break-words" style={{ color: "var(--ink-2)" }}>{oppTeam.name}</span>
         <TeamBadge name={oppTeam.name} size={24} />
-        {resultLabel && (
-          <span className={`ml-2 shrink-0 rounded-full border px-1.5 py-0.5 text-[9px] font-bold ${resultCls}`}>{resultLabel}</span>
-        )}
-        <span className="text-[10px] ml-1 shrink-0" style={{ color: "var(--muted-2)" }}>{fixture.date}</span>
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-          className={`ml-1 transition-transform ${expanded ? "rotate-180" : ""}`} style={{ color: "var(--muted-2)" }}>
-          <path d="M6 9l6 6 6-6" />
-        </svg>
+        <span className="w-full flex items-center gap-2">
+          {resultLabel && (
+            <span className={`shrink-0 rounded-full border px-1.5 py-0.5 text-[9px] font-bold ${resultCls}`}>{resultLabel}</span>
+          )}
+          <span className="text-[10px]" style={{ color: "var(--muted-2)" }}>{fixture.date}</span>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+            className={`ml-auto transition-transform ${expanded ? "rotate-180" : ""}`} style={{ color: "var(--muted-2)" }}>
+            <path d="M6 9l6 6 6-6" />
+          </svg>
+        </span>
       </button>
       {expanded && (
         <div className="px-4 pb-4">
@@ -591,13 +593,13 @@ function RecentFormSection({ formA, formB, teamA, teamB, teamAId, teamBId }: {
         <h3 className="section-label">Recent Form</h3>
         <SectionBadge label="SCHEDULES & RESULTS • football-data.org" />
       </div>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {[
           { name: teamA, fixtures: formA, tid: teamAId },
           { name: teamB, fixtures: formB, tid: teamBId },
         ].map(({ name, fixtures, tid }) => (
           <div key={name}>
-            <p className="text-xs font-semibold mb-2 truncate" style={{ color: "var(--muted)" }}>{name}</p>
+            <p className="text-xs font-semibold mb-2 break-words" style={{ color: "var(--muted)" }}>{name}</p>
             {fixtures && fixtures.length > 0 ? (
               fixtures.map((f, i) => (
                 <MatchCardInner key={f.fixture_id ?? i} fixture={f} teamId={tid} defaultExpanded={i === 0} />
@@ -639,7 +641,7 @@ function XGSection({ xg, teamA, teamB }: { xg: { team_a_xg: number; team_b_xg: n
         ].map(({ name, xgVal, pct, color }) => (
           <div key={name}>
             <div className="flex justify-between text-xs mb-1.5">
-              <span className="truncate max-w-[60%]" style={{ color: "var(--ink-2)" }}>{name}</span>
+              <span className="break-words max-w-[60%]" style={{ color: "var(--ink-2)" }}>{name}</span>
               <span className="font-bold" style={{ color: "var(--ink)", fontFamily: "var(--font-display), system-ui" }}>{xgVal.toFixed(2)} xG</span>
             </div>
             <div className="h-3 rounded-full overflow-hidden" style={{ background: "var(--surface-2)" }}>
@@ -679,7 +681,7 @@ function StatBar({ label, valA, valB, nameA, nameB }: {
       <div className="flex items-center gap-3">
         <div className="flex-1">
           <div className="flex justify-between text-xs mb-1">
-            <span className="truncate max-w-[60%]" style={{ color: "var(--muted)" }}>{nameA}</span>
+            <span className="break-words max-w-[60%]" style={{ color: "var(--muted)" }}>{nameA}</span>
             <span className="font-bold" style={{ color: "var(--ink)" }}>{valA ?? "—"}</span>
           </div>
           <div className="h-2 rounded-full overflow-hidden" style={{ background: "var(--surface-2)" }}>
@@ -689,7 +691,7 @@ function StatBar({ label, valA, valB, nameA, nameB }: {
         <div className="flex-1">
           <div className="flex justify-between text-xs mb-1">
             <span className="font-bold" style={{ color: "var(--ink)" }}>{valB ?? "—"}</span>
-            <span className="truncate max-w-[60%] text-right" style={{ color: "var(--muted)" }}>{nameB}</span>
+            <span className="break-words max-w-[60%] text-right" style={{ color: "var(--muted)" }}>{nameB}</span>
           </div>
           <div className="h-2 rounded-full overflow-hidden" style={{ background: "var(--surface-2)" }}>
             <div className="h-full rounded-full transition-all duration-700" style={{ width: `${pB}%`, background: "var(--away)" }} />
@@ -807,7 +809,7 @@ function TrendsSection({ trends, teamA, teamB }: { trends: { team_a: string[]; t
       <div className="grid grid-cols-2 gap-6">
         {[{ name: teamA, items: trends.team_a }, { name: teamB, items: trends.team_b }].map(({ name, items }) => (
           <div key={name}>
-            <p className="text-xs font-semibold mb-2 truncate" style={{ color: "var(--muted)" }}>{name}</p>
+            <p className="text-xs font-semibold mb-2 break-words" style={{ color: "var(--muted)" }}>{name}</p>
             {items.length === 0 ? (
               <p className="text-xs" style={{ color: "var(--muted-2)" }}>No trend data</p>
             ) : (
@@ -854,7 +856,7 @@ function ReasoningBreakdown({ reasoning }: { reasoning: string }) {
       )}
       {chips.length > 0 && (
         <details className="group">
-          <summary className="cursor-pointer text-xs transition-colors select-none"
+          <summary className="cursor-pointer text-xs transition-colors select-none py-1.5"
             style={{ color: "var(--muted-2)" }}
             onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.color = "var(--primary-text)")}
             onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.color = "var(--muted-2)")}
@@ -1160,8 +1162,8 @@ function PredictionContent({ matchId }: { matchId: string }) {
 
       <main>
       <div className="relative pt-20">
-        <div className="relative mx-auto max-w-4xl px-4 pt-10 pb-4 sm:px-6">
-          <Link href="/dashboard" className="mb-4 inline-flex items-center gap-1.5 text-sm transition-colors"
+        <div className="relative mx-auto max-w-4xl px-[clamp(16px,4vw,32px)] pt-10 pb-4">
+          <Link href="/dashboard" className="mb-4 inline-flex items-center gap-1.5 min-h-[24px] text-sm transition-colors"
             style={{ color: "var(--muted)" }}
             onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.color = "var(--primary-text)")}
             onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.color = "var(--muted)")}
@@ -1179,7 +1181,7 @@ function PredictionContent({ matchId }: { matchId: string }) {
         </div>
       </div>
 
-      <div className="mx-auto max-w-4xl px-4 pb-16 sm:px-6 space-y-4">
+      <div className="mx-auto max-w-4xl px-[clamp(16px,4vw,32px)] pb-16 space-y-4">
 
         {pageState === "loadingFixture" && <PredictionSkeleton />}
 

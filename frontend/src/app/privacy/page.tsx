@@ -26,7 +26,7 @@ export default function PrivacyPage() {
       </LegalSection>
 
       <LegalSection heading="What we collect">
-        <ul style={{ paddingLeft: 20, margin: 0 }}>
+        <ul style={{ listStyle: "disc", paddingLeft: 20, margin: 0 }}>
           <li>
             <strong>Account details.</strong> Your email address, your name if you give one, whether
             your email is verified, and sign-in times, held by Firebase Authentication. If you use
@@ -54,7 +54,7 @@ export default function PrivacyPage() {
       </LegalSection>
 
       <LegalSection heading="Services that handle data">
-        <ul style={{ paddingLeft: 20, margin: 0 }}>
+        <ul style={{ listStyle: "disc", paddingLeft: 20, margin: 0 }}>
           <li><strong>Firebase Authentication (Google):</strong> accounts and sign-in.</li>
           <li><strong>Cloud Firestore (Google):</strong> daily prediction counters and daily totals.</li>
           <li><strong>Google Gemini:</strong> writes the prediction explanations.</li>

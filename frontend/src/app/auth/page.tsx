@@ -94,7 +94,7 @@ function Field({
         {label}
       </label>
       <div
-        className="input-box flex items-center gap-2.5 rounded-[10px] px-3 py-2.5 transition-all duration-200"
+        className="input-box flex items-center gap-2.5 rounded-[10px] px-3 transition-all duration-200"
         style={{
           minWidth: 0,
           background: "var(--surface-2)",
@@ -115,6 +115,7 @@ function Field({
           style={{
             flex: 1,
             minWidth: 0,
+            padding: "12px 0",
             background: "transparent",
             border: "none",
             outline: "none",
@@ -300,6 +301,7 @@ export default function AuthPage() {
       <main
         style={{
           display: "grid",
+          gridTemplateColumns: "minmax(0, 1fr)",
           placeItems: "center",
           padding: "48px clamp(16px, 4vw, 32px)",
           background: "var(--bg)",
@@ -470,7 +472,7 @@ export default function AuthPage() {
                   <button
                     type="button"
                     disabled={busy}
-                    style={{ fontSize: 12, color: "var(--primary-text)", background: "none", border: "none", cursor: "pointer", flexShrink: 0 }}
+                    style={{ minHeight: 24, fontSize: 12, color: "var(--primary-text)", background: "none", border: "none", cursor: "pointer", flexShrink: 0 }}
                     onClick={handleForgotPassword}
                   >
                     Forgot?
@@ -540,7 +542,7 @@ export default function AuthPage() {
                 <button
                   type="button"
                   onClick={() => { setTab("signup"); setErrors({}); setGlobalError(""); }}
-                  style={{ color: "var(--primary-text)", background: "none", border: "none", cursor: "pointer", fontWeight: 600 }}
+                  style={{ minHeight: 24, color: "var(--primary-text)", background: "none", border: "none", cursor: "pointer", fontWeight: 600 }}
                 >
                   Sign up
                 </button>
@@ -551,7 +553,7 @@ export default function AuthPage() {
                 <button
                   type="button"
                   onClick={() => { setTab("signin"); setErrors({}); setGlobalError(""); }}
-                  style={{ color: "var(--primary-text)", background: "none", border: "none", cursor: "pointer", fontWeight: 600 }}
+                  style={{ minHeight: 24, color: "var(--primary-text)", background: "none", border: "none", cursor: "pointer", fontWeight: 600 }}
                 >
                   Log in
                 </button>
