@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import { requestPasswordReset } from "@/lib/passwordReset";
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
 
@@ -129,7 +130,7 @@ function Field({
 // ── Auth page ─────────────────────────────────────────────────────────────────
 
 export default function AuthPage() {
-  const { user, loading, signIn, signUp, signInWithGoogle } = useAuth();
+  const { user, loading, accountDeleted, signIn, signUp, signInWithGoogle, resetPassword } = useAuth();
   const router = useRouter();
 
   const [tab, setTab] = useState<"signin" | "signup">("signin");
@@ -140,6 +141,7 @@ export default function AuthPage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const [globalError, setGlobalError] = useState("");
+  const [notice, setNotice] = useState("");
 
   useEffect(() => {
     if (!loading && user) router.replace("/dashboard");
@@ -171,6 +173,21 @@ export default function AuthPage() {
     } finally {
       setBusy(false);
     }
+  };
+
+  const handleForgotPassword = async () => {
+    setGlobalError("");
+    setNotice("");
+    if (!email.includes("@")) {
+      setErrors({ email: "Enter your email above, then press Forgot? again." });
+      return;
+    }
+    setErrors({});
+    setBusy(true);
+    const { sent, message } = await requestPasswordReset(email, resetPassword);
+    setBusy(false);
+    if (sent) setNotice(message);
+    else setGlobalError(message);
   };
 
   const handleGoogle = async () => {
@@ -484,14 +501,31 @@ export default function AuthPage() {
                 tab === "signin" ? (
                   <button
                     type="button"
+                    disabled={busy}
                     style={{ fontSize: 12, color: "var(--accent-2)", background: "none", border: "none", cursor: "pointer", flexShrink: 0 }}
-                    onClick={(e) => e.preventDefault()}
+                    onClick={handleForgotPassword}
                   >
                     Forgot?
                   </button>
                 ) : undefined
               }
             />
+
+            {(notice || accountDeleted) && (
+              <div
+                role="status"
+                style={{
+                  padding: "10px 14px",
+                  borderRadius: 10,
+                  background: "var(--accent-soft)",
+                  border: "1px solid var(--accent-edge)",
+                }}
+              >
+                <p style={{ margin: 0, fontSize: 13, color: "var(--ink-2)" }}>
+                  {notice || "Your account has been deleted."}
+                </p>
+              </div>
+            )}
 
             {globalError && (
               <div

@@ -53,6 +53,11 @@ _USERS_COLLECTION = "users"
 _FIRESTORE_TIMEOUT_SECONDS = 10
 # /health is public; caching keeps it from spending Firestore's daily free reads.
 _SNAPSHOT_TTL_SECONDS = 60
+# Firestore accepts up to 500 writes in a batch.
+_DELETE_BATCH_SIZE = 400
+
+# How old a sign-in may be for a destructive action; Firebase's own rule is 5 minutes.
+RECENT_SIGN_IN_SECONDS = 300
 
 
 def _env_int(name: str, default: int) -> int:
@@ -96,6 +101,14 @@ def is_owner(user: dict) -> bool:
     if not email or not is_email_verified(user):
         return False
     return email.lower() in _email_set("OWNER_EMAILS")
+
+
+def is_recent_sign_in(user: dict, now: float | None = None) -> bool:
+    """True when the token's `auth_time` is within RECENT_SIGN_IN_SECONDS."""
+    auth_time = user.get("auth_time")
+    if not auth_time:
+        return False
+    return (time.time() if now is None else now) - auth_time <= RECENT_SIGN_IN_SECONDS
 
 
 @dataclass(frozen=True)
@@ -204,6 +217,25 @@ class DailyQuota:
             _run_in_transaction(client, work)
         except Exception as exc:
             print(f"[Quota] refund failed for day {receipt.day}: {type(exc).__name__}: {exc}")
+
+    def delete_user_counts(self, key: str) -> None:
+        """Delete `key`'s counter on every stored day. Raises if Firestore fails.
+
+        The day totals stay: they hold no personal data, and removing them would
+        hand global budget back. Reads one document per stored day.
+        """
+        client = self._client()
+        batch = client.batch()
+        pending = 0
+        for day_doc in client.collection(_DAYS_COLLECTION).stream(timeout=_FIRESTORE_TIMEOUT_SECONDS):
+            batch.delete(day_doc.reference.collection(_USERS_COLLECTION).document(key))
+            pending += 1
+            if pending == _DELETE_BATCH_SIZE:
+                batch.commit()
+                batch = client.batch()
+                pending = 0
+        if pending:
+            batch.commit()
 
     def remaining(self, key: str) -> int:
         """Predictions `key` can still make today, counting what's left globally."""

@@ -57,6 +57,20 @@ tier allows 50,000 reads and 20,000 writes a day.
 To reset a day's counts by hand, delete that day's document under
 `prediction_quota_days` in the Firestore console, including its `users` subcollection.
 
+**What deleting an account removes** (Account settings → Delete account, for your
+privacy policy):
+
+| Data | After deletion |
+|---|---|
+| Firebase account (email, name, password or Google link) | Deleted |
+| That user's daily counter, on every stored day | Deleted |
+| Day totals in `prediction_quota_days` (`total`, `users`) | Kept. Plain numbers with no user ID or email |
+| Prediction history (SQLite) | Kept. It never stores who asked |
+| API host logs (for example Render's request logs) | Kept for as long as the host retains them. They can include IP addresses; the app itself logs no user IDs |
+| Google's own Firebase backups and logs | Governed by Google's retention terms, not this app |
+
+Deletion asks the user to sign in again if their last sign-in is over 5 minutes old.
+
 **Troubleshooting:** predictions show "temporarily unavailable" and the API log says
 `[Quota] check failed: ValueError: … transaction ID`. That message hides the real
 cause, which is usually that the Firestore database doesn't exist yet, or the service

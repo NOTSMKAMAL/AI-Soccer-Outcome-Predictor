@@ -4,6 +4,7 @@ tests/test_access.py uses an in-memory fake, which can't catch misuse of the SDK
 itself. Here the real client, transaction and retry decorator execute, and the
 assertions read the requests that would have gone to Firestore.
 """
+import inspect
 import os
 import sys
 from unittest.mock import MagicMock
@@ -13,6 +14,7 @@ from fastapi import HTTPException
 from google.api_core.exceptions import Aborted
 from google.auth.credentials import AnonymousCredentials
 from google.cloud import firestore
+from google.cloud.firestore_v1.collection import CollectionReference
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -72,6 +74,21 @@ def test_contended_transaction_is_retried_and_counted_once(client):
 
     assert receipt is not None
     assert client._firestore_api.commit.call_count == 2
+
+
+def test_stream_accepts_the_timeout_the_quota_passes():
+    assert "timeout" in inspect.signature(CollectionReference.stream).parameters
+
+
+def test_delete_user_counts_uses_real_sdk_paths_and_batch(client, monkeypatch):
+    day_doc = MagicMock()
+    day_doc.reference = client.collection("prediction_quota_days").document(DAY)
+    monkeypatch.setattr(CollectionReference, "stream", lambda self, timeout=None: iter([day_doc]))
+
+    _quota(client).delete_user_counts("user-a")
+
+    writes = _commit_request(client)["writes"]
+    assert [w.delete for w in writes] == [f"{DAY_PATH}/users/user-a"]
 
 
 def test_failure_starting_a_transaction_fails_closed(client, monkeypatch, capsys):

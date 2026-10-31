@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import DeleteAccountSection from "@/components/DeleteAccountSection";
 
 function FutureFCLogo() {
   return (
@@ -118,6 +119,7 @@ function AccountSettingsModal({
 
       <div style={{
         width: "100%", maxWidth: 420,
+        maxHeight: "calc(100dvh - 48px)", overflowY: "auto",
         background: "var(--surface)",
         borderRadius: 20,
         boxShadow: "0 40px 80px -30px rgba(0,0,0,0.7), inset 0 0 0 1px rgba(19,187,175,0.15)",
@@ -249,6 +251,8 @@ function AccountSettingsModal({
             </button>
           </div>
         </form>
+
+        <DeleteAccountSection />
       </div>
     </div>
   );

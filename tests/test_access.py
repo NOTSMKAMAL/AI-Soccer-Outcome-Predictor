@@ -20,9 +20,10 @@ PUBLIC = {"uid": "u1", "email": "someone@example.com", "email_verified": True}
 
 
 class FakeSnapshot:
-    def __init__(self, data):
+    def __init__(self, data, reference=None):
         self.exists = data is not None
         self._data = data or {}
+        self.reference = reference
 
     def to_dict(self):
         return dict(self._data)
@@ -49,6 +50,26 @@ class FakeCollection:
     def document(self, doc_id):
         return FakeDocument(self._db, f"{self._path}/{doc_id}")
 
+    def stream(self, timeout=None):
+        depth = self._path.count("/") + 2
+        for path, data in list(self._db.docs.items()):
+            if path.startswith(f"{self._path}/") and path.count("/") + 1 == depth:
+                yield FakeSnapshot(data, FakeDocument(self._db, path))
+
+
+class FakeBatch:
+    def __init__(self, db):
+        self._db = db
+        self._paths = []
+
+    def delete(self, ref):
+        self._paths.append(ref.path)
+
+    def commit(self):
+        self._db.batch_sizes.append(len(self._paths))
+        for path in self._paths:
+            self._db.docs.pop(path, None)
+
 
 class FakeTransaction:
     """Buffers writes until commit, as a real Firestore transaction does."""
@@ -69,9 +90,13 @@ class FakeFirestore:
     def __init__(self):
         self.docs = {}
         self.reads = 0
+        self.batch_sizes = []
 
     def collection(self, name):
         return FakeCollection(self, name)
+
+    def batch(self):
+        return FakeBatch(self)
 
 
 def _fake_run_in_transaction(db, work):
@@ -426,6 +451,88 @@ def test_allowance_for_owner_is_unlimited_and_reads_nothing(monkeypatch, db):
 def test_allowance_for_unverified_owner_is_not_unlimited(monkeypatch, db):
     monkeypatch.setenv("OWNER_EMAILS", "owner@example.com")
     assert access.allowance_for({**OWNER, "email_verified": False})["unlimited"] is False
+
+
+# ── Account deletion ──────────────────────────────────────────────────────────
+
+def _user_docs(db, key):
+    return [path for path in db.docs if path.endswith(f"/users/{key}")]
+
+
+def test_delete_removes_the_users_counts_on_every_day():
+    db = FakeFirestore()
+    for day in ("2026-10-29", "2026-10-30", "2026-10-31"):
+        _make_quota(db, day).check_and_consume("user-a")
+
+    _make_quota(db).delete_user_counts("user-a")
+
+    assert _user_docs(db, "user-a") == []
+
+
+def test_delete_leaves_other_users_alone():
+    db = FakeFirestore()
+    q = _make_quota(db)
+    q.check_and_consume("user-a")
+    q.check_and_consume("user-b")
+
+    q.delete_user_counts("user-a")
+
+    assert len(_user_docs(db, "user-b")) == 1
+
+
+def test_delete_keeps_the_anonymous_daily_total():
+    # Deleting must not hand back global budget; the total holds no personal data.
+    db = FakeFirestore()
+    q = _make_quota(db)
+    q.check_and_consume("user-a")
+
+    q.delete_user_counts("user-a")
+
+    assert db.docs["prediction_quota_days/2026-10-30"]["total"] == 1
+
+
+def test_delete_with_no_counts_is_fine():
+    _make_quota(FakeFirestore()).delete_user_counts("never-predicted")
+
+
+def test_delete_commits_in_batches_firestore_accepts(monkeypatch):
+    monkeypatch.setattr(access, "_DELETE_BATCH_SIZE", 2)
+    db = FakeFirestore()
+    for day in ("2026-10-27", "2026-10-28", "2026-10-29", "2026-10-30", "2026-10-31"):
+        _make_quota(db, day).check_and_consume("user-a")
+
+    _make_quota(db).delete_user_counts("user-a")
+
+    assert _user_docs(db, "user-a") == []
+    assert db.batch_sizes == [2, 2, 1]
+
+
+def test_delete_failure_raises_so_the_account_is_kept():
+    def broken():
+        raise RuntimeError("firestore down")
+    with pytest.raises(RuntimeError):
+        access.DailyQuota(client=broken).delete_user_counts("user-a")
+
+
+# ── Recent sign-in ────────────────────────────────────────────────────────────
+
+NOW = 2_000_000_000
+
+
+def test_sign_in_just_now_is_recent():
+    assert access.is_recent_sign_in({"auth_time": NOW - 10}, now=NOW) is True
+
+
+def test_sign_in_at_the_limit_is_recent():
+    assert access.is_recent_sign_in({"auth_time": NOW - access.RECENT_SIGN_IN_SECONDS}, now=NOW) is True
+
+
+def test_sign_in_past_the_limit_is_not_recent():
+    assert access.is_recent_sign_in({"auth_time": NOW - access.RECENT_SIGN_IN_SECONDS - 1}, now=NOW) is False
+
+
+def test_missing_auth_time_is_not_recent():
+    assert access.is_recent_sign_in({}, now=NOW) is False
 
 
 # ── /health snapshot ──────────────────────────────────────────────────────────

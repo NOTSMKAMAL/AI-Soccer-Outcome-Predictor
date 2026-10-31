@@ -111,6 +111,21 @@ def firestore_client():
     return firestore.client(app)
 
 
+def delete_firebase_user(uid: str) -> None:
+    """Permanently delete a Firebase account. Already deleted counts as done.
+
+    Raises RuntimeError when Firebase Admin could not be initialized, and lets
+    any other SDK failure propagate so the caller can report it.
+    """
+    app = _get_app()
+    if app is None:
+        raise RuntimeError("Firebase Admin SDK is not initialized")
+    try:
+        auth.delete_user(uid, app=app)
+    except UserNotFoundError:
+        pass  # a retry after a partial failure: the goal state is already reached
+
+
 def _log_verify_failure(exc: Exception, token: str) -> None:
     """Print why a token was rejected, without ever printing the token itself.
 

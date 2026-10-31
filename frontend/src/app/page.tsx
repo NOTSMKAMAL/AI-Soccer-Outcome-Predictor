@@ -1,5 +1,12 @@
 "use client";
 import Link from "next/link";
+import { useAuth } from "@/context/AuthContext";
+import { landingCta } from "@/lib/landingCta";
+
+function useLandingCta() {
+  const { user, loading } = useAuth();
+  return landingCta(loading, !!user);
+}
 
 // ── Static hero preview card ──────────────────────────────────────────────────
 
@@ -25,6 +32,7 @@ function SoccerBallSm() {
 }
 
 function HeroPreviewCard() {
+  const cta = useLandingCta();
   return (
     <div style={{ position: "relative", flex: "0 0 auto", width: "min(460px, 100%)" }}>
       {/* Glow */}
@@ -116,7 +124,7 @@ function HeroPreviewCard() {
           marginTop: 4,
         }}>
           <span style={{ fontSize: 12, color: "var(--muted)" }}>3 of 14 fixtures · 5 leagues</span>
-          <Link href="/auth" style={{ fontSize: 12, color: "var(--accent-2)", fontWeight: 600, textDecoration: "none" }}>
+          <Link href={cta.href} style={{ fontSize: 12, color: "var(--accent-2)", fontWeight: 600, textDecoration: "none" }}>
             View all →
           </Link>
         </div>
@@ -173,6 +181,7 @@ const STEPS = [
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function HomePage() {
+  const cta = useLandingCta();
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg)" }}>
 
@@ -230,28 +239,31 @@ export default function HomePage() {
                 {label}
               </a>
             ))}
-            <a href="/auth" style={{
-              fontSize: 14, color: "var(--muted)", padding: "6px 14px",
-              borderRadius: 8, textDecoration: "none",
-              transition: "color 0.15s",
-            }}
-            onMouseEnter={e => (e.currentTarget.style.color = "var(--ink)")}
-            onMouseLeave={e => (e.currentTarget.style.color = "var(--muted)")}
-            >
-              Sign in
-            </a>
+            {cta.ready && !cta.signedIn && (
+              <a href="/auth" style={{
+                fontSize: 14, color: "var(--muted)", padding: "6px 14px",
+                borderRadius: 8, textDecoration: "none",
+                transition: "color 0.15s",
+              }}
+              onMouseEnter={e => (e.currentTarget.style.color = "var(--ink)")}
+              onMouseLeave={e => (e.currentTarget.style.color = "var(--muted)")}
+              >
+                Sign in
+              </a>
+            )}
           </nav>
 
           {/* CTA */}
-          <Link href="/auth" style={{
+          <Link href={cta.href} style={{
             display: "inline-flex", alignItems: "center", gap: 6,
             padding: "9px 18px", borderRadius: 10, fontSize: 14, fontWeight: 600,
             background: "linear-gradient(180deg, #19D4C6 0%, #0EA89E 100%)",
             color: "#020E0C", textDecoration: "none",
             boxShadow: "0 6px 16px -4px rgba(19,187,175,0.5)",
             transition: "opacity 0.15s",
+            visibility: cta.ready ? "visible" : "hidden",
           }}>
-            Get started
+            {cta.label}
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M5 12h14M12 5l7 7-7 7" />
             </svg>
@@ -311,14 +323,15 @@ export default function HomePage() {
             </p>
 
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 28 }}>
-              <Link href="/auth" style={{
+              <Link href={cta.href} style={{
                 display: "inline-flex", alignItems: "center", gap: 8,
                 padding: "14px 28px", borderRadius: 12, fontSize: 16, fontWeight: 600,
                 background: "linear-gradient(180deg, #19D4C6 0%, #0EA89E 100%)",
                 color: "#020E0C", textDecoration: "none",
                 boxShadow: "0 8px 24px -6px rgba(19,187,175,0.5)",
+                visibility: cta.ready ? "visible" : "hidden",
               }}>
-                Get started
+                {cta.label}
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M5 12h14M12 5l7 7-7 7" />
                 </svg>
@@ -477,29 +490,33 @@ export default function HomePage() {
             Ready to see today&apos;s board?
           </h2>
           <p style={{ fontSize: 16, color: "var(--muted)", maxWidth: 480, margin: "0 auto 32px", lineHeight: 1.6 }}>
-            Sign in to access live fixtures and AI predictions across all six competitions.
+            {cta.signedIn
+              ? "Live fixtures and AI predictions across all six competitions are on your dashboard."
+              : "Sign in to access live fixtures and AI predictions across all six competitions."}
           </p>
-          <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
-            <Link href="/auth" style={{
+          <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap", visibility: cta.ready ? "visible" : "hidden" }}>
+            <Link href={cta.href} style={{
               display: "inline-flex", alignItems: "center", gap: 8,
               padding: "14px 32px", borderRadius: 12, fontSize: 16, fontWeight: 600,
               background: "linear-gradient(180deg, #19D4C6 0%, #0EA89E 100%)",
               color: "#020E0C", textDecoration: "none",
               boxShadow: "0 8px 24px -6px rgba(19,187,175,0.5)",
             }}>
-              Create your account
+              {cta.signedIn ? cta.label : "Create your account"}
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M5 12h14M12 5l7 7-7 7" />
               </svg>
             </Link>
-            <Link href="/auth" style={{
-              display: "inline-flex", alignItems: "center",
-              padding: "14px 28px", borderRadius: 12, fontSize: 16, fontWeight: 600,
-              background: "var(--surface)", color: "var(--ink-2)", textDecoration: "none",
-              border: "1px solid var(--border-strong)",
-            }}>
-              I already have one
-            </Link>
+            {!cta.signedIn && (
+              <Link href="/auth" style={{
+                display: "inline-flex", alignItems: "center",
+                padding: "14px 28px", borderRadius: 12, fontSize: 16, fontWeight: 600,
+                background: "var(--surface)", color: "var(--ink-2)", textDecoration: "none",
+                border: "1px solid var(--border-strong)",
+              }}>
+                I already have one
+              </Link>
+            )}
           </div>
         </div>
       </section>

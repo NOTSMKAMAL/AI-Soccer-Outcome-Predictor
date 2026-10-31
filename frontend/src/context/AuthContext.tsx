@@ -2,25 +2,36 @@
 
 import React, { createContext, useContext, useEffect, useState } from "react";
 import {
+  EmailAuthProvider,
   User,
   UserCredential,
   GoogleAuthProvider,
   createUserWithEmailAndPassword,
   onAuthStateChanged,
+  reauthenticateWithCredential,
+  reauthenticateWithPopup,
   sendEmailVerification,
+  sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signInWithPopup,
   signOut,
   updateProfile,
 } from "firebase/auth";
 import { auth } from "@/lib/firebase";
+import { deleteMyAccount } from "@/lib/api";
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
   emailVerified: boolean;
+  /** True after this tab deleted its account, so the sign-in page can confirm it. */
+  accountDeleted: boolean;
   resendVerificationEmail: () => Promise<void>;
   refreshEmailVerified: () => Promise<boolean>;
+  resetPassword: (email: string) => Promise<void>;
+  hasPasswordSignIn: () => boolean;
+  reauthenticate: (password?: string) => Promise<void>;
+  deleteAccount: () => Promise<void>;
   signIn: (email: string, password: string) => Promise<UserCredential>;
   signUp: (email: string, password: string, displayName?: string) => Promise<UserCredential>;
   signInWithGoogle: () => Promise<UserCredential>;
@@ -34,6 +45,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [emailVerified, setEmailVerified] = useState(false);
+  const [accountDeleted, setAccountDeleted] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
@@ -46,6 +58,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signIn = (email: string, password: string) =>
     signInWithEmailAndPassword(auth, email, password);
+
+  const resetPassword = (email: string) => sendPasswordResetEmail(auth, email);
+
+  const hasPasswordSignIn = () =>
+    auth.currentUser?.providerData.some((p) => p.providerId === "password") ?? false;
+
+  /** Re-confirm identity: with `password` for password accounts, otherwise via Google. */
+  const reauthenticate = async (password?: string) => {
+    const current = auth.currentUser;
+    if (!current) throw new Error("No user signed in.");
+    if (password !== undefined) {
+      await reauthenticateWithCredential(
+        current,
+        EmailAuthProvider.credential(current.email ?? "", password),
+      );
+    } else {
+      await reauthenticateWithPopup(current, new GoogleAuthProvider());
+    }
+  };
+
+  const deleteAccount = async () => {
+    if (!auth.currentUser) throw new Error("No user signed in.");
+    await deleteMyAccount(await auth.currentUser.getIdToken(true));
+    setAccountDeleted(true);
+    await signOut(auth);
+  };
 
   const signUp = async (email: string, password: string, displayName?: string) => {
     const cred = await createUserWithEmailAndPassword(auth, email, password);
@@ -90,7 +128,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   return (
     <AuthContext.Provider
       value={{
-        user, loading, emailVerified, resendVerificationEmail, refreshEmailVerified,
+        user, loading, emailVerified, accountDeleted,
+        resendVerificationEmail, refreshEmailVerified,
+        resetPassword, hasPasswordSignIn, reauthenticate, deleteAccount,
         signIn, signUp, signInWithGoogle, logout, updateDisplayName,
       }}
     >

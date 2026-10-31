@@ -9,7 +9,7 @@ import os
 import sys
 
 import pytest
-from firebase_admin.auth import ExpiredIdTokenError, InvalidIdTokenError
+from firebase_admin.auth import ExpiredIdTokenError, InvalidIdTokenError, UserNotFoundError
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -109,6 +109,31 @@ def test_log_never_contains_the_token(monkeypatch, initialized_app, capsys):
     out = capsys.readouterr().out
     assert TOKEN not in out
     assert "<token>" in out
+
+
+# ── Deleting an account ──────────────────────────────────────────────────────
+
+def test_delete_firebase_user_deletes_that_uid(monkeypatch, initialized_app):
+    deleted = []
+    monkeypatch.setattr(firebase_config.auth, "delete_user", lambda uid, app=None: deleted.append(uid))
+
+    firebase_config.delete_firebase_user("u1")
+
+    assert deleted == ["u1"]
+
+
+def test_delete_firebase_user_treats_an_already_deleted_account_as_done(monkeypatch, initialized_app):
+    def gone(uid, app=None):
+        raise UserNotFoundError("no such user")
+    monkeypatch.setattr(firebase_config.auth, "delete_user", gone)
+
+    firebase_config.delete_firebase_user("u1")
+
+
+def test_delete_firebase_user_raises_without_firebase(monkeypatch):
+    monkeypatch.setattr(firebase_config, "_get_app", lambda: None)
+    with pytest.raises(RuntimeError):
+        firebase_config.delete_firebase_user("u1")
 
 
 # ── Guards before the SDK call ───────────────────────────────────────────────

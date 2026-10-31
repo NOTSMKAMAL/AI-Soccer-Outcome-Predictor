@@ -62,6 +62,7 @@ aggregates produce, purely as a contrast.
 | POST | `/api/fixtures/{id}/prediction` | Firebase | **the only endpoint that spends Gemini credit** |
 | GET | `/api/fixtures/{id}/enriched` | Firebase | form / standings / stats used by the prompt |
 | GET | `/api/me/prediction-allowance` | Firebase | predictions left today, or unlimited for owners |
+| DELETE | `/api/me` | Firebase, recent sign-in | deletes the user's quota counters and Firebase account |
 | POST | `/api/auth/verify` | Firebase | token check |
 | GET | `/api/analytics` | — | accuracy, reliability bins, over-time series |
 | GET | `/api/analytics/calibration` | — | accuracy / Brier / log-loss / ECE |
@@ -83,6 +84,7 @@ pytest tests/
 | [`tests/test_access.py`](tests/test_access.py) | verified email, owner bypass, allowlist, per-user and global daily quota, refund, day rollover (fake Firestore) |
 | [`tests/test_access_firestore_sdk.py`](tests/test_access_firestore_sdk.py) | the quota against the real Firestore SDK with its network layer mocked |
 | [`tests/test_main_prediction_access.py`](tests/test_main_prediction_access.py) | the prediction route's gate and refund-on-failure wiring |
+| [`tests/test_main_account.py`](tests/test_main_account.py) | account deletion: recent sign-in rule and step order |
 | [`tests/test_main_enrichment.py`](tests/test_main_enrichment.py) | shared enrichment gather, failed-section reporting, cache expiry |
 | [`tests/test_firebase_config.py`](tests/test_firebase_config.py) | Firebase token check: clock skew and failure logging |
 | [`tests/test_prediction_db.py`](tests/test_prediction_db.py) | SQLite prediction store (upsert, resolve, read) |

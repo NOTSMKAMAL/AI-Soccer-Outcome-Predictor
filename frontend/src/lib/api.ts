@@ -81,6 +81,11 @@ export async function generatePrediction(matchId: string, token: string) {
   );
 }
 
+/** Deletes the user's quota counters and Firebase account. Backed by DELETE /api/me. */
+export async function deleteMyAccount(token: string) {
+  return authRequest<{ status: string }>("/api/me", token, { method: "DELETE" });
+}
+
 /** Predictions the signed-in user has left today. Backed by GET /api/me/prediction-allowance. */
 export async function getPredictionAllowance(token: string) {
   return authRequest<{ status: string; data: PredictionAllowance }>(

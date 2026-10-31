@@ -8,8 +8,14 @@ from zoneinfo import ZoneInfo
 from fastapi import Depends, FastAPI, Header, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 
-from backend.access import QuotaReceipt, allowance_for, enforce as enforce_prediction_access, quota
-from backend.firebase_config import verify_id_token
+from backend.access import (
+    QuotaReceipt,
+    allowance_for,
+    enforce as enforce_prediction_access,
+    is_recent_sign_in,
+    quota,
+)
+from backend.firebase_config import delete_firebase_user, verify_id_token
 from storage import _fdorg
 from storage.league_data_client import (
     STANDINGS_TTL,
@@ -563,6 +569,32 @@ def prediction_allowance(user: dict = Depends(get_current_user)) -> dict[str, An
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Your remaining predictions could not be loaded.",
         ) from exc
+
+
+@app.delete("/api/me")
+def delete_account(user: dict = Depends(get_current_user)) -> dict[str, Any]:
+    """Delete the signed-in user's quota counters, then their Firebase account.
+
+    Requires a recent sign-in, and does both steps here rather than in the browser:
+    clearing counters client-side before Firebase refuses would reset the daily cap.
+    Counters go first so a failure leaves an account that can retry, not orphaned data.
+    """
+    if not is_recent_sign_in(user):
+        raise HTTPException(
+            status_code=status.HTTP_428_PRECONDITION_REQUIRED,
+            detail="Please sign in again to confirm it's you.",
+        )
+    uid = str(user.get("uid"))
+    try:
+        quota.delete_user_counts(uid)
+        delete_firebase_user(uid)
+    except Exception as exc:
+        print(f"[Account] deletion failed: {type(exc).__name__}: {exc}")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Your account could not be deleted right now. Please try again.",
+        ) from exc
+    return {"status": "success"}
 
 
 @app.post("/api/auth/verify")
