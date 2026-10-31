@@ -19,6 +19,7 @@ import pytest
 from google.genai.errors import ClientError, ServerError
 
 from engine.prediction_engine import (
+    _build_enriched_section,
     cached_prediction,
     dixon_coles_probability,
     generate_prediction,
@@ -886,6 +887,29 @@ class TestDegradedEnrichment:
     def test_cached_prediction_is_none_after_a_partial_prediction(self, fake_gemini):
         _predict({"missing_sections": ["standings"]})
         assert cached_prediction(1, 2, "Home FC", "Away FC") is None
+
+    def test_prompt_does_not_claim_head_to_head_history_is_absent(self, fake_gemini):
+        # The free tier can't supply H2H, so "none exists" would be a false fact.
+        _predict({"missing_sections": []})
+        prompt = _prompt_sent(fake_gemini)
+        assert "No head-to-head history exists" not in prompt
+        assert "Head-to-head history is not available" in prompt
+
+    def test_prompt_invents_no_injury_news(self):
+        section = _build_enriched_section("Home FC", "Away FC", 1, 2, {"injuries": None})
+        assert "Full squad" not in section
+        assert "INJURY" not in section
+
+    def test_prompt_names_injuries_when_a_provider_supplies_them(self):
+        injuries = {"team_a": [{"player_name": "A. Player"}], "team_b": []}
+        section = _build_enriched_section("Home FC", "Away FC", 1, 2, {"injuries": injuries})
+        assert "A. Player" in section
+
+    def test_prompt_has_no_clean_sheet_figure(self):
+        section = _build_enriched_section("Home FC", "Away FC", 1, 2, {
+            "team_a_stats": {"goals_scored": 5, "clean_sheets": None},
+        })
+        assert "clean sheets" not in section
 
     def test_gemini_overload_is_retried_once(self, fake_gemini):
         ok = fake_gemini.return_value

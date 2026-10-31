@@ -344,10 +344,6 @@ async def _gather_enriched(
     team_a_stats = _team_stats_from_standings(team_a_id)
     team_b_stats = _team_stats_from_standings(team_b_id)
 
-    # Injuries are not on the free tier — show "Full squad available" for both
-    # teams. The pluggable injury provider can fill this in when configured.
-    injuries: dict = {"team_a": [], "team_b": []}
-
     xg_result = _ok(xg_r) or {}
     xg = xg_result.get("xg")
     trends = xg_result.get("trends")
@@ -358,7 +354,8 @@ async def _gather_enriched(
         "standings":          standings_list,
         "team_a_stats":       team_a_stats,
         "team_b_stats":       team_b_stats,
-        "injuries":           injuries,
+        # Not on the free tier. None, not empty lists: those would read as "no injuries".
+        "injuries":           None,
         "xg":                 xg,
         "trends":             trends,
         "season_id":          season_id,

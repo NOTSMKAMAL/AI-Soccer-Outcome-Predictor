@@ -66,7 +66,7 @@ privacy policy):
 | That user's daily counter, on every stored day | Deleted |
 | Day totals in `prediction_quota_days` (`total`, `users`) | Kept. Plain numbers with no user ID or email |
 | Prediction history (SQLite) | Kept. It never stores who asked |
-| API host logs (for example Render's request logs) | Kept for as long as the host retains them. They can include IP addresses; the app itself logs no user IDs |
+| API host logs (for example Render's request logs) | Kept for as long as the host retains them. They can include IP addresses. The app's own log lines avoid user IDs and emails, though a third-party error message could include one |
 | Google's own Firebase backups and logs | Governed by Google's retention terms, not this app |
 
 Deletion asks the user to sign in again if their last sign-in is over 5 minutes old.

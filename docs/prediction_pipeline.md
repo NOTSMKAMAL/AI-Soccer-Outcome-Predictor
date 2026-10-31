@@ -92,7 +92,7 @@ GET /v4/teams/{team_a_id}
 ```
 Returns team A's squad list (names, positions), used as depth context in the prompt.
 
-Injuries follow the same pattern: not available on the free tier, so both teams report "Full squad available" rather than inventing absences.
+Injuries follow the same pattern: not available on the free tier, so `injuries` is `None` and neither the prompt nor the page mentions them. Saying "full squad available" would be inventing a fact.
 
 ### Parallel Execution
 
@@ -392,10 +392,10 @@ CURRENT TRENDS:
   - Team B: inconsistent, 2 losses in last 5
 ```
 
-**Injury & Suspension News** (empty for Starter tier):
+**Injury & Suspension News** (only if a provider supplies it; left out on the free tier):
 ```
 INJURY & SUSPENSION NEWS:
-  - Team A: Full squad available
+  - Team A missing: Player Name
   - Team B: Full squad available
 ```
 

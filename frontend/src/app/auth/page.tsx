@@ -112,6 +112,7 @@ function Field({
           autoComplete={autoComplete}
           style={{
             flex: 1,
+            minWidth: 0,
             background: "transparent",
             border: "none",
             outline: "none",
@@ -205,8 +206,8 @@ export default function AuthPage() {
 
   return (
     <div
-      style={{ minHeight: "100vh", display: "grid", gridTemplateColumns: "1.05fr 1fr", position: "relative" }}
-      className="max-lg:flex max-lg:flex-col"
+      style={{ minHeight: "100vh", gridTemplateColumns: "1.05fr 1fr", position: "relative" }}
+      className="flex flex-col lg:grid"
     >
       {/* ── LEFT PANEL ── */}
       <aside
@@ -215,11 +216,9 @@ export default function AuthPage() {
           position: "relative",
           overflow: "hidden",
           padding: "56px",
-          display: "flex",
-          flexDirection: "column",
           color: "white",
         }}
-        className="max-lg:hidden"
+        className="hidden lg:flex lg:flex-col"
       >
         {/* Animated orbs */}
         <div aria-hidden style={{ position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none" }}>
@@ -285,8 +284,8 @@ export default function AuthPage() {
           <ol style={{ listStyle: "none", padding: 0, margin: "0 0 auto", display: "flex", flexDirection: "column", gap: 10 }}>
             {[
               { n: "01", title: "Create your account", desc: "Email / password or Google — Firebase handles auth." },
-              { n: "02", title: "Browse live fixtures", desc: "Real football-data.org data across MLS, PL, LaLiga and more." },
-              { n: "03", title: "Generate predictions", desc: "One-click Gemini reasoning with confidence and risk factors." },
+              { n: "02", title: "Browse fixtures", desc: "Real football-data.org data across six top competitions." },
+              { n: "03", title: "Generate predictions", desc: "One-click probabilities with Gemini reasoning and confidence." },
             ].map((s) => (
               <li
                 key={s.n}
@@ -333,7 +332,7 @@ export default function AuthPage() {
         style={{
           display: "grid",
           placeItems: "center",
-          padding: "48px 32px",
+          padding: "48px clamp(16px, 4vw, 32px)",
           background: "var(--bg)",
         }}
       >
@@ -410,7 +409,7 @@ export default function AuthPage() {
               {tab === "signin" ? "Welcome back" : "Create your account"}
             </h2>
             <p style={{ fontSize: 13, color: "var(--muted)", margin: 0 }}>
-              {tab === "signin" ? "Sign in to view today's prediction board." : "Free to start. Cancel anytime."}
+              {tab === "signin" ? "Sign in to view today's prediction board." : "Free to use. No payment needed."}
             </p>
           </div>
 
@@ -557,8 +556,15 @@ export default function AuthPage() {
             </button>
           </form>
 
+          {/* Shown on both tabs: Continue with Google can also create an account */}
+          <p style={{ marginTop: 16, textAlign: "center", fontSize: 12, color: "var(--muted)", lineHeight: 1.5 }}>
+            By creating an account you agree to the{" "}
+            <Link href="/terms" style={{ color: "var(--accent-2)" }}>Terms</Link> and{" "}
+            <Link href="/privacy" style={{ color: "var(--accent-2)" }}>Privacy Policy</Link>.
+          </p>
+
           {/* Switch */}
-          <p style={{ marginTop: 20, textAlign: "center", fontSize: 13, color: "var(--muted)" }}>
+          <p style={{ marginTop: 12, textAlign: "center", fontSize: 13, color: "var(--muted)" }}>
             {tab === "signin" ? (
               <>
                 Need an account?{" "}

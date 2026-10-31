@@ -4,8 +4,8 @@ Predicts football match outcomes by combining a **Dixon-Coles statistical model*
 **Gemini** reasoning: the model produces the probabilities, Gemini explains them. Live
 fixtures, form and standings come from the free tier of **football-data.org**.
 
-**Stack:** Next.js 14 + TypeScript (frontend) · FastAPI (API) · Firebase Auth · SQLite
-(prediction history) · Gemini 2.5 Flash.
+**Stack:** Next.js 14 + TypeScript (frontend) · FastAPI (API) · Firebase Auth · Firestore
+(daily limits) · SQLite (prediction history) · Gemini 2.5 Flash.
 
 Originally built for CS180 by SM Kamal and Brian Garcia.
 
@@ -17,7 +17,8 @@ Originally built for CS180 by SM Kamal and Brian Garcia.
   La Liga, Serie A, Ligue 1 and the Champions League, grouped by day and league.
 - **Match prediction** — a three-way probability (home / draw / away) from Dixon-Coles,
   a confidence label derived from that probability, and a written rationale from Gemini
-  built on recent form, standings, head-to-head record, top scorers and squad depth.
+  built on recent form, standings and top scorers. Head-to-head records, injuries, lineups
+  and xG aren't on football-data.org's free tier, so predictions don't use them.
 - **Honest evaluation** — every prediction is stored, resolved against the real result
   once the match finishes, and scored (accuracy / Brier / log-loss / ECE / reliability)
   through `/api/analytics`.

@@ -334,7 +334,6 @@ def _build_enriched_section(
             return (
                 f"  - {name}: {s.get('goals_scored', 'N/A')} scored, "
                 f"{s.get('goals_conceded', 'N/A')} conceded, "
-                f"{s.get('clean_sheets', 'N/A')} clean sheets, "
                 f"{s.get('wins', 'N/A')}W/{s.get('draws', 'N/A')}D/{s.get('losses', 'N/A')}L"
             )
         parts.append(
@@ -553,7 +552,7 @@ def generate_prediction(
             f"Recent results:\n{results_lines}"
         )
     else:
-        h2h_section = "No head-to-head history exists between these teams in the database."
+        h2h_section = "Head-to-head history is not available for this match."
 
     # Dixon-Coles probabilities — computed from standings data, never from Gemini
     dc_probs: dict | None = None

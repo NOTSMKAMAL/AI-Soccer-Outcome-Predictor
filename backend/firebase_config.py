@@ -133,6 +133,10 @@ def _log_verify_failure(exc: Exception, token: str) -> None:
     uvicorn terminal is the only way to tell a bad token from a broken server
     (wrong project, bad service account key, clock skew, network).
     """
+    # This one's message holds the user ID, and it fires on a deleted account's old token.
+    if isinstance(exc, UserNotFoundError):
+        print(f"[Firebase] Token verification failed: {type(exc).__name__}")
+        return
     message = str(exc).replace(token, "<token>")
     print(f"[Firebase] Token verification failed: {type(exc).__name__}: {message}")
 

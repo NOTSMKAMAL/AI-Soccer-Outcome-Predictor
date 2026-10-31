@@ -56,7 +56,7 @@ function HeroPreviewCard() {
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px 12px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#13BBAF", display: "inline-block", boxShadow: "0 0 6px #13BBAF" }} />
-            <span style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)" }}>Today&apos;s prediction board</span>
+            <span style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)" }}>Prediction board preview</span>
           </div>
           <span style={{
             fontSize: 11, color: "var(--muted)", fontWeight: 500,
@@ -64,7 +64,7 @@ function HeroPreviewCard() {
             background: "var(--surface-2)",
             border: "1px solid var(--border)",
           }}>
-            football-data.org live
+            Example
           </span>
         </div>
 
@@ -123,7 +123,7 @@ function HeroPreviewCard() {
           borderTop: "1px solid var(--border)",
           marginTop: 4,
         }}>
-          <span style={{ fontSize: 12, color: "var(--muted)" }}>3 of 14 fixtures · 5 leagues</span>
+          <span style={{ fontSize: 12, color: "var(--muted)" }}>Illustrative, not real matches</span>
           <Link href={cta.href} style={{ fontSize: 12, color: "var(--accent-2)", fontWeight: 600, textDecoration: "none" }}>
             View all →
           </Link>
@@ -148,13 +148,13 @@ const FEATURES = [
   {
     icon: <path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />,
     title: "Real match data",
-    desc: "Live football-data.org fixtures, lineups and stats. No guessing, no scraped tables.",
+    desc: "Fixtures, standings, recent results and top scorers from the football-data.org API. No scraped tables.",
     meta: "football-data.org",
   },
   {
     icon: <path d="M13 10V3L4 14h7v7l9-11h-7z" />,
     title: "AI-powered predictions",
-    desc: "Gemini synthesises form, head-to-head, venue and squad context into a single structured call.",
+    desc: "A Dixon-Coles model sets the probabilities, then Gemini explains them from standings, recent form and top scorers.",
     meta: "Gemini 2.5 Flash",
   },
   {
@@ -166,16 +166,16 @@ const FEATURES = [
   {
     icon: <path d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />,
     title: "League-focused dashboard",
-    desc: "Premier League, La Liga, Serie A, Bundesliga, Ligue 1 and the Champions League — live fixtures every day.",
+    desc: "Premier League, La Liga, Serie A, Bundesliga, Ligue 1 and the Champions League, all in one place.",
     meta: "6 competitions",
   },
 ];
 
 const STEPS = [
   { n: "01", title: "Sign in",                   desc: "Email / password or Google. Firebase Auth handles the rest." },
-  { n: "02", title: "Browse today's matches",    desc: "Real fixtures across all six competitions, filtered by date and league." },
-  { n: "03", title: "Generate an AI prediction", desc: "One click sends the fixture context to Gemini for a structured verdict." },
-  { n: "04", title: "Review the breakdown",      desc: "Confidence band, reasoning, weighted factors and risk — every input on display." },
+  { n: "02", title: "Browse upcoming matches",   desc: "Real fixtures across all six competitions, filtered by league." },
+  { n: "03", title: "Generate an AI prediction", desc: "One click runs the model and asks Gemini to explain the result." },
+  { n: "04", title: "Review the breakdown",      desc: "Probabilities, confidence band, reasoning and key factors." },
 ];
 
 // ── Page ──────────────────────────────────────────────────────────────────────
@@ -183,7 +183,7 @@ const STEPS = [
 export default function HomePage() {
   const cta = useLandingCta();
   return (
-    <div style={{ minHeight: "100vh", background: "var(--bg)" }}>
+    <div style={{ minHeight: "100vh", background: "var(--bg)", overflowX: "clip" }}>
 
       {/* ── Ambient top glow ── */}
       <div aria-hidden style={{
@@ -201,8 +201,8 @@ export default function HomePage() {
       }}>
         <div style={{
           maxWidth: 1200, margin: "0 auto",
-          padding: "14px 32px",
-          display: "flex", alignItems: "center", justifyContent: "space-between", gap: 24,
+          padding: "14px clamp(16px, 4vw, 32px)",
+          display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
         }}>
           {/* Brand */}
           <a href="#" style={{ display: "flex", alignItems: "center", gap: 10, fontWeight: 700, fontSize: 15, color: "var(--ink)", textDecoration: "none", letterSpacing: "-0.01em", fontFamily: "var(--font-display), system-ui" }}>
@@ -222,7 +222,7 @@ export default function HomePage() {
           </a>
 
           {/* Nav links */}
-          <nav style={{ display: "flex", alignItems: "center", gap: 4 }} className="hidden sm:flex">
+          <nav style={{ alignItems: "center", gap: 4 }} className="hidden sm:flex">
             {[
               { label: "Features",     href: "#features" },
               { label: "How it works", href: "#how-it-works" },
@@ -296,7 +296,7 @@ export default function HomePage() {
                 <SoccerBallSm />
               </span>
               <span style={{ fontSize: 12, fontWeight: 500, color: "var(--accent-2)" }}>
-                Live football intelligence powered by AI
+                Football predictions from a statistical model and AI
               </span>
             </div>
 
@@ -318,7 +318,7 @@ export default function HomePage() {
             </h1>
 
             <p style={{ fontSize: 18, lineHeight: 1.6, color: "var(--muted)", margin: "0 0 36px", maxWidth: 500 }}>
-              FUTURE FC analyzes fixtures, team form, head-to-head history and match context to generate
+              FUTURE FC uses fixtures, league standings, recent form and top scorers to generate
               structured predictions for the top football leagues.
             </p>
 
@@ -342,13 +342,13 @@ export default function HomePage() {
                 background: "var(--surface)", color: "var(--ink-2)", textDecoration: "none",
                 border: "1px solid var(--border-strong)",
               }}>
-                View live matches
+                View matches
               </Link>
             </div>
 
             {/* Trust row */}
             <div style={{ display: "flex", flexWrap: "wrap", gap: "8px 20px" }}>
-              {["No credit card", "Live football-data.org data", "Gemini reasoning"].map((t) => (
+              {["No credit card", "football-data.org data", "Gemini reasoning"].map((t) => (
                 <span key={t} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--muted)" }}>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#13BBAF" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M20 6L9 17l-5-5" />
@@ -401,7 +401,7 @@ export default function HomePage() {
               Built for fans who want clarity, not noise.
             </h2>
             <p style={{ fontSize: 16, color: "var(--muted)", maxWidth: 560, margin: "0 auto", lineHeight: 1.6 }}>
-              Four pillars run through every prediction — real-time data, AI reasoning, transparent confidence and a tight focus on the leagues that matter.
+              Four pillars run through every prediction: real match data, AI reasoning, transparent confidence and a tight focus on six competitions.
             </p>
           </header>
 
@@ -491,8 +491,8 @@ export default function HomePage() {
           </h2>
           <p style={{ fontSize: 16, color: "var(--muted)", maxWidth: 480, margin: "0 auto 32px", lineHeight: 1.6 }}>
             {cta.signedIn
-              ? "Live fixtures and AI predictions across all six competitions are on your dashboard."
-              : "Sign in to access live fixtures and AI predictions across all six competitions."}
+              ? "Fixtures and AI predictions across all six competitions are on your dashboard."
+              : "Sign in to access fixtures and AI predictions across all six competitions."}
           </p>
           <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap", visibility: cta.ready ? "visible" : "hidden" }}>
             <Link href={cta.href} style={{
@@ -521,38 +521,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── Footer ── */}
-      <footer style={{
-        position: "relative", zIndex: 1,
-        borderTop: "1px solid var(--border)",
-        padding: "32px",
-      }}>
-        <div style={{
-          maxWidth: 1200, margin: "0 auto",
-          display: "flex", alignItems: "center", justifyContent: "space-between",
-          flexWrap: "wrap", gap: 16,
-        }}>
-          <div>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, fontWeight: 700, fontSize: 14, color: "var(--ink)", marginBottom: 6, fontFamily: "var(--font-display), system-ui" }}>
-              <div style={{
-                width: 24, height: 24, borderRadius: 7,
-                background: "linear-gradient(135deg, #13BBAF, #275A53)",
-                display: "grid", placeItems: "center", color: "white",
-                boxShadow: "0 4px 10px rgba(19,187,175,0.35)",
-              }}>
-                <SoccerBallSm />
-              </div>
-              FUTURE FC
-            </div>
-            <p style={{ fontSize: 12, color: "var(--muted-2)", margin: 0 }}>
-              football-data.org data · Gemini reasoning · Firebase Auth
-            </p>
-          </div>
-          <p style={{ fontSize: 12, color: "var(--muted-2)", margin: 0, maxWidth: 360, textAlign: "right" }}>
-            Predictions are for analytics and entertainment only. Not betting advice.
-          </p>
-        </div>
-      </footer>
     </div>
   );
 }

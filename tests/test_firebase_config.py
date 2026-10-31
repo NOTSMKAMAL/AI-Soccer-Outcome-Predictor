@@ -101,6 +101,18 @@ def test_unexpected_error_returns_none_and_logs_type(monkeypatch, initialized_ap
     assert "identitytoolkit unreachable" in out
 
 
+def test_deleted_user_is_logged_without_their_user_id(monkeypatch, initialized_app, capsys):
+    # A deleted account's stale token raises this, and the SDK's message holds the uid.
+    message = "No user record found for the provided user ID: abc123."
+    _use_verifier(monkeypatch, FakeVerifier(error=UserNotFoundError(message)))
+
+    assert firebase_config.verify_id_token(TOKEN) is None
+
+    out = capsys.readouterr().out
+    assert "UserNotFoundError" in out
+    assert "abc123" not in out
+
+
 def test_log_never_contains_the_token(monkeypatch, initialized_app, capsys):
     _use_verifier(monkeypatch, FakeVerifier(error=InvalidIdTokenError(f"Bad token: {TOKEN}")))
 

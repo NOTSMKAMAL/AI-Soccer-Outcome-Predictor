@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Barlow_Condensed, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
+import SiteFooter from "@/components/SiteFooter";
 
 const barlowCondensed = Barlow_Condensed({
   subsets: ["latin"],
@@ -34,6 +35,7 @@ export default function RootLayout({
         className="bg-[#030C0A] text-white antialiased"
       >
         <Providers>{children}</Providers>
+        <SiteFooter />
       </body>
     </html>
   );

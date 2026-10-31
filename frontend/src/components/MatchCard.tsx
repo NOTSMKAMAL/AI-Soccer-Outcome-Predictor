@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useState, type CSSProperties } from "react";
+import type { CSSProperties } from "react";
+import TeamBadge from "@/components/TeamBadge";
 import type { Fixture } from "@/lib/types";
-import { getTeamColor } from "@/lib/teamColors";
 import { parseFixtureDate, formatLATime, formatLADateLabel, formatLADateLong } from "@/lib/dateUtils";
 
 interface Props {
@@ -64,33 +64,6 @@ function StatusChip({ status }: { status: string }) {
   );
 }
 
-function TeamBadge({ name, logo, primary }: { name: string; logo?: string; primary: string }) {
-  const [imgError, setImgError] = useState(false);
-  const { abbr } = getTeamColor(name);
-  const useLogo = logo && !imgError;
-
-  return (
-    <div style={{
-      width: 52, height: 52, borderRadius: 14, flexShrink: 0,
-      background: useLogo ? "rgba(255,255,255,0.06)" : `${primary}22`,
-      border: `1px solid ${primary}44`,
-      display: "grid", placeItems: "center",
-      boxShadow: `0 2px 12px -4px ${primary}55`,
-    }}>
-      {useLogo ? (
-        <img src={logo} alt={name} width={32} height={32}
-          style={{ objectFit: "contain", display: "block" }}
-          onError={() => setImgError(true)}
-        />
-      ) : (
-        <span style={{ fontSize: 13, fontWeight: 800, letterSpacing: "0.04em", color: primary }}>
-          {abbr}
-        </span>
-      )}
-    </div>
-  );
-}
-
 export default function MatchCard({ fixture, leagueAccent = "#13BBAF" }: Props) {
   const s = fixture.status?.toLowerCase() ?? "";
   const isLive = s === "inplay" || s === "live" || s === "halftime";
@@ -98,9 +71,6 @@ export default function MatchCard({ fixture, leagueAccent = "#13BBAF" }: Props) 
   // Mock fixtures have no real match behind them, so the backend can never predict them.
   const isPreview = fixture._isMock === true;
   const canPredict = !isFinished && !isPreview;
-
-  const homeColors = getTeamColor(fixture.homeTeam.name);
-  const awayColors = getTeamColor(fixture.awayTeam.name);
 
   const score = fixture.score;
   const homeWin = score ? score.home > score.away : false;
@@ -177,7 +147,7 @@ export default function MatchCard({ fixture, leagueAccent = "#13BBAF" }: Props) 
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           {/* Home team */}
           <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 6, minWidth: 0 }}>
-            <TeamBadge name={fixture.homeTeam.name} logo={fixture.homeTeam.logo} primary={homeColors.primary} />
+            <TeamBadge name={fixture.homeTeam.name} />
             <div>
               <p style={{
                 fontSize: 13, fontWeight: isFinished && homeWin ? 700 : 600, margin: 0, lineHeight: 1.3,
@@ -221,7 +191,7 @@ export default function MatchCard({ fixture, leagueAccent = "#13BBAF" }: Props) 
 
           {/* Away team */}
           <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6, minWidth: 0 }}>
-            <TeamBadge name={fixture.awayTeam.name} logo={fixture.awayTeam.logo} primary={awayColors.primary} />
+            <TeamBadge name={fixture.awayTeam.name} />
             <div style={{ textAlign: "right" }}>
               <p style={{
                 fontSize: 13, fontWeight: isFinished && awayWin ? 700 : 600, margin: 0, lineHeight: 1.3,

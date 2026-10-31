@@ -9,6 +9,7 @@ import Navbar from "@/components/Navbar";
 import { PredictionSkeleton } from "@/components/LoadingSkeleton";
 import ErrorState from "@/components/ErrorState";
 import AllowanceBadge from "@/components/AllowanceBadge";
+import TeamBadge from "@/components/TeamBadge";
 import VerifyEmailNotice from "@/components/VerifyEmailNotice";
 import { getFixtureById, generatePrediction, getPredictionAllowance } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
@@ -42,8 +43,8 @@ interface RecentFixture {
   fixture_id: number | null;
   name: string;
   date: string;
-  home_team: { id: number | null; name: string; logo: string | null };
-  away_team: { id: number | null; name: string; logo: string | null };
+  home_team: { id: number | null; name: string };
+  away_team: { id: number | null; name: string };
   score: { home: number | null; away: number | null } | null;
   result_info: string;
   participant_ids: number[];
@@ -55,7 +56,6 @@ interface StandingRow {
   position: number;
   participant_id: number;
   team_name: string;
-  team_logo: string | null;
   points: number | null;
   won: number | null;
   drawn: number | null;
@@ -76,20 +76,12 @@ interface TeamStats {
   total_matches: number | null;
 }
 
-interface InjuryPlayer {
-  player_name: string;
-  team_id: number;
-  type: string;
-  reason: string;
-}
-
 interface EnrichedData {
   team_a_recent_form: RecentFixture[] | null;
   team_b_recent_form: RecentFixture[] | null;
   standings: StandingRow[] | null;
   team_a_stats: TeamStats | null;
   team_b_stats: TeamStats | null;
-  injuries: { team_a: InjuryPlayer[]; team_b: InjuryPlayer[] } | null;
   xg: { team_a_xg: number; team_b_xg: number } | null;
   trends: { team_a: string[]; team_b: string[] } | null;
 }
@@ -162,33 +154,6 @@ function buildVerdictHeadline(winner: string, confidence: string): string {
   if (c === "high") return `${winner} looks like the clear favourite`;
   if (c === "medium") return `${winner} has the edge`;
   return `${winner} slightly ahead — a tight call`;
-}
-
-// ── Team logo ─────────────────────────────────────────────────────────────────
-
-function TeamLogo({ src, name, size = 64 }: { src?: string | null; name: string; size?: number }) {
-  const [failed, setFailed] = useState(false);
-  if (src && !failed) {
-    return (
-      <img src={src} alt={name} width={size} height={size}
-        className="object-contain" style={{ width: size, height: size }}
-        onError={() => setFailed(true)}
-      />
-    );
-  }
-  return (
-    <span
-      className="flex items-center justify-center rounded-2xl font-black"
-      style={{
-        width: size, height: size, fontSize: size * 0.4,
-        background: "linear-gradient(135deg, rgba(39,90,83,0.6), rgba(19,187,175,0.3))",
-        border: "1px solid rgba(19,187,175,0.25)",
-        color: "var(--accent-3)",
-      }}
-    >
-      {name.charAt(0)}
-    </span>
-  );
 }
 
 // ── Three-segment probability bar ─────────────────────────────────────────────
@@ -287,7 +252,7 @@ function MatchHeaderCard({ fixture }: { fixture: Fixture }) {
         <div className="flex items-center justify-between gap-4">
           <div className="flex-1 text-center">
             <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center">
-              <TeamLogo src={fixture.homeTeam.logo} name={fixture.homeTeam.name} size={64} />
+              <TeamBadge name={fixture.homeTeam.name} size={64} />
             </div>
             <p className="font-bold leading-tight" style={{ color: "var(--ink)" }}>{fixture.homeTeam.name}</p>
             <p className="text-xs mt-0.5" style={{ color: "var(--muted-2)" }}>Home</p>
@@ -298,7 +263,7 @@ function MatchHeaderCard({ fixture }: { fixture: Fixture }) {
           </div>
           <div className="flex-1 text-center">
             <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center">
-              <TeamLogo src={fixture.awayTeam.logo} name={fixture.awayTeam.name} size={64} />
+              <TeamBadge name={fixture.awayTeam.name} size={64} />
             </div>
             <p className="font-bold leading-tight" style={{ color: "var(--ink)" }}>{fixture.awayTeam.name}</p>
             <p className="text-xs mt-0.5" style={{ color: "var(--muted-2)" }}>Away</p>
@@ -587,11 +552,11 @@ function MatchCardInner({ fixture, teamId, defaultExpanded }: { fixture: RecentF
         onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.04)")}
         onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.background = "transparent")}
       >
-        <TeamLogo src={myTeam.logo}  name={myTeam.name}  size={24} />
+        <TeamBadge name={myTeam.name} size={24} />
         <span className="text-xs flex-1 truncate" style={{ color: "var(--ink-2)" }}>{myTeam.name}</span>
         <span className="text-sm font-bold px-2 shrink-0" style={{ color: "var(--ink)" }}>{scoreStr}</span>
         <span className="text-xs flex-1 text-right truncate" style={{ color: "var(--ink-2)" }}>{oppTeam.name}</span>
-        <TeamLogo src={oppTeam.logo} name={oppTeam.name} size={24} />
+        <TeamBadge name={oppTeam.name} size={24} />
         {resultLabel && (
           <span className={`ml-2 shrink-0 rounded-full border px-1.5 py-0.5 text-[9px] font-bold ${resultCls}`}>{resultLabel}</span>
         )}
@@ -604,9 +569,9 @@ function MatchCardInner({ fixture, teamId, defaultExpanded }: { fixture: RecentF
       {expanded && (
         <div className="px-4 pb-4">
           <div className="flex items-center justify-between py-2 mb-1" style={{ borderTop: "1px solid var(--border)" }}>
-            <TeamLogo src={myTeam.logo}  name={myTeam.name}  size={32} />
+            <TeamBadge name={myTeam.name} size={32} />
             <span className="text-xs font-bold tracking-wide" style={{ color: "var(--ink-2)" }}>Statistics</span>
-            <TeamLogo src={oppTeam.logo} name={oppTeam.name} size={32} />
+            <TeamBadge name={oppTeam.name} size={32} />
           </div>
           <GeneralStatsTab myStats={myGeneral ?? null} oppStats={oppGeneral ?? null} />
         </div>
@@ -694,51 +659,6 @@ function XGSection({ xg, teamA, teamB }: { xg: { team_a_xg: number; team_b_xg: n
   );
 }
 
-// ── Injuries & Suspensions ────────────────────────────────────────────────────
-
-function InjurySection({ injuries, teamA, teamB }: { injuries: { team_a: InjuryPlayer[]; team_b: InjuryPlayer[] } | null; teamA: string; teamB: string }) {
-  function InjuryList({ players, label }: { players: InjuryPlayer[]; label: string }) {
-    return (
-      <div>
-        <p className="text-xs font-semibold mb-2 truncate" style={{ color: "var(--muted)" }}>{label}</p>
-        {players.length === 0 ? (
-          <p className="text-xs" style={{ color: "var(--accent-2)" }}>✅ Full squad available</p>
-        ) : (
-          <div className="space-y-1.5">
-            {players.map((p, i) => {
-              const isSusp = p.type?.toLowerCase().includes("suspend");
-              return (
-                <div key={i} className="flex items-center gap-2 text-xs">
-                  <span>{isSusp ? "🟡" : "🔴"}</span>
-                  <span className="flex-1 truncate" style={{ color: "var(--ink-2)" }}>{p.player_name}</span>
-                  <span className={`shrink-0 rounded px-1.5 py-0.5 text-[9px] font-bold uppercase ${isSusp ? "bg-amber-500/20 text-amber-400" : "bg-red-500/20 text-red-400"}`}>
-                    {isSusp ? "SUSP" : "INJ"}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  return (
-    <div className="card-glass p-6">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="section-label">Injuries &amp; Suspensions</h3>
-        <SectionBadge label="INJURIES & SUSPENSIONS • football-data.org" />
-      </div>
-      {!injuries ? <DataUnavailable /> : (
-        <div className="grid grid-cols-2 gap-6">
-          <InjuryList players={injuries.team_a} label={teamA} />
-          <InjuryList players={injuries.team_b} label={teamB} />
-        </div>
-      )}
-    </div>
-  );
-}
-
 // ── Season Stats ──────────────────────────────────────────────────────────────
 
 function StatBar({ label, valA, valB, nameA, nameB, invert = false }: {
@@ -797,7 +717,6 @@ function SeasonStatsSection({ statsA, statsB, teamA, teamB }: { statsA: TeamStat
         <>
           <StatBar label="Goals Scored"   valA={statsA?.goals_scored ?? null}   valB={statsB?.goals_scored ?? null}   nameA={teamA} nameB={teamB} />
           <StatBar label="Goals Conceded" valA={statsA?.goals_conceded ?? null} valB={statsB?.goals_conceded ?? null} nameA={teamA} nameB={teamB} invert />
-          <StatBar label="Clean Sheets"   valA={statsA?.clean_sheets ?? null}   valB={statsB?.clean_sheets ?? null}   nameA={teamA} nameB={teamB} />
           <StatBar label="Win Rate (%)"   valA={wrA} valB={wrB} nameA={teamA} nameB={teamB} />
         </>
       )}
@@ -1008,9 +927,9 @@ function DataAvailabilitySection() {
           </svg>
         </div>
         <div>
-          <h4 className="font-semibold text-sm mb-1" style={{ color: "var(--ink)" }}>Advanced Stats</h4>
+          <h4 className="font-semibold text-sm mb-1" style={{ color: "var(--ink)" }}>About this data</h4>
           <p className="text-xs leading-relaxed" style={{ color: "var(--muted)" }}>
-            xG, form tables, standings, injuries, and top scorers are sourced live from football-data.org. Player stats and predicted line-ups pending backend expansion.
+            Recent form, standings and top scorers come from football-data.org. Injuries, lineups, xG and head-to-head records aren&apos;t available on this data plan, so this prediction doesn&apos;t account for them.
           </p>
         </div>
       </div>
@@ -1057,7 +976,7 @@ function PredictLoadingState({ home, away }: { home: string; away: string }) {
         Analysing {home} vs {away}
       </h3>
       <p style={{ fontSize:14, color:"var(--muted)", marginBottom:36, maxWidth:400 }}>
-        Gemini AI is processing head-to-head records, standings, xG data and recent form. This may take 20–40 seconds.
+        The model is working out the probabilities and Gemini is explaining them from standings, recent form and top scorers. This may take 20–40 seconds.
       </p>
       <div style={{ display:"flex", flexDirection:"column", gap:10, width:"100%", maxWidth:360 }}>
         {STEPS.map((label, i) => {
@@ -1281,7 +1200,7 @@ function PredictionContent({ matchId }: { matchId: string }) {
                   <div>
                     <h2 className="text-xl font-bold" style={{ color: "var(--ink)", fontFamily: "var(--font-display), system-ui" }}>Ready to predict</h2>
                     <p className="mt-1.5 text-sm max-w-xs" style={{ color: "var(--muted)" }}>
-                      Gemini AI will analyse head-to-head records, standings, xG data, injuries and recent form to generate a structured prediction.
+                      A statistical model works out the probabilities from league standings, then Gemini AI explains them using standings, recent form and top scorers.
                     </p>
                   </div>
                   <button onClick={handlePredict} disabled={outOfPredictions} className="btn-primary text-base px-10 py-3.5">
@@ -1311,7 +1230,7 @@ function PredictionContent({ matchId }: { matchId: string }) {
               <MatchHeaderCard fixture={fixture} />
               <AIVerdictCard fixture={fixture} prediction={prediction} />
 
-              {prediction.headToHead && (
+              {prediction.headToHead && prediction.headToHead.total > 0 && (
                 <H2HTimeline h2h={prediction.headToHead} teamA={fixture.homeTeam.name} teamB={fixture.awayTeam.name} />
               )}
 
@@ -1325,10 +1244,6 @@ function PredictionContent({ matchId }: { matchId: string }) {
 
               {enrichedLoading ? <SectionSkeleton height={160} /> : enriched?.xg ? (
                 <XGSection xg={enriched.xg} teamA={fixture.homeTeam.name} teamB={fixture.awayTeam.name} />
-              ) : null}
-
-              {enrichedLoading ? <SectionSkeleton height={130} /> : enriched ? (
-                <InjurySection injuries={enriched.injuries} teamA={fixture.homeTeam.name} teamB={fixture.awayTeam.name} />
               ) : null}
 
               {enrichedLoading ? <SectionSkeleton height={200} /> : enriched ? (

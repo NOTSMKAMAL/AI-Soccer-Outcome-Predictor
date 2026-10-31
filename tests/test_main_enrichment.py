@@ -183,3 +183,5 @@ def test_gather_marks_rate_limited_sections_missing(monkeypatch, capsys):
 
     assert data["missing_sections"] == ["team_b_recent_form"]
     assert "team_b_recent_form unavailable" in capsys.readouterr().out
+    # The free tier has no injury data, so nothing may imply a full squad.
+    assert data["injuries"] is None

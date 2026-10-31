@@ -34,7 +34,8 @@ def test_normalize_match_shape():
     }
     out = ldc._normalize_match(raw, "PL")
     assert out["id"] == "12345"
-    assert out["homeTeam"] == {"id": 57, "name": "Arsenal FC", "logo": "a.png"}
+    # Crests are copyrighted, so the provider's crest URL must not be passed on.
+    assert out["homeTeam"] == {"id": 57, "name": "Arsenal FC"}
     assert out["awayTeam"]["name"] == "Manchester City"
     assert out["leagueId"] == ldc.COMPETITION_IDS["PL"]  # numeric id for frontend
     assert out["leagueName"] == "Premier League"

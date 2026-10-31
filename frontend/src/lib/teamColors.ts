@@ -195,6 +195,36 @@ const COLORS: Record<string, { primary: string; abbr: string }> = {
   "Charlotte FC": { primary: "#1A85C8", abbr: "CLT" },
   "Austin FC": { primary: "#00B140", abbr: "ATX" },
   "Orlando City": { primary: "#612B9B", abbr: "ORL" },
+  // Exact football-data.org names that the partial match below gets wrong or can't find
+  "RCD Espanyol de Barcelona": { primary: "#007FC8", abbr: "ESP" },
+  "Club Atlético de Madrid": { primary: "#CB3524", abbr: "ATM" },
+  "Deportivo Alavés": { primary: "#0761AF", abbr: "ALA" },
+  "Elche CF": { primary: "#05642C", abbr: "ELC" },
+  "Levante UD": { primary: "#B4053F", abbr: "LEV" },
+  "Málaga CF": { primary: "#0080C8", abbr: "MAL" },
+  "RC Celta de Vigo": { primary: "#8AC3EE", abbr: "CEL" },
+  "RC Deportivo La Coruña": { primary: "#0038A8", abbr: "DEP" },
+  "Real Racing Club de Santander": { primary: "#007A3D", abbr: "RAC" },
+  "FC Schalke 04": { primary: "#004D9D", abbr: "S04" },
+  "SC Paderborn 07": { primary: "#005EA8", abbr: "PAD" },
+  "SV 07 Elversberg": { primary: "#1C1C1C", abbr: "ELV" },
+  "Coventry City FC": { primary: "#6CACE4", abbr: "COV" },
+  "Hull City AFC": { primary: "#F5A623", abbr: "HUL" },
+  "FC Lorient": { primary: "#F58220", abbr: "LOR" },
+  "ES Troyes AC": { primary: "#005BAA", abbr: "TRO" },
+  "Le Mans FC": { primary: "#C8102E", abbr: "LEM" },
+  "Paris FC": { primary: "#1E2C5A", abbr: "PFC" },
+  "US Sassuolo Calcio": { primary: "#00A650", abbr: "SAS" },
+  "Frosinone Calcio": { primary: "#FFD700", abbr: "FRO" },
+  "FK Bodø/Glimt": { primary: "#FFD700", abbr: "BOD" },
+  "FK Shakhtar Donetsk": { primary: "#FF6600", abbr: "SHA" },
+  "Fenerbahçe SK": { primary: "#FFED00", abbr: "FEN" },
+  "Feyenoord Rotterdam": { primary: "#EE2E24", abbr: "FEY" },
+  "Galatasaray SK": { primary: "#A90432", abbr: "GAL" },
+  "LASK Linz": { primary: "#1C1C1C", abbr: "LAS" },
+  "PAE AEK": { primary: "#FFD700", abbr: "AEK" },
+  "Sporting Clube de Portugal": { primary: "#008057", abbr: "SCP" },
+  "ŠK Slovan Bratislava": { primary: "#0062A8", abbr: "SLO" },
 };
 
 function generateAbbr(name: string): string {
@@ -202,6 +232,13 @@ function generateAbbr(name: string): string {
   if (words.length === 1) return name.substring(0, 3).toUpperCase();
   if (words.length === 2) return (words[0].substring(0, 2) + words[1].substring(0, 1)).toUpperCase();
   return words.slice(0, 3).map((w) => w[0]).join("").toUpperCase();
+}
+
+/** Black or white, whichever stays readable on a "#RRGGBB" background. */
+export function readableTextOn(hex: string): string {
+  const channel = (start: number) => parseInt(hex.slice(start, start + 2), 16);
+  const luminance = 0.299 * channel(1) + 0.587 * channel(3) + 0.114 * channel(5);
+  return luminance > 150 ? "#04110F" : "#FFFFFF";
 }
 
 export function getTeamColor(name: string): { primary: string; abbr: string } {
