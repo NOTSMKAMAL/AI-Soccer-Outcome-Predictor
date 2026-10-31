@@ -170,12 +170,13 @@ const STEPS = [
 // Every link here uses replace, so the landing page never stays in history behind a signed-in user.
 function LandingPage() {
   return (
-    <div style={{ minHeight: "100vh", background: "var(--bg)", overflowX: "clip" }}>
+    <div style={{ minHeight: "100dvh", background: "var(--bg)", overflowX: "clip" }}>
 
 
       {/* ── Landing nav ── */}
       <header style={{
         position: "sticky", top: 0, zIndex: 40,
+        paddingTop: "env(safe-area-inset-top, 0px)",
         backgroundImage: "var(--nav-bar-hero)",
       }}>
         <div style={{
@@ -207,24 +208,20 @@ function LandingPage() {
               { label: "How it works", href: "#how-it-works" },
               { label: "Leagues",      href: "#leagues" },
             ].map(({ label, href }) => (
-              <Link key={href} href={href} replace style={{
+              <Link key={href} href={href} replace className="hover-underline" style={{
                 fontSize: 14, fontWeight: 600, color: "var(--ink)", padding: "6px 14px",
                 borderRadius: 8, textDecoration: "none",
                 transition: "color 0.15s",
               }}
-              onMouseEnter={e => (e.currentTarget.style.textDecoration = "underline")}
-              onMouseLeave={e => (e.currentTarget.style.textDecoration = "none")}
               >
                 {label}
               </Link>
             ))}
-            <Link href="/auth" replace style={{
+            <Link href="/auth" replace className="hover-underline" style={{
               fontSize: 14, fontWeight: 600, color: "var(--ink)", padding: "6px 14px",
               borderRadius: 8, textDecoration: "none",
               transition: "color 0.15s",
             }}
-            onMouseEnter={e => (e.currentTarget.style.textDecoration = "underline")}
-            onMouseLeave={e => (e.currentTarget.style.textDecoration = "none")}
             >
               Sign in
             </Link>
@@ -376,19 +373,11 @@ function LandingPage() {
 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 16 }}>
             {FEATURES.map((f) => (
-              <article key={f.title} style={{
+              <article key={f.title} className="hover-lift" style={{
                 background: "var(--surface)", borderRadius: 20, padding: "28px 28px 24px",
                 border: "1px solid var(--border)",
                 transition: "transform 0.25s, box-shadow 0.25s",
                 cursor: "default",
-              }}
-              onMouseEnter={e => {
-                (e.currentTarget as HTMLElement).style.transform = "translateY(-3px)";
-                (e.currentTarget as HTMLElement).style.boxShadow = "inset 0 0 0 1px var(--border-s)";
-              }}
-              onMouseLeave={e => {
-                (e.currentTarget as HTMLElement).style.transform = "";
-                (e.currentTarget as HTMLElement).style.boxShadow = "";
               }}
               >
                 <div style={{

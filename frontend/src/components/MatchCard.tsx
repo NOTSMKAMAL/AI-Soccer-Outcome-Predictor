@@ -103,6 +103,7 @@ export default function MatchCard({ fixture }: Props) {
 
   return (
     <article
+      className="hover-lift"
       style={{
         background: "var(--surface)",
         borderRadius: 18,
@@ -110,14 +111,6 @@ export default function MatchCard({ fixture }: Props) {
         overflow: "hidden",
         position: "relative",
         transition: "box-shadow 0.2s ease, transform 0.2s ease",
-      }}
-      onMouseEnter={(e) => {
-        (e.currentTarget as HTMLElement).style.boxShadow = "inset 0 0 0 1px var(--primary-edge)";
-        (e.currentTarget as HTMLElement).style.transform = "translateY(-2px)";
-      }}
-      onMouseLeave={(e) => {
-        (e.currentTarget as HTMLElement).style.boxShadow = "inset 0 0 0 1px var(--border)";
-        (e.currentTarget as HTMLElement).style.transform = "translateY(0)";
       }}
     >
       <div style={{ height: "100%", padding: "16px 20px", display: "flex", flexDirection: "column", gap: 14, position: "relative" }}>
@@ -220,8 +213,7 @@ export default function MatchCard({ fixture }: Props) {
           <Link
             href={`/prediction/${fixture.id}`}
             style={ctaStyle}
-            onMouseEnter={(e) => { if (canPredict) (e.currentTarget as HTMLElement).style.transform = "translateY(-1px)"; }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.transform = "translateY(0)"; }}
+            className={canPredict ? "hover-nudge" : undefined}
           >
             {canPredict ? (
               <>

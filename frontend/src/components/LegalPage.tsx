@@ -9,9 +9,9 @@ export const LEGAL_LAST_UPDATED = "October 30, 2026";
 /** Shared layout for the Privacy and Terms pages. */
 export default function LegalPage({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <div style={{ minHeight: "100vh" }}>
+    <div style={{ minHeight: "100dvh" }}>
       <Navbar />
-      <main style={{ maxWidth: 720, margin: "0 auto", padding: "104px clamp(16px, 4vw, 32px) 64px" }}>
+      <main style={{ maxWidth: 720, margin: "0 auto", padding: "calc(104px + env(safe-area-inset-top, 0px)) clamp(16px, 4vw, 32px) 64px" }}>
         <h1 style={{
           fontSize: "clamp(30px, 6vw, 40px)", fontWeight: 700, letterSpacing: "-0.02em",
           color: "var(--ink)", margin: "0 0 6px", fontFamily: "var(--font-display), system-ui",

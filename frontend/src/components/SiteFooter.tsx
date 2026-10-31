@@ -5,7 +5,7 @@ const LINK_STYLE = { display: "inline-flex", alignItems: "center", minHeight: 24
 /** Required attributions and legal links, shown on every page from the root layout. */
 export default function SiteFooter() {
   return (
-    <footer style={{ borderTop: "1px solid var(--border)", padding: "24px clamp(16px, 4vw, 32px)" }}>
+    <footer style={{ borderTop: "1px solid var(--border)", padding: "24px clamp(16px, 4vw, 32px) calc(24px + env(safe-area-inset-bottom, 0px))" }}>
       <div style={{
         maxWidth: 1200, margin: "0 auto",
         display: "flex", flexDirection: "column", gap: 6,

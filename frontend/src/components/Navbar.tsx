@@ -127,7 +127,7 @@ function AccountSettingsModal({
 
       <div style={{
         width: "100%", maxWidth: 420,
-        maxHeight: "calc(100dvh - 48px)", overflowY: "auto",
+        maxHeight: "calc(100dvh - 48px)", overflowY: "auto", overscrollBehavior: "contain",
         background: "var(--surface)",
         borderRadius: 20,
         boxShadow: "inset 0 0 0 1px var(--border-s)",
@@ -362,8 +362,7 @@ function UserMenu({
               fontSize: 13, color: "var(--ink-2)", borderRadius: 8, textAlign: "left",
               transition: "background 0.15s",
             }}
-            onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.background = "var(--surface-2)")}
-            onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.background = "none")}
+            className="hover-fill"
           >
             <span style={{ display: "inline-flex", color: "var(--muted)" }}><UserMenuIcon /></span>
             Account settings
@@ -378,8 +377,7 @@ function UserMenu({
               fontSize: 13, color: "var(--danger)", borderRadius: 8, textAlign: "left",
               transition: "background 0.15s",
             }}
-            onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.background = "var(--danger-soft)")}
-            onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.background = "none")}
+            className="hover-danger"
           >
             <span style={{ display: "inline-flex" }}><LogoutIcon /></span>
             Sign out
@@ -408,6 +406,7 @@ export default function Navbar() {
     <>
       <header style={{
         position: "fixed", top: 0, left: 0, right: 0, zIndex: 40,
+        paddingTop: "env(safe-area-inset-top, 0px)",
         backgroundImage: "var(--nav-bar)",
       }}>
         <div style={{
@@ -440,8 +439,7 @@ export default function Navbar() {
                       background: pathname === "/dashboard" ? "var(--surface-2)" : "transparent",
                       transition: "color 0.15s, background 0.15s",
                     }}
-                    onMouseEnter={(e) => { if (pathname !== "/dashboard") (e.currentTarget as HTMLAnchorElement).style.textDecoration = "underline"; }}
-                    onMouseLeave={(e) => { if (pathname !== "/dashboard") (e.currentTarget as HTMLAnchorElement).style.textDecoration = "none"; }}
+                    className={pathname === "/dashboard" ? undefined : "hover-underline"}
                   >
                     Fixtures
                   </Link>

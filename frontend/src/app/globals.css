@@ -86,7 +86,20 @@ html {
     :root { --sig: linear-gradient(100deg in oklch, #0297DE 40%, #FC734D); }
   }
 
-  html { scroll-behavior: smooth; }
+  html {
+    scroll-behavior: smooth;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  a, button, summary { touch-action: manipulation; }
+  button { -webkit-user-select: none; user-select: none; }
+  a:active, button:active:not(:disabled) { opacity: 0.8; }
+
+  /* iOS zooms the page on focus when an input's text is under 16px. !important beats inline sizes. */
+  @media (pointer: coarse) {
+    input, select, textarea { font-size: 16px !important; }
+  }
 
   :focus-visible { outline: 2px solid var(--primary-text); outline-offset: 2px; }
 
@@ -100,7 +113,7 @@ html {
   }
 
   body {
-    min-height: 100vh;
+    min-height: 100dvh;
     background-color: var(--bg);
     color: var(--ink);
     font-feature-settings: "rlig" 1, "calt" 1, "cv11", "ss01";
@@ -139,6 +152,20 @@ html {
     font-weight: 700; line-height: 1; letter-spacing: 0.02em;
   }
 
+  /* ── Hover only where hover exists: on touch it sticks after a tap.
+     !important beats the inline styles these elements carry. ── */
+  @media (hover: hover) and (pointer: fine) {
+    .btn-primary:hover:not(:disabled) { background: var(--primary-hover); }
+    .btn-ghost:hover:not(:disabled) { background: var(--surface-2); }
+    .hover-underline:hover { text-decoration: underline !important; }
+    .hover-fill:hover { background: var(--surface-2) !important; }
+    .hover-fill-strong:hover { background: var(--surface-3) !important; }
+    .hover-danger:hover { background: var(--danger-soft) !important; }
+    .hover-accent:hover { color: var(--primary-text) !important; }
+    .hover-lift:hover { transform: translateY(-2px); box-shadow: inset 0 0 0 1px var(--primary-edge) !important; }
+    .hover-nudge:hover { transform: translateY(-1px); }
+  }
+
   /* ── Input whose box is drawn by a wrapper, so the wrapper shows the focus ring ── */
   .input-box:focus-within { outline: 2px solid var(--primary-text); outline-offset: 2px; }
 
@@ -165,7 +192,6 @@ html {
     transition: background 0.15s var(--ease);
     cursor: pointer;
   }
-  .btn-primary:hover:not(:disabled) { background: var(--primary-hover); }
   .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
 
   .btn-ghost {
@@ -183,7 +209,6 @@ html {
     box-shadow: inset 0 0 0 1px var(--border-s);
     cursor: pointer;
   }
-  .btn-ghost:hover { background: var(--surface-2); }
   .btn-ghost:disabled { opacity: 0.4; cursor: not-allowed; }
 
   /* ── Confidence badges: high = blue, medium = orange, low = grey ── */

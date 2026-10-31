@@ -44,7 +44,7 @@ export default function FilterBar({ search, onSearchChange, league, onLeagueChan
 
   return (
     <div style={{
-      position: "sticky", top: NAVBAR_HEIGHT, zIndex: 30,
+      position: "sticky", top: `calc(${NAVBAR_HEIGHT}px + env(safe-area-inset-top, 0px))`, zIndex: 30,
       background: "var(--bg)",
       borderBottom: "1px solid var(--border)",
     }}>
@@ -62,6 +62,7 @@ export default function FilterBar({ search, onSearchChange, league, onLeagueChan
           <input
             type="text"
             aria-label="Search clubs or leagues"
+            enterKeyHint="search"
             placeholder="Search clubs or leagues…"
             value={search}
             onChange={(e) => onSearchChange(e.target.value)}
@@ -136,8 +137,7 @@ export default function FilterBar({ search, onSearchChange, league, onLeagueChan
                     background: league === l ? "var(--primary-soft)" : "none",
                     textAlign: "left", fontWeight: league === l ? 600 : 400,
                   }}
-                  onMouseEnter={(e) => { if (league !== l) (e.currentTarget as HTMLElement).style.background = "var(--surface-2)"; }}
-                  onMouseLeave={(e) => { if (league !== l) (e.currentTarget as HTMLElement).style.background = "none"; }}
+                  className={league === l ? undefined : "hover-fill"}
                 >
                   <span style={{
                     width: 8, height: 8, borderRadius: "50%",

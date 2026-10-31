@@ -504,10 +504,8 @@ function MatchCardInner({ fixture, teamId, defaultExpanded }: { fixture: RecentF
     <div className="rounded-xl overflow-hidden mb-2" style={{ border: "1px solid var(--border)", background: "var(--surface-2)" }}>
       <button
         onClick={() => setExpanded((e) => !e)}
-        className="w-full flex flex-wrap items-center gap-2 px-4 py-3 text-left transition-colors"
+        className="hover-fill-strong w-full flex flex-wrap items-center gap-2 px-4 py-3 text-left transition-colors"
         style={{ cursor: "pointer" }}
-        onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.background = "var(--surface-3)")}
-        onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.background = "transparent")}
       >
         <TeamBadge name={myTeam.name} size={24} />
         <span className="text-xs flex-1 min-w-0 break-words" style={{ color: "var(--ink-2)" }}>{myTeam.name}</span>
@@ -812,10 +810,8 @@ function ReasoningBreakdown({ reasoning }: { reasoning: string }) {
       )}
       {chips.length > 0 && (
         <details className="group">
-          <summary className="cursor-pointer text-xs transition-colors select-none py-1.5"
+          <summary className="hover-accent cursor-pointer text-xs transition-colors select-none py-1.5"
             style={{ color: "var(--muted-2)" }}
-            onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.color = "var(--primary-text)")}
-            onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.color = "var(--muted-2)")}
           >
             View full reasoning ↓
           </summary>
@@ -1112,16 +1108,14 @@ function PredictionContent({ matchId }: { matchId: string }) {
   const keyFactors = (prediction as any)?.keyFactors as Array<{ title: string; text: string }> | undefined;
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-[100dvh]">
       <Navbar />
 
       <main>
-      <div className="relative pt-20">
+      <div className="relative pt-[calc(80px+env(safe-area-inset-top,0px))]">
         <div className="relative mx-auto max-w-4xl px-[clamp(16px,4vw,32px)] pt-10 pb-4">
-          <Link href="/dashboard" className="mb-4 inline-flex items-center gap-1.5 min-h-[24px] text-sm transition-colors"
+          <Link href="/dashboard" className="hover-accent mb-4 inline-flex items-center gap-1.5 min-h-[24px] text-sm transition-colors"
             style={{ color: "var(--muted)" }}
-            onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.color = "var(--primary-text)")}
-            onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.color = "var(--muted)")}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M19 12H5M12 19l-7-7 7-7" />

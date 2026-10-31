@@ -151,7 +151,7 @@ function DashboardContent() {
   const grouped = groupByLeague(filtered);
 
   return (
-    <div style={{ minHeight: "100vh", paddingTop: NAVBAR_HEIGHT }}>
+    <div style={{ minHeight: "100dvh", paddingTop: `calc(${NAVBAR_HEIGHT}px + env(safe-area-inset-top, 0px))` }}>
       <Navbar />
       <main>
       <FilterBar

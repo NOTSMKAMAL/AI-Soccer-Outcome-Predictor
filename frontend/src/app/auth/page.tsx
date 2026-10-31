@@ -210,7 +210,7 @@ export default function AuthPage() {
 
   return (
     <div
-      style={{ minHeight: "100vh", gridTemplateColumns: "1.05fr 1fr", position: "relative" }}
+      style={{ minHeight: "100dvh", gridTemplateColumns: "1.05fr 1fr", position: "relative" }}
       className="flex flex-col lg:grid"
     >
       {/* ── LEFT PANEL ── */}
@@ -304,7 +304,7 @@ export default function AuthPage() {
           display: "grid",
           gridTemplateColumns: "minmax(0, 1fr)",
           placeItems: "center",
-          padding: "48px clamp(16px, 4vw, 32px)",
+          padding: "max(48px, env(safe-area-inset-top, 0px)) clamp(16px, 4vw, 32px) 48px",
           background: "var(--bg)",
         }}
       >
@@ -404,8 +404,7 @@ export default function AuthPage() {
               marginBottom: 20,
               opacity: busy ? 0.5 : 1,
             }}
-            onMouseEnter={(e) => !busy && ((e.currentTarget as HTMLButtonElement).style.background = "var(--surface-3)")}
-            onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.background = "var(--surface-2)")}
+            className={busy ? undefined : "hover-fill-strong"}
           >
             <GoogleG />
             <span>{tab === "signin" ? "Continue with Google" : "Sign up with Google"}</span>
