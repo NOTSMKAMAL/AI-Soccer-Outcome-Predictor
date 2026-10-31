@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence, MotionConfig, useReducedMotion } from "framer-motion";
 import ProtectedRoute from "@/components/ProtectedRoute";
@@ -11,7 +10,7 @@ import ErrorState from "@/components/ErrorState";
 import AllowanceBadge from "@/components/AllowanceBadge";
 import TeamBadge from "@/components/TeamBadge";
 import VerifyEmailNotice from "@/components/VerifyEmailNotice";
-import { getFixtureById, generatePrediction, getPredictionAllowance } from "@/lib/api";
+import { describeApiError, getFixtureById, generatePrediction, getPredictionAllowance } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import type { Fixture, Prediction, PredictionAllowance } from "@/lib/types";
 import { resultFromScores, type MatchResult } from "@/lib/matchResult";
@@ -115,24 +114,6 @@ function confidenceBadgeClass(level: string) {
   if (c === "high") return "badge-high";
   if (c === "medium") return "badge-medium";
   return "badge-low";
-}
-
-function confidenceColor(level: string): string {
-  const c = level?.toLowerCase();
-  if (c === "high") return "var(--primary)";
-  if (c === "medium") return "var(--orange)";
-  return "var(--neutral)";
-}
-
-// Display fallback only — used when the backend returns no probability fields at all
-// (i.e., hasThreeProbs is false). For all successful predictions the engine sets
-// home_win_probability, draw_probability, and away_win_probability, so ThreeSegmentBar
-// is shown instead and this function is never reached.
-function confidencePercent(level: string) {
-  const c = level?.toLowerCase();
-  if (c === "high") return 82;
-  if (c === "medium") return 55;
-  return 30;
 }
 
 function formatMatchTime(isoString: string): string {
@@ -297,7 +278,6 @@ function AIVerdictCard({
   const winner = prediction.winner || "Unknown";
   const loser = isHome ? fixture.awayTeam.name : fixture.homeTeam.name;
   const headline = buildVerdictHeadline(winner, prediction.confidence);
-  const barColor = confidenceColor(prediction.confidence);
 
   // Three-segment bar data
   const hasThreeProbs =
@@ -308,14 +288,6 @@ function AIVerdictCard({
   const homeP = prediction.home_win_probability ?? 0;
   const drawP = prediction.draw_probability ?? 0;
   const awayP = prediction.away_win_probability ?? 0;
-
-  // Fallback single-segment bar — only shown when hasThreeProbs is false.
-  // prediction.winProbability is not set by the engine; confidencePercent() is the
-  // last-resort estimate. In practice hasThreeProbs is always true for successful
-  // predictions because the engine sets all three probability fields in both the
-  // Dixon-Coles path (dc_probs) and the confidence-estimate fallback path.
-  const pct = prediction.winProbability ?? confidencePercent(prediction.confidence);
-  const reduceMotion = useReducedMotion();
 
   return (
     <motion.div
@@ -371,7 +343,7 @@ function AIVerdictCard({
         </div>
 
         {/* ── Three-segment bar (primary) — uses actual Dixon-Coles probabilities ── */}
-        {hasThreeProbs ? (
+        {hasThreeProbs && (
           <ThreeSegmentBar
             homeP={homeP}
             drawP={drawP}
@@ -379,28 +351,12 @@ function AIVerdictCard({
             homeName={fixture.homeTeam.name}
             awayName={fixture.awayTeam.name}
           />
-        ) : (
-          /* Fallback single-segment bar — shown only when all three probability
-             fields are missing from the API response (should not occur in practice) */
-          <div className="mt-6 mx-auto max-w-xs">
-            <div className="flex justify-between text-xs mb-2" style={{ color: "var(--muted)" }}>
-              <span className="truncate max-w-[45%]">{fixture.homeTeam.name}</span>
-              <span className="truncate max-w-[45%] text-right">{fixture.awayTeam.name}</span>
-            </div>
-            <div className="h-2.5 rounded-full overflow-hidden" style={{ background: "var(--surface-2)" }}>
-              <motion.div
-                initial={reduceMotion ? false : { width: 0 }}
-                animate={{ width: `${Math.min(Math.max(Math.round(pct), 5), 95)}%` }}
-                transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1], delay: 0.3 }}
-                className="h-full rounded-full"
-                style={{ background: barColor }}
-              />
-            </div>
-            <p className="mt-1.5 text-center text-xs" style={{ color: "var(--muted-2)" }}>
-              {Math.round(pct)}% win probability
-              {!prediction.winProbability && <span style={{ color: "var(--muted-2)" }}> (confidence-based estimate)</span>}
-            </p>
-          </div>
+        )}
+
+        {prediction.probabilityMethod === "confidence-estimate" && (
+          <p className="mt-3 mx-auto max-w-xs text-xs" style={{ color: "var(--muted)" }}>
+            League standings weren&apos;t available, so these are rough estimates from Gemini&apos;s confidence, not the model&apos;s probabilities.
+          </p>
         )}
       </div>
     </motion.div>
@@ -771,7 +727,7 @@ function StandingsSection({ standings, teamAId, teamBId }: { standings: Standing
                   </span>
                 </td>
                 {[
-                  (row.won ?? 0) + (row.drawn ?? 0) + (row.lost ?? 0),
+                  row.won == null ? null : row.won + (row.drawn ?? 0) + (row.lost ?? 0),
                   row.won, row.drawn, row.lost, row.goal_difference, row.points,
                 ].map((val, i) => (
                   <td key={i} className="py-2 text-center font-mono">{val ?? "—"}</td>
@@ -903,6 +859,7 @@ function PredictionSummaryPanel({ fixture, prediction }: { fixture: Fixture; pre
         {[
           { term: "Predicted Winner", value: prediction.winner || "Unknown" },
           { term: "Confidence", value: prediction.confidence ? prediction.confidence.charAt(0).toUpperCase() + prediction.confidence.slice(1) : "Unknown" },
+          { term: "Probabilities", value: prediction.probabilityMethod === "confidence-estimate" ? "Estimate (standings unavailable)" : "Dixon-Coles model" },
           { term: "Match", value: fixture.name },
           { term: "League", value: fixture.leagueName },
           { term: "Fixture Source", value: fixture._isMock ? "Preview (mock)" : "football-data.org" },
@@ -1021,7 +978,6 @@ type PageState = "loadingFixture" | "ready" | "generating" | "predicted" | "erro
 
 function PredictionContent({ matchId }: { matchId: string }) {
   const { user, emailVerified } = useAuth();
-  const router = useRouter();
 
   const [fixture, setFixture] = useState<Fixture | null>(null);
   const [prediction, setPrediction] = useState<Prediction | null>(null);
@@ -1046,20 +1002,19 @@ function PredictionContent({ matchId }: { matchId: string }) {
     if (emailVerified) refreshAllowance();
   }, [emailVerified, refreshAllowance]);
 
-  useEffect(() => {
-    async function loadFixture() {
-      try {
-        const res = await getFixtureById(matchId);
-        setFixture(res.data as Fixture);
-        setPageState("ready");
-      } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : "Failed to load fixture.";
-        setErrorMsg(msg);
-        setPageState("error");
-      }
+  const loadFixture = useCallback(async () => {
+    setPageState("loadingFixture");
+    try {
+      const res = await getFixtureById(matchId);
+      setFixture(res.data as Fixture);
+      setPageState("ready");
+    } catch (err: unknown) {
+      setErrorMsg(describeApiError(err, "This match couldn't be found. It may no longer be on the schedule."));
+      setPageState("error");
     }
-    loadFixture();
   }, [matchId]);
+
+  useEffect(() => { loadFixture(); }, [loadFixture]);
 
   const handlePredict = async () => {
     if (!user || !fixture) return;
@@ -1131,12 +1086,12 @@ function PredictionContent({ matchId }: { matchId: string }) {
       setEnrichedLoading(false);
     } catch (err: unknown) {
       setEnrichedLoading(false);
-      const msg = err instanceof Error ? err.message : "Prediction failed.";
-      const detail = msg.replace(/^API \d+:\s*/, "");
+      const msg = err instanceof Error ? err.message : "";
+      const detail = describeApiError(err, "The prediction didn't finish. Try again in a minute.");
       // The HTTP status, not a search of the text: details can quote other codes.
       const httpStatus = msg.match(/^API (\d+):/)?.[1];
       if (httpStatus === "501") {
-        setErrorMsg("Prediction unavailable for this fixture — real football-data.org data required.");
+        setErrorMsg("This match has no live data behind it, so it can't be predicted. Pick another from the match list.");
         setPageState("unavailable");
       } else if (httpStatus === "403" || httpStatus === "429") {
         // Access gate or daily prediction limit — show the backend's reason.
@@ -1286,7 +1241,7 @@ function PredictionContent({ matchId }: { matchId: string }) {
             <div>
               <h3 className="font-semibold" style={{ color: "var(--ink)" }}>Prediction Unavailable</h3>
               <p className="mt-2 text-sm max-w-sm" style={{ color: "var(--muted)" }}>
-                {errorMsg || "Backend endpoint pending — real football-data.org data required for this fixture."}
+                {errorMsg || "This match can't be predicted right now. Pick another from the match list."}
               </p>
             </div>
             <Link href="/dashboard" className="btn-ghost text-sm px-6 py-2.5">← Back to matches</Link>
@@ -1295,12 +1250,9 @@ function PredictionContent({ matchId }: { matchId: string }) {
 
         {pageState === "error" && (
           <ErrorState
-            title="Failed to load prediction"
+            title={fixture ? "The prediction didn't finish" : "We can't load this match"}
             message={errorMsg}
-            onRetry={() => {
-              if (fixture) { handlePredict(); }
-              else { setPageState("loadingFixture"); router.refresh(); }
-            }}
+            onRetry={fixture ? handlePredict : loadFixture}
           />
         )}
       </div>

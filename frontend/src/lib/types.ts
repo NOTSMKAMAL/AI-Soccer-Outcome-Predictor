@@ -41,6 +41,8 @@ export interface Prediction {
   confidence: "low" | "medium" | "high" | string;
   reasoning: string;
   winProbability?: number;
+  /** "dixon-coles", or "confidence-estimate" when the model had no standings. */
+  probabilityMethod?: string;
   home_win_probability?: number;
   draw_probability?: number;
   away_win_probability?: number;

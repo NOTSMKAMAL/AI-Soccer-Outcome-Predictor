@@ -19,7 +19,7 @@ export default function ErrorState({
       <div>
         <h3 className="font-semibold text-[var(--ink)]">{title}</h3>
         {message && (
-          <p className="mt-1 text-sm text-[var(--muted)] max-w-sm font-mono">{message}</p>
+          <p className="mt-1 text-sm text-[var(--muted)] max-w-sm">{message}</p>
         )}
       </div>
       {onRetry && (

@@ -4,6 +4,7 @@ import { useEffect, useId, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import { describeAuthError } from "@/lib/authErrors";
 import { requestPasswordReset } from "@/lib/passwordReset";
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
@@ -173,7 +174,7 @@ export default function AuthPage() {
       }
       router.replace("/dashboard");
     } catch (err: unknown) {
-      setGlobalError(err instanceof Error ? err.message : "Authentication failed.");
+      setGlobalError(describeAuthError(err));
     } finally {
       setBusy(false);
     }
@@ -201,7 +202,7 @@ export default function AuthPage() {
       await signInWithGoogle();
       router.replace("/dashboard");
     } catch (err: unknown) {
-      setGlobalError(err instanceof Error ? err.message : "Google sign-in failed.");
+      setGlobalError(describeAuthError(err));
     } finally {
       setBusy(false);
     }

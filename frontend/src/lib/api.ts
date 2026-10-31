@@ -41,6 +41,16 @@ async function authRequest<T>(
   });
 }
 
+/**
+ * A sentence for the UI from a failed API call: the backend's reason when it
+ * gave one, and never the browser's raw "Failed to fetch".
+ */
+export function describeApiError(err: unknown, fallback: string): string {
+  if (err instanceof TypeError) return "We can't reach the match server. Try again in a minute.";
+  const message = err instanceof Error ? err.message : "";
+  return message.replace(/^API \d+:\s*/, "") || fallback;
+}
+
 // ── Public endpoints (no auth required) ──────────────────────────────────────
 
 // Session cache: resets on page reload. Max staleness: 5 minutes.

@@ -8,7 +8,7 @@ import MatchCard from "@/components/MatchCard";
 import { MatchCardSkeleton } from "@/components/LoadingSkeleton";
 import EmptyState from "@/components/EmptyState";
 import ErrorState from "@/components/ErrorState";
-import { getTopLeagueFixtures } from "@/lib/api";
+import { describeApiError, getTopLeagueFixtures } from "@/lib/api";
 import { MOCK_FIXTURES } from "@/lib/mockData";
 import type { Fixture } from "@/lib/types";
 import { parseFixtureDate, toLADateStr, isUpcomingLA } from "@/lib/dateUtils";
@@ -112,7 +112,7 @@ function DashboardContent() {
       }
       setState("success");
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Backend unreachable.";
+      const msg = describeApiError(err, "We can't reach the match server. Try again in a minute.");
       setFixtures(MOCK_FIXTURES);
       setIsMockData(true);
       setErrorMsg(msg);
@@ -231,7 +231,7 @@ function DashboardContent() {
         {/* Error */}
         {state === "error" && (
           <div style={{ marginBottom: 24 }}>
-            <ErrorState title="Backend unavailable" message={errorMsg} onRetry={fetchFixtures} />
+            <ErrorState title="We can't load live matches" message={`${errorMsg} Preview matches are shown until then.`} onRetry={fetchFixtures} />
           </div>
         )}
 
