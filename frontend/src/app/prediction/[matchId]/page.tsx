@@ -150,6 +150,7 @@ function formatMatchTime(isoString: string): string {
 }
 
 function buildVerdictHeadline(winner: string, confidence: string): string {
+  if (winner.toLowerCase() === "draw") return "The most likely result";
   const c = confidence?.toLowerCase();
   if (c === "high") return `${winner} looks like the clear favourite`;
   if (c === "medium") return `${winner} has the edge`;
@@ -321,6 +322,7 @@ function AIVerdictCard({
       transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
       className="card p-8 text-center relative overflow-hidden"
     >
+      <div className="sig-rule" style={{ position: "absolute", inset: "0 0 auto 0" }} />
 
       <div className="relative z-10">
         {/* AI Verdict badge */}
@@ -351,7 +353,11 @@ function AIVerdictCard({
           {winner}
         </motion.h2>
 
-        <p className="mt-1.5 text-sm" style={{ color: "var(--muted-2)" }}>predicted to win over {loser}</p>
+        <p className="mt-1.5 text-sm" style={{ color: "var(--muted-2)" }}>
+          {winner.toLowerCase() === "draw"
+            ? `between ${fixture.homeTeam.name} and ${fixture.awayTeam.name}`
+            : `predicted to win over ${loser}`}
+        </p>
 
         <div className="mt-4 flex items-center justify-center gap-2">
           <span className={confidenceBadgeClass(prediction.confidence)}>

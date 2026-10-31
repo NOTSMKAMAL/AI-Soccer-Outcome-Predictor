@@ -13,21 +13,21 @@ html {
 
     /* ── Surfaces, derived from Midnight Black ── */
     --bg:            #02070A;
-    --surface:       #0A1218;
-    --surface-2:     #101A22;
-    --surface-3:     #17232D;
+    --surface:       #0B1722;
+    --surface-2:     #11202D;
+    --surface-3:     #182A39;
     --scrim:         rgba(2,7,10,0.72);
 
-    /* ── Borders: low-opacity Electric Blue ── */
-    --border:        rgba(2,151,222,0.14);
-    --border-s:      rgba(2,151,222,0.22);
-    --border-strong: rgba(2,151,222,0.32);
+    /* ── Hairlines ── */
+    --border:        rgba(120,170,210,0.14);
+    --border-s:      rgba(120,170,210,0.20);
+    --border-strong: rgba(120,170,210,0.32);
 
     /* ── Text ── */
     --ink:           #EDF3F7;
     --ink-2:         #CBD6DE;
     --muted:         #9AA8B2;
-    --muted-2:       #84929C;
+    --muted-2:       #8E9CA6;
 
     /* ── Electric Blue: primary, success, home, high confidence ── */
     --primary:       #0297DE;
@@ -61,9 +61,29 @@ html {
     --away:          var(--orange);
     --draw:          var(--neutral);
 
+    /* ── Signature gradient. Only on the logo, the hero headline and the verdict rule.
+       These stops sample the OKLCH version for browsers without `in oklch`. ── */
+    --sig: linear-gradient(100deg, #0297DE 0%, #0297DE 37.5%, #658CEE 50%, #A47CE8 62.5%, #D26FC7 75%, #F16A92 87.5%, #FC734D 100%);
+    --depth-top: #07213A;
+    --depth: linear-gradient(180deg, var(--depth-top) 0, #041220 300px, #02070A 640px);
+
+    /* ── Top nav bar: Midnight Black into a darkened Electric Blue. Light text reads across all of it. ── */
+    --nav-gradient: linear-gradient(100deg, #02070A 35%, #07507F 100%);
+    /* The bar fades into whatever sits under it, so there is no edge: black pages, or the hero.
+       The middle stop eases the end of the fade, because a straight ramp leaves a visible kink. */
+    --nav-bar: linear-gradient(180deg, transparent 25%, rgba(2,7,10,0.8) 72%, var(--bg) 100%), var(--nav-gradient);
+    --nav-bar-hero: linear-gradient(180deg, transparent 25%, rgba(7,33,58,0.8) 72%, var(--depth-top) 100%), var(--nav-gradient);
+
+    /* ── Actions on the blue end of the nav bar. Text on it is --on-accent ── */
+    --orange-gradient: linear-gradient(135deg, #FD8A6A 0%, #E8552D 100%);
+
     /* ── Easing ── */
     --ease:     cubic-bezier(0.2,0.6,0.2,1);
     --ease-out: cubic-bezier(0.16,1,0.3,1);
+  }
+
+  @supports (background: linear-gradient(100deg in oklch, #000, #fff)) {
+    :root { --sig: linear-gradient(100deg in oklch, #0297DE 40%, #FC734D); }
   }
 
   html { scroll-behavior: smooth; }
@@ -86,6 +106,27 @@ html {
 }
 
 @layer components {
+
+  /* ── Signature gradient and depth ── */
+  .sig-text {
+    color: var(--primary-text);
+    background-image: var(--sig);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .sig-rule { height: 3px; background-image: var(--sig); }
+  .depth { background-image: var(--depth); }
+
+  /* ── Team badge: club colour as a tint and a ring, set from TeamBadge ── */
+  .team-badge {
+    display: grid; place-items: center; flex-shrink: 0;
+    background: var(--surface-2);
+    background: color-mix(in srgb, var(--team) 22%, var(--surface));
+    box-shadow: inset 0 0 0 1.5px var(--team-ring);
+    color: var(--ink);
+    font-weight: 700; line-height: 1; letter-spacing: 0.02em;
+  }
 
   /* ── Card: flat surface with a hairline border ── */
   .card {

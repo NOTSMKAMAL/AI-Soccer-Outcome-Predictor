@@ -1,12 +1,9 @@
 "use client";
+import { useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import PageLoading from "@/components/PageLoading";
 import { useAuth } from "@/context/AuthContext";
-import { landingCta } from "@/lib/landingCta";
-
-function useLandingCta() {
-  const { user, loading } = useAuth();
-  return landingCta(loading, !!user);
-}
 
 // ── Static hero preview card ──────────────────────────────────────────────────
 
@@ -32,7 +29,6 @@ function SoccerBallSm() {
 }
 
 function HeroPreviewCard() {
-  const cta = useLandingCta();
   return (
     <div style={{ position: "relative", flex: "0 0 auto", width: "min(460px, 100%)" }}>
       {/* Card */}
@@ -115,7 +111,7 @@ function HeroPreviewCard() {
           marginTop: 4,
         }}>
           <span style={{ fontSize: 12, color: "var(--muted)" }}>Illustrative, not real matches</span>
-          <Link href={cta.href} style={{ fontSize: 12, color: "var(--primary-text)", fontWeight: 600, textDecoration: "none" }}>
+          <Link href="/auth" replace style={{ fontSize: 12, color: "var(--primary-text)", fontWeight: 600, textDecoration: "none" }}>
             View all →
           </Link>
         </div>
@@ -171,8 +167,8 @@ const STEPS = [
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
-export default function HomePage() {
-  const cta = useLandingCta();
+// Every link here uses replace, so the landing page never stays in history behind a signed-in user.
+function LandingPage() {
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", overflowX: "clip" }}>
 
@@ -180,8 +176,7 @@ export default function HomePage() {
       {/* ── Landing nav ── */}
       <header style={{
         position: "sticky", top: 0, zIndex: 40,
-        background: "var(--bg)",
-        borderBottom: "1px solid var(--border)",
+        backgroundImage: "var(--nav-bar-hero)",
       }}>
         <div style={{
           maxWidth: 1200, margin: "0 auto",
@@ -189,9 +184,9 @@ export default function HomePage() {
           display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
         }}>
           {/* Brand */}
-          <a href="#" style={{ display: "flex", alignItems: "center", gap: 10, fontWeight: 700, fontSize: 15, color: "var(--ink)", textDecoration: "none", letterSpacing: "-0.01em", fontFamily: "var(--font-display), system-ui" }}>
+          <Link href="#" replace style={{ display: "flex", alignItems: "center", gap: 10, fontWeight: 700, fontSize: 15, color: "var(--ink)", textDecoration: "none", letterSpacing: "-0.01em", fontFamily: "var(--font-display), system-ui" }}>
             <img
-              src="/future-fc-logo.png"
+              src="/future-fc-logo.svg"
               alt="FUTURE FC"
               width={36}
               height={36}
@@ -203,7 +198,7 @@ export default function HomePage() {
               }}
             />
             FUTURE FC
-          </a>
+          </Link>
 
           {/* Nav links */}
           <nav style={{ alignItems: "center", gap: 4 }} className="hidden sm:flex">
@@ -212,41 +207,38 @@ export default function HomePage() {
               { label: "How it works", href: "#how-it-works" },
               { label: "Leagues",      href: "#leagues" },
             ].map(({ label, href }) => (
-              <a key={href} href={href} style={{
-                fontSize: 14, color: "var(--muted)", padding: "6px 14px",
+              <Link key={href} href={href} replace style={{
+                fontSize: 14, fontWeight: 600, color: "var(--ink)", padding: "6px 14px",
                 borderRadius: 8, textDecoration: "none",
                 transition: "color 0.15s",
               }}
-              onMouseEnter={e => (e.currentTarget.style.color = "var(--ink)")}
-              onMouseLeave={e => (e.currentTarget.style.color = "var(--muted)")}
+              onMouseEnter={e => (e.currentTarget.style.textDecoration = "underline")}
+              onMouseLeave={e => (e.currentTarget.style.textDecoration = "none")}
               >
                 {label}
-              </a>
+              </Link>
             ))}
-            {cta.ready && !cta.signedIn && (
-              <a href="/auth" style={{
-                fontSize: 14, color: "var(--muted)", padding: "6px 14px",
-                borderRadius: 8, textDecoration: "none",
-                transition: "color 0.15s",
-              }}
-              onMouseEnter={e => (e.currentTarget.style.color = "var(--ink)")}
-              onMouseLeave={e => (e.currentTarget.style.color = "var(--muted)")}
-              >
-                Sign in
-              </a>
-            )}
+            <Link href="/auth" replace style={{
+              fontSize: 14, fontWeight: 600, color: "var(--ink)", padding: "6px 14px",
+              borderRadius: 8, textDecoration: "none",
+              transition: "color 0.15s",
+            }}
+            onMouseEnter={e => (e.currentTarget.style.textDecoration = "underline")}
+            onMouseLeave={e => (e.currentTarget.style.textDecoration = "none")}
+            >
+              Sign in
+            </Link>
           </nav>
 
           {/* CTA */}
-          <Link href={cta.href} style={{
+          <Link href="/auth" replace style={{
             display: "inline-flex", alignItems: "center", gap: 6,
             padding: "9px 18px", borderRadius: 10, fontSize: 14, fontWeight: 600,
-            background: "var(--primary)",
+            background: "var(--orange-gradient)",
             color: "var(--on-accent)", textDecoration: "none",
             transition: "opacity 0.15s",
-            visibility: cta.ready ? "visible" : "hidden",
           }}>
-            {cta.label}
+            Get started
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M5 12h14M12 5l7 7-7 7" />
             </svg>
@@ -255,7 +247,7 @@ export default function HomePage() {
       </header>
 
       {/* ── Hero ── */}
-      <section style={{ position: "relative", zIndex: 1 }}>
+      <section className="depth" style={{ position: "relative", zIndex: 1 }}>
         <div style={{
           maxWidth: 1200, margin: "0 auto", padding: "72px 32px 80px",
           display: "flex", alignItems: "center", gap: 64, flexWrap: "wrap",
@@ -289,10 +281,7 @@ export default function HomePage() {
               fontFamily: "var(--font-display), system-ui",
             }}>
               Predict football outcomes with{" "}
-              <em style={{
-                fontStyle: "normal",
-                color: "var(--primary-text)",
-              }}>
+              <em className="sig-text" style={{ fontStyle: "normal" }}>
                 real match data
               </em>
               .
@@ -304,19 +293,18 @@ export default function HomePage() {
             </p>
 
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 28 }}>
-              <Link href={cta.href} style={{
+              <Link href="/auth" replace style={{
                 display: "inline-flex", alignItems: "center", gap: 8,
                 padding: "14px 28px", borderRadius: 12, fontSize: 16, fontWeight: 600,
                 background: "var(--primary)",
                 color: "var(--on-accent)", textDecoration: "none",
-                visibility: cta.ready ? "visible" : "hidden",
               }}>
-                {cta.label}
+                Get started
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M5 12h14M12 5l7 7-7 7" />
                 </svg>
               </Link>
-              <Link href="/dashboard" style={{
+              <Link href="/auth" replace style={{
                 display: "inline-flex", alignItems: "center", gap: 8,
                 padding: "14px 28px", borderRadius: 12, fontSize: 16, fontWeight: 600,
                 background: "var(--surface)", color: "var(--ink-2)", textDecoration: "none",
@@ -470,36 +458,46 @@ export default function HomePage() {
             Ready to see today&apos;s board?
           </h2>
           <p style={{ fontSize: 16, color: "var(--muted)", maxWidth: 480, margin: "0 auto 32px", lineHeight: 1.6 }}>
-            {cta.signedIn
-              ? "Fixtures and AI predictions across all six competitions are on your dashboard."
-              : "Sign in to access fixtures and AI predictions across all six competitions."}
+            Sign in to access fixtures and AI predictions across all six competitions.
           </p>
-          <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap", visibility: cta.ready ? "visible" : "hidden" }}>
-            <Link href={cta.href} style={{
+          <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
+            <Link href="/auth" replace style={{
               display: "inline-flex", alignItems: "center", gap: 8,
               padding: "14px 32px", borderRadius: 12, fontSize: 16, fontWeight: 600,
               background: "var(--primary)",
               color: "var(--on-accent)", textDecoration: "none",
             }}>
-              {cta.signedIn ? cta.label : "Create your account"}
+              Create your account
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M5 12h14M12 5l7 7-7 7" />
               </svg>
             </Link>
-            {!cta.signedIn && (
-              <Link href="/auth" style={{
-                display: "inline-flex", alignItems: "center",
-                padding: "14px 28px", borderRadius: 12, fontSize: 16, fontWeight: 600,
-                background: "var(--surface)", color: "var(--ink-2)", textDecoration: "none",
-                border: "1px solid var(--border-strong)",
-              }}>
-                I already have one
-              </Link>
-            )}
+            <Link href="/auth" replace style={{
+              display: "inline-flex", alignItems: "center",
+              padding: "14px 28px", borderRadius: 12, fontSize: 16, fontWeight: 600,
+              background: "var(--surface)", color: "var(--ink-2)", textDecoration: "none",
+              border: "1px solid var(--border-strong)",
+            }}>
+              I already have one
+            </Link>
           </div>
         </div>
       </section>
 
     </div>
   );
+}
+
+/** The landing page is for signed-out visitors. Signed-in users go to the dashboard, leaving no trace in history. */
+export default function HomePage() {
+  const { user, loading, signedOut } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!loading && user && !signedOut) router.replace("/dashboard");
+  }, [user, loading, signedOut, router]);
+
+  if (loading || user) return <PageLoading />;
+
+  return <LandingPage />;
 }

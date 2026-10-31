@@ -91,7 +91,7 @@
 **Interface responsibilities:**
 - `src/app/auth/page.tsx`: renders email/password form; calls Firebase Auth SDK `signInWithEmailAndPassword` / `createUserWithEmailAndPassword`; handles error display
 - `src/context/AuthContext.tsx`: listens to `onAuthStateChanged`; exposes `user` and `getIdToken()` to all components
-- `src/components/ProtectedRoute.tsx`: redirects unauthenticated users to `/auth` before rendering any protected page
+- `src/components/ProtectedRoute.tsx`: redirects unauthenticated users to `/auth` before rendering any protected page, or to `/` straight after signing out
 - `src/lib/api.ts` `authRequest()`: attaches `Authorization: Bearer <token>` header to all protected API calls
 
 **Engine responsibilities:**

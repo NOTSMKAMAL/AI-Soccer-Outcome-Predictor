@@ -26,6 +26,8 @@ interface AuthContextType {
   emailVerified: boolean;
   /** True after this tab deleted its account, so the sign-in page can confirm it. */
   accountDeleted: boolean;
+  /** True from pressing Sign out until the next sign-in, so every redirect goes to the landing page. */
+  signedOut: boolean;
   resendVerificationEmail: () => Promise<void>;
   refreshEmailVerified: () => Promise<boolean>;
   resetPassword: (email: string) => Promise<void>;
@@ -46,11 +48,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [emailVerified, setEmailVerified] = useState(false);
   const [accountDeleted, setAccountDeleted] = useState(false);
+  const [signedOut, setSignedOut] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       setUser(firebaseUser);
       setEmailVerified(firebaseUser?.emailVerified ?? false);
+      if (firebaseUser) setSignedOut(false);
       setLoading(false);
     });
     return unsubscribe;
@@ -117,7 +121,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signInWithGoogle = () =>
     signInWithPopup(auth, new GoogleAuthProvider());
 
-  const logout = () => signOut(auth);
+  const logout = async () => {
+    setSignedOut(true);
+    try {
+      await signOut(auth);
+    } catch (err) {
+      setSignedOut(false);
+      throw err;
+    }
+  };
 
   const updateDisplayName = async (displayName: string) => {
     if (!auth.currentUser) throw new Error("No user signed in.");
@@ -128,7 +140,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   return (
     <AuthContext.Provider
       value={{
-        user, loading, emailVerified, accountDeleted,
+        user, loading, emailVerified, accountDeleted, signedOut,
         resendVerificationEmail, refreshEmailVerified,
         resetPassword, hasPasswordSignIn, reauthenticate, deleteAccount,
         signIn, signUp, signInWithGoogle, logout, updateDisplayName,

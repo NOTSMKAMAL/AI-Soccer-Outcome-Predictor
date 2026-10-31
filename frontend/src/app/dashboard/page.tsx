@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import ProtectedRoute from "@/components/ProtectedRoute";
-import Navbar from "@/components/Navbar";
+import Navbar, { NAVBAR_HEIGHT } from "@/components/Navbar";
 import FilterBar, { type DateTab } from "@/components/FilterBar";
 import MatchCard from "@/components/MatchCard";
 import { MatchCardSkeleton } from "@/components/LoadingSkeleton";
@@ -151,7 +151,7 @@ function DashboardContent() {
   const grouped = groupByLeague(filtered);
 
   return (
-    <div style={{ minHeight: "100vh", paddingTop: 60 }}>
+    <div style={{ minHeight: "100vh", paddingTop: NAVBAR_HEIGHT }}>
       <Navbar />
       <FilterBar
         search={search}

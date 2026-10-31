@@ -234,24 +234,22 @@ function generateAbbr(name: string): string {
   return words.slice(0, 3).map((w) => w[0]).join("").toUpperCase();
 }
 
-const BADGE_TEXT_DARK = "#02070A";
-const BADGE_TEXT_LIGHT = "#FFFFFF";
+// Grey, because blue and orange mean home and away. Unknown clubs have no colour to show.
+const FALLBACK_BADGE_COLOR = "#84929C";
 
-/** WCAG relative luminance of a "#RRGGBB" colour. */
-function relativeLuminance(hex: string): number {
-  const channel = (start: number) => {
-    const value = parseInt(hex.slice(start, start + 2), 16) / 255;
-    return value <= 0.03928 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
-  };
-  return 0.2126 * channel(1) + 0.7152 * channel(3) + 0.0722 * channel(5);
-}
+const MIN_RING_BRIGHTNESS = 0.32;
 
-/** The dark or light text colour with the higher contrast on a "#RRGGBB" background. */
-export function readableTextOn(hex: string): string {
-  const background = relativeLuminance(hex);
-  const onLight = (background + 0.05) / (relativeLuminance(BADGE_TEXT_DARK) + 0.05);
-  const onDark = 1.05 / (background + 0.05);
-  return onLight >= onDark ? BADGE_TEXT_DARK : BADGE_TEXT_LIGHT;
+/**
+ * A club colour light enough to show as a thin ring on a dark card. Navy and
+ * black kits are lifted towards white; brighter colours are returned unchanged.
+ */
+export function visibleRingColor(hex: string): string {
+  const [r, g, b] = [1, 3, 5].map((start) => parseInt(hex.slice(start, start + 2), 16));
+  const brightness = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+  if (brightness >= MIN_RING_BRIGHTNESS) return hex;
+  const lift = (MIN_RING_BRIGHTNESS - brightness) / (1 - brightness);
+  const [liftedR, liftedG, liftedB] = [r, g, b].map((channel) => Math.round(channel + (255 - channel) * lift));
+  return `rgb(${liftedR}, ${liftedG}, ${liftedB})`;
 }
 
 export function getTeamColor(name: string): { primary: string; abbr: string } {
@@ -265,5 +263,5 @@ export function getTeamColor(name: string): { primary: string; abbr: string } {
     }
   }
 
-  return { primary: "#13BBAF", abbr: generateAbbr(name) };
+  return { primary: FALLBACK_BADGE_COLOR, abbr: generateAbbr(name) };
 }

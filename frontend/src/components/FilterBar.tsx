@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { NAVBAR_HEIGHT } from "@/components/Navbar";
 
 export type DateTab = "live" | "upcoming";
 
@@ -36,11 +37,11 @@ export default function FilterBar({ search, onSearchChange, league, onLeagueChan
 
   return (
     <div style={{
-      position: "sticky", top: 60, zIndex: 30,
+      position: "sticky", top: NAVBAR_HEIGHT, zIndex: 30,
       background: "var(--bg)",
       borderBottom: "1px solid var(--border)",
     }}>
-      <div style={{ maxWidth: 1240, margin: "0 auto", padding: "10px clamp(16px, 4vw, 32px)", display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10 }}>
+      <div style={{ maxWidth: 1240, margin: "0 auto", padding: "20px clamp(16px, 4vw, 32px) 12px", display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10 }}>
 
         {/* Search — takes its own row on phones, the dropdown and tabs wrap below */}
         <div style={{ flex: "1 1 220px", position: "relative", maxWidth: 440 }}>

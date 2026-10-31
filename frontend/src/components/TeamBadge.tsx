@@ -1,4 +1,5 @@
-import { getTeamColor, readableTextOn } from "@/lib/teamColors";
+import type { CSSProperties } from "react";
+import { getTeamColor, visibleRingColor } from "@/lib/teamColors";
 
 const MIN_FONT_SIZE = 8;
 
@@ -8,22 +9,13 @@ const MIN_FONT_SIZE = 8;
  */
 export default function TeamBadge({ name, size = 52 }: { name: string; size?: number }) {
   const { primary, abbr } = getTeamColor(name);
-  return (
-    <span
-      role="img"
-      aria-label={name}
-      style={{
-        width: size, height: size, flexShrink: 0,
-        borderRadius: Math.round(size * 0.27),
-        background: primary,
-        boxShadow: "inset 0 0 0 1px var(--border-s)",
-        display: "grid", placeItems: "center",
-        color: readableTextOn(primary),
-        fontSize: Math.max(MIN_FONT_SIZE, Math.round(size * 0.27)),
-        fontWeight: 800, letterSpacing: "0.03em", lineHeight: 1,
-      }}
-    >
-      {abbr}
-    </span>
-  );
+  const style = {
+    "--team": primary,
+    "--team-ring": visibleRingColor(primary),
+    width: size,
+    height: size,
+    borderRadius: Math.round(size * 0.27),
+    fontSize: Math.max(MIN_FONT_SIZE, Math.round(size * 0.27)),
+  } as CSSProperties;
+  return <span className="team-badge" role="img" aria-label={name} style={style}>{abbr}</span>;
 }

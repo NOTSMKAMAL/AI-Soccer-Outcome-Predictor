@@ -211,7 +211,7 @@ export default function AuthPage() {
       {/* ── LEFT PANEL ── */}
       <aside
         style={{
-          background: "var(--surface)",
+          backgroundImage: "var(--depth)",
           borderRight: "1px solid var(--border-s)",
           position: "relative",
           overflow: "hidden",
@@ -223,7 +223,7 @@ export default function AuthPage() {
         {/* Content */}
         <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", height: "100%", maxWidth: 520, margin: "0 auto", width: "100%" }}>
           {/* Brand */}
-          <Link href="/" className="flex items-center gap-3 mb-14">
+          <Link href="/" replace className="flex items-center gap-3 mb-14">
             <span style={{ fontWeight: 700, fontSize: 15, letterSpacing: "-0.01em", fontFamily: "var(--font-display), system-ui" }}>
               FUTURE FC
             </span>

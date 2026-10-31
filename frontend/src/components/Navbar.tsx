@@ -6,10 +6,13 @@ import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import DeleteAccountSection from "@/components/DeleteAccountSection";
 
+// 13px padding above and below the 40px logo.
+export const NAVBAR_HEIGHT = 66;
+
 function FutureFCLogo() {
   return (
     <img
-      src="/future-fc-logo.png"
+      src="/future-fc-logo.svg"
       alt="FUTURE FC"
       width={40}
       height={40}
@@ -152,7 +155,7 @@ function AccountSettingsModal({
         <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 24, padding: "14px 16px", borderRadius: 12, background: "var(--surface-2)", border: "1px solid var(--border)" }}>
           <div style={{
             width: 44, height: 44, borderRadius: "50%", flexShrink: 0,
-            background: "var(--primary)",
+            background: "var(--orange-gradient)",
             display: "grid", placeItems: "center",
             color: "var(--on-accent)", fontWeight: 700, fontSize: 18,
           }}>
@@ -287,7 +290,7 @@ function UserMenu({
         onClick={() => setOpen((o) => !o)}
         style={{
           width: 34, height: 34, borderRadius: "50%",
-          background: "var(--primary)",
+          background: "var(--orange-gradient)",
           display: "grid", placeItems: "center",
           color: "var(--on-accent)", fontWeight: 700, fontSize: 13,
           border: open ? "2px solid var(--primary-edge)" : "2px solid transparent",
@@ -311,7 +314,7 @@ function UserMenu({
           <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", marginBottom: 4 }}>
             <div style={{
               width: 36, height: 36, borderRadius: "50%",
-              background: "var(--primary)",
+              background: "var(--orange-gradient)",
               display: "grid", placeItems: "center",
               color: "var(--on-accent)", fontWeight: 700, fontSize: 14, flexShrink: 0,
             }}>
@@ -378,22 +381,21 @@ export default function Navbar() {
 
   const handleLogout = async () => {
     await logout();
-    router.replace("/auth");
+    router.replace("/");
   };
 
   return (
     <>
       <header style={{
         position: "fixed", top: 0, left: 0, right: 0, zIndex: 40,
-        background: "var(--bg)",
-        borderBottom: "1px solid var(--border)",
+        backgroundImage: "var(--nav-bar)",
       }}>
         <div style={{
           maxWidth: 1240, margin: "0 auto", padding: "13px 32px",
           display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16,
         }}>
           {/* Logo */}
-          <Link href="/" style={{
+          <Link href={user ? "/dashboard" : "/"} style={{
             display: "flex", alignItems: "center", gap: 10,
             fontWeight: 600, fontSize: 15, letterSpacing: "-0.01em",
             color: "var(--ink)", textDecoration: "none",
@@ -414,12 +416,12 @@ export default function Navbar() {
                       display: "inline-flex", alignItems: "center", gap: 4,
                       padding: "6px 12px", borderRadius: 8,
                       fontSize: 13, fontWeight: 600, textDecoration: "none",
-                      color: pathname === "/dashboard" ? "var(--ink)" : "var(--muted)",
+                      color: "var(--ink)",
                       background: pathname === "/dashboard" ? "var(--surface-2)" : "transparent",
                       transition: "color 0.15s, background 0.15s",
                     }}
-                    onMouseEnter={(e) => { if (pathname !== "/dashboard") (e.currentTarget as HTMLAnchorElement).style.color = "var(--ink-2)"; }}
-                    onMouseLeave={(e) => { if (pathname !== "/dashboard") (e.currentTarget as HTMLAnchorElement).style.color = "var(--muted)"; }}
+                    onMouseEnter={(e) => { if (pathname !== "/dashboard") (e.currentTarget as HTMLAnchorElement).style.textDecoration = "underline"; }}
+                    onMouseLeave={(e) => { if (pathname !== "/dashboard") (e.currentTarget as HTMLAnchorElement).style.textDecoration = "none"; }}
                   >
                     Fixtures
                   </Link>
@@ -431,7 +433,7 @@ export default function Navbar() {
                 />
               </>
             ) : (
-              <Link href="/auth" className="btn-primary" style={{ padding: "9px 18px", fontSize: 14, borderRadius: 10 }}>
+              <Link href="/auth" replace className="btn-primary" style={{ padding: "9px 18px", fontSize: 14, borderRadius: 10, background: "var(--orange-gradient)" }}>
                 Sign in
               </Link>
             )}

@@ -120,7 +120,7 @@ export default function MatchCard({ fixture }: Props) {
         (e.currentTarget as HTMLElement).style.transform = "translateY(0)";
       }}
     >
-      <div style={{ padding: "16px 20px", display: "flex", flexDirection: "column", gap: 14, position: "relative" }}>
+      <div style={{ height: "100%", padding: "16px 20px", display: "flex", flexDirection: "column", gap: 14, position: "relative" }}>
         {/* Header */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -133,15 +133,15 @@ export default function MatchCard({ fixture }: Props) {
         </div>
 
         {/* Teams + score/time */}
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
           {/* Home team */}
           <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 6, minWidth: 0 }}>
             <TeamBadge name={fixture.homeTeam.name} />
-            <div>
+            <div style={{ width: "100%" }}>
               <p style={{
                 fontSize: 13, fontWeight: isFinished && homeWin ? 700 : 600, margin: 0, lineHeight: 1.3,
                 color: isFinished && awayWin ? "var(--muted-2)" : "var(--ink)",
-                whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                overflowWrap: "break-word", hyphens: "auto",
               }}>
                 {fixture.homeTeam.name}
               </p>
@@ -150,7 +150,7 @@ export default function MatchCard({ fixture }: Props) {
           </div>
 
           {/* Center: score or kickoff time */}
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3, flexShrink: 0, minWidth: 100, textAlign: "center" }}>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3, flexShrink: 0, minWidth: 100, minHeight: 52, justifyContent: "center", textAlign: "center" }}>
             {(isLive || isFinished) && score ? (
               <>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -181,11 +181,11 @@ export default function MatchCard({ fixture }: Props) {
           {/* Away team */}
           <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6, minWidth: 0 }}>
             <TeamBadge name={fixture.awayTeam.name} />
-            <div style={{ textAlign: "right" }}>
+            <div style={{ width: "100%", textAlign: "right" }}>
               <p style={{
                 fontSize: 13, fontWeight: isFinished && awayWin ? 700 : 600, margin: 0, lineHeight: 1.3,
                 color: isFinished && homeWin ? "var(--muted-2)" : "var(--ink)",
-                whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                overflowWrap: "break-word", hyphens: "auto",
               }}>
                 {fixture.awayTeam.name}
               </p>
@@ -195,7 +195,7 @@ export default function MatchCard({ fixture }: Props) {
         </div>
 
         {/* Footer */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, paddingTop: 4, borderTop: "1px solid var(--border)" }}>
+        <div style={{ marginTop: "auto", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, paddingTop: 4, borderTop: "1px solid var(--border)" }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0, overflow: "hidden" }}>
             <span style={{ fontSize: 11, color: "var(--muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
               {fullDate}{!isFinished && !isLive ? ` · ${time}` : ""}
