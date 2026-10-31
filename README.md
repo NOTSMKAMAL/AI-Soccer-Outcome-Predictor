@@ -61,6 +61,7 @@ aggregates produce, purely as a contrast.
 | GET | `/api/fixtures/{id}` | — | single fixture |
 | POST | `/api/fixtures/{id}/prediction` | Firebase | **the only endpoint that spends Gemini credit** |
 | GET | `/api/fixtures/{id}/enriched` | Firebase | form / standings / stats used by the prompt |
+| GET | `/api/me/prediction-allowance` | Firebase | predictions left today, or unlimited for owners |
 | POST | `/api/auth/verify` | Firebase | token check |
 | GET | `/api/analytics` | — | accuracy, reliability bins, over-time series |
 | GET | `/api/analytics/calibration` | — | accuracy / Brier / log-loss / ECE |
@@ -79,7 +80,11 @@ pytest tests/
 |---|---|
 | [`tests/test_prediction_engine.py`](tests/test_prediction_engine.py) | Dixon-Coles math, confidence labels, winner logic, edge cases, backtest regression invariants |
 | [`tests/test_league_data_client.py`](tests/test_league_data_client.py) | football-data.org client (mocked HTTP, normalization, graceful failure) |
-| [`tests/test_access.py`](tests/test_access.py) | email allowlist + per-user and global daily quota |
+| [`tests/test_access.py`](tests/test_access.py) | verified email, owner bypass, allowlist, per-user and global daily quota, refund, day rollover (fake Firestore) |
+| [`tests/test_access_firestore_sdk.py`](tests/test_access_firestore_sdk.py) | the quota against the real Firestore SDK with its network layer mocked |
+| [`tests/test_main_prediction_access.py`](tests/test_main_prediction_access.py) | the prediction route's gate and refund-on-failure wiring |
+| [`tests/test_main_enrichment.py`](tests/test_main_enrichment.py) | shared enrichment gather, failed-section reporting, cache expiry |
+| [`tests/test_firebase_config.py`](tests/test_firebase_config.py) | Firebase token check: clock skew and failure logging |
 | [`tests/test_prediction_db.py`](tests/test_prediction_db.py) | SQLite prediction store (upsert, resolve, read) |
 | [`tests/test_scoring_confidence_signal.py`](tests/test_scoring_confidence_signal.py) | shared confidence / risk / value-signal scoring |
 
@@ -97,8 +102,8 @@ https://www.youtube.com/watch?v=s4UfIk_ctJw
   fixture → enrichment → Dixon-Coles → Gemini → response, plus the accuracy analysis.
 - [`docs/requirements_specification.md`](docs/requirements_specification.md) — inputs,
   outputs, failure cases and interface contracts per functionality.
-- [`DEPLOY.md`](DEPLOY.md) — putting it online for a small, invited group without
-  running up a Gemini bill.
+- [`DEPLOY.md`](DEPLOY.md) — putting it online publicly without running up a Gemini
+  bill, including the Firestore setup the daily caps need.
 
 ---
 
@@ -133,13 +138,17 @@ Fill in `.env`:
 | `FOOTBALL_DATA_API_KEY` | https://www.football-data.org/client/register (free tier) |
 | `FIREBASE_SERVICE_ACCOUNT_PATH` | Firebase Console → Project Settings → Service Accounts → Generate new private key → save as `serviceAccountKey.json` in the project root |
 
-Optional but recommended before sharing a link — see [`DEPLOY.md`](DEPLOY.md):
+Predicting needs a Firestore database in your Firebase project, because the daily
+counts live there. Owners are the exception. See Step 1 of [`DEPLOY.md`](DEPLOY.md).
+
+Optional but recommended before sharing a link:
 
 | Variable | Effect |
 |---|---|
-| `ALLOWED_EMAILS` | only these accounts may generate predictions (empty = any signed-in user) |
-| `PREDICTIONS_PER_USER_PER_DAY` | per-account daily cap (default 25) |
-| `PREDICTIONS_PER_DAY_TOTAL` | shared daily cap across all users (default 200) |
+| `OWNER_EMAILS` | exact, verified emails that skip the allowlist and both caps |
+| `ALLOWED_EMAILS` | only these accounts may generate predictions (empty = any verified user) |
+| `PREDICTIONS_PER_USER_PER_DAY` | per-account daily cap (default 3; 0 blocks everyone but owners) |
+| `PREDICTIONS_PER_DAY_TOTAL` | shared daily cap across all users (default 50; 0 blocks everyone but owners) |
 | `ALLOWED_ORIGINS` | browser origins allowed to call the API |
 
 Start it:

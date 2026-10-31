@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
@@ -8,9 +8,11 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import Navbar from "@/components/Navbar";
 import { PredictionSkeleton } from "@/components/LoadingSkeleton";
 import ErrorState from "@/components/ErrorState";
-import { getFixtureById, generatePrediction } from "@/lib/api";
+import AllowanceBadge from "@/components/AllowanceBadge";
+import VerifyEmailNotice from "@/components/VerifyEmailNotice";
+import { getFixtureById, generatePrediction, getPredictionAllowance } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
-import type { Fixture, Prediction } from "@/lib/types";
+import type { Fixture, Prediction, PredictionAllowance } from "@/lib/types";
 import { resultFromScores, type MatchResult } from "@/lib/matchResult";
 import { extractInsightChips } from "@/lib/reasoningInsights";
 
@@ -1097,7 +1099,7 @@ function PredictLoadingState({ home, away }: { home: string; away: string }) {
 type PageState = "loadingFixture" | "ready" | "generating" | "predicted" | "error" | "unavailable";
 
 function PredictionContent({ matchId }: { matchId: string }) {
-  const { user } = useAuth();
+  const { user, emailVerified } = useAuth();
   const router = useRouter();
 
   const [fixture, setFixture] = useState<Fixture | null>(null);
@@ -1106,6 +1108,22 @@ function PredictionContent({ matchId }: { matchId: string }) {
   const [enrichedLoading, setEnrichedLoading] = useState(false);
   const [pageState, setPageState] = useState<PageState>("loadingFixture");
   const [errorMsg, setErrorMsg] = useState("");
+  const [allowance, setAllowance] = useState<PredictionAllowance | null>(null);
+
+  // Display only: the backend enforces the caps, so a failed read just hides the line.
+  const refreshAllowance = useCallback(async () => {
+    if (!user) return;
+    try {
+      const res = await getPredictionAllowance(await user.getIdToken());
+      setAllowance(res.data);
+    } catch {
+      setAllowance(null);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (emailVerified) refreshAllowance();
+  }, [emailVerified, refreshAllowance]);
 
   useEffect(() => {
     async function loadFixture() {
@@ -1194,19 +1212,25 @@ function PredictionContent({ matchId }: { matchId: string }) {
       setEnrichedLoading(false);
       const msg = err instanceof Error ? err.message : "Prediction failed.";
       const detail = msg.replace(/^API \d+:\s*/, "");
-      if (msg.includes("501")) {
+      // The HTTP status, not a search of the text: details can quote other codes.
+      const httpStatus = msg.match(/^API (\d+):/)?.[1];
+      if (httpStatus === "501") {
         setErrorMsg("Prediction unavailable for this fixture — real football-data.org data required.");
         setPageState("unavailable");
-      } else if (msg.includes("403") || msg.includes("429")) {
-        // Access allowlist or daily prediction limit — show the backend's reason.
+      } else if (httpStatus === "403" || httpStatus === "429") {
+        // Access gate or daily prediction limit — show the backend's reason.
         setErrorMsg(detail);
         setPageState("unavailable");
       } else {
         setErrorMsg(detail);
         setPageState("error");
       }
+    } finally {
+      refreshAllowance();
     }
   };
+
+  const outOfPredictions = allowance?.remaining === 0;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const keyFactors = (prediction as any)?.keyFactors as Array<{ title: string; text: string }> | undefined;
@@ -1252,15 +1276,22 @@ function PredictionContent({ matchId }: { matchId: string }) {
                   <path d="M13 10V3L4 14h7v7l9-11h-7z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
               </div>
-              <div>
-                <h2 className="text-xl font-bold" style={{ color: "var(--ink)", fontFamily: "var(--font-display), system-ui" }}>Ready to predict</h2>
-                <p className="mt-1.5 text-sm max-w-xs" style={{ color: "var(--muted)" }}>
-                  Gemini AI will analyse head-to-head records, standings, xG data, injuries and recent form to generate a structured prediction.
-                </p>
-              </div>
-              <button onClick={handlePredict} className="btn-primary text-base px-10 py-3.5">
-                Generate AI Prediction
-              </button>
+              {emailVerified ? (
+                <>
+                  <div>
+                    <h2 className="text-xl font-bold" style={{ color: "var(--ink)", fontFamily: "var(--font-display), system-ui" }}>Ready to predict</h2>
+                    <p className="mt-1.5 text-sm max-w-xs" style={{ color: "var(--muted)" }}>
+                      Gemini AI will analyse head-to-head records, standings, xG data, injuries and recent form to generate a structured prediction.
+                    </p>
+                  </div>
+                  <button onClick={handlePredict} disabled={outOfPredictions} className="btn-primary text-base px-10 py-3.5">
+                    Generate AI Prediction
+                  </button>
+                  <AllowanceBadge allowance={allowance} />
+                </>
+              ) : (
+                <VerifyEmailNotice />
+              )}
             </div>
           </div>
         )}
@@ -1318,10 +1349,11 @@ function PredictionContent({ matchId }: { matchId: string }) {
               <PredictionSummaryPanel fixture={fixture} prediction={prediction} />
               <DataAvailabilitySection />
 
-              <div className="text-center pt-2">
-                <button onClick={handlePredict} className="btn-ghost text-sm px-6 py-2.5">
+              <div className="flex flex-col items-center gap-2 pt-2">
+                <button onClick={handlePredict} disabled={outOfPredictions} className="btn-ghost text-sm px-6 py-2.5">
                   Regenerate prediction
                 </button>
+                <AllowanceBadge allowance={allowance} />
               </div>
 
               <Disclaimer />
@@ -1351,8 +1383,8 @@ function PredictionContent({ matchId }: { matchId: string }) {
             title="Failed to load prediction"
             message={errorMsg}
             onRetry={() => {
-              if (!prediction) { setPageState("loadingFixture"); router.refresh(); }
-              else { handlePredict(); }
+              if (fixture) { handlePredict(); }
+              else { setPageState("loadingFixture"); router.refresh(); }
             }}
           />
         )}

@@ -2,13 +2,13 @@ import asyncio
 import os
 import time
 from datetime import datetime, timedelta, timezone
-from typing import Any
+from typing import Any, NoReturn
 from zoneinfo import ZoneInfo
 
 from fastapi import Depends, FastAPI, Header, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 
-from backend.access import enforce as enforce_prediction_access, quota
+from backend.access import QuotaReceipt, allowance_for, enforce as enforce_prediction_access, quota
 from backend.firebase_config import verify_id_token
 from storage import _fdorg
 from storage.league_data_client import (
@@ -25,7 +25,10 @@ from storage.league_data_client import (
 
 # Lazy import — engine needs GEMINI_API_KEY; catch missing-key errors at call time
 try:
-    from engine.prediction_engine import generate_prediction as _engine_generate_prediction
+    from engine.prediction_engine import (
+        cached_prediction as _engine_cached_prediction,
+        generate_prediction as _engine_generate_prediction,
+    )
     _engine_available = True
 except Exception:
     _engine_available = False
@@ -396,39 +399,21 @@ def _cached_enrichment(match_id: str) -> dict | None:
     return entry["data"]
 
 
-@app.post("/api/fixtures/{match_id}/prediction")
-async def fixture_prediction(
-    match_id: str,
-    user: dict = Depends(get_current_user),
-) -> dict[str, Any]:
-    if not _engine_available:
-        raise HTTPException(
-            status_code=status.HTTP_501_NOT_IMPLEMENTED,
-            detail="Prediction engine unavailable — GEMINI_API_KEY may not be set.",
-        )
+async def _fail_prediction(receipt: QuotaReceipt, match_id: str, reason: str) -> NoReturn:
+    """Refund the unit and raise a 503. The raw reason goes to the log, not the UI."""
+    await asyncio.to_thread(quota.refund, receipt)
+    print(f"[Predict] fixture {match_id} failed: {reason}")
+    raise HTTPException(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        detail=(
+            "The AI service is busy right now. Please try again in a minute. "
+            "This attempt didn't use up a prediction."
+        ),
+    )
 
-    # Allowlist + daily quota — the only endpoint that spends Gemini credit.
-    quota_key = enforce_prediction_access(user)
 
-    # Resolve fixture from cache, or try football-data.org
-    fixture = _fixture_cache.get(match_id)
-    if not fixture:
-        try:
-            fixture_id = int(match_id)
-            result = get_fixture_detail(fixture_id)
-            if result["status"] == "success" and result["data"]:
-                fixture = result["data"]
-                _fixture_cache[match_id] = fixture
-        except (ValueError, Exception):
-            pass
-
-    if not fixture:
-        quota.refund(quota_key)
-        raise HTTPException(
-            status_code=404,
-            detail="Fixture not found. Call GET /api/fixtures first to seed the cache.",
-        )
-
+async def _generate_prediction(match_id: str, fixture: dict, receipt: QuotaReceipt) -> dict:
+    """Enrich the fixture and run the engine. On failure, refunds and raises a 503."""
     home = fixture["homeTeam"]
     away = fixture["awayTeam"]
 
@@ -453,15 +438,60 @@ async def fixture_prediction(
             enriched_data,
         )
     except Exception as exc:
-        quota.refund(quota_key)
-        raise HTTPException(status_code=500, detail=f"Prediction engine error: {exc}")
+        await _fail_prediction(receipt, match_id, f"{type(exc).__name__}: {exc}")
 
     if prediction["status"] != "success":
-        quota.refund(quota_key)
-        raise HTTPException(
-            status_code=500,
-            detail=f"Prediction failed: {prediction.get('status', 'unknown')} — {prediction.get('message', '')}",
+        await _fail_prediction(
+            receipt, match_id,
+            f"{prediction.get('status', 'unknown')}: {prediction.get('message', '')}",
         )
+    return prediction
+
+
+@app.post("/api/fixtures/{match_id}/prediction")
+async def fixture_prediction(
+    match_id: str,
+    user: dict = Depends(get_current_user),
+) -> dict[str, Any]:
+    if not _engine_available:
+        raise HTTPException(
+            status_code=status.HTTP_501_NOT_IMPLEMENTED,
+            detail="Prediction engine unavailable — GEMINI_API_KEY may not be set.",
+        )
+
+    # Verified email + allowlist + daily quota — the only endpoint that spends
+    # Gemini credit. In a thread because the quota check is a Firestore transaction.
+    receipt = await asyncio.to_thread(enforce_prediction_access, user)
+
+    # Resolve fixture from cache, or try football-data.org
+    fixture = _fixture_cache.get(match_id)
+    if not fixture:
+        try:
+            fixture_id = int(match_id)
+            result = get_fixture_detail(fixture_id)
+            if result["status"] == "success" and result["data"]:
+                fixture = result["data"]
+                _fixture_cache[match_id] = fixture
+        except (ValueError, Exception):
+            pass
+
+    if not fixture:
+        await asyncio.to_thread(quota.refund, receipt)
+        raise HTTPException(
+            status_code=404,
+            detail="Fixture not found. Call GET /api/fixtures first to seed the cache.",
+        )
+
+    home = fixture["homeTeam"]
+    away = fixture["awayTeam"]
+
+    # A stored prediction calls neither Gemini nor football-data.org, so it's free.
+    # It's charged above first so that a user at their cap is still refused.
+    prediction = _engine_cached_prediction(home["id"], away["id"], home["name"], away["name"])
+    if prediction is not None:
+        await asyncio.to_thread(quota.refund, receipt)
+    else:
+        prediction = await _generate_prediction(match_id, fixture, receipt)
 
     # Record the prediction in the SQLite history (best-effort).
     if _tracking_available:
@@ -521,6 +551,19 @@ async def fixture_enriched(
 
 
 # ── Auth verify ───────────────────────────────────────────────────────────────
+
+@app.get("/api/me/prediction-allowance")
+def prediction_allowance(user: dict = Depends(get_current_user)) -> dict[str, Any]:
+    """How many predictions the signed-in user has left today."""
+    try:
+        return {"status": "success", "data": allowance_for(user)}
+    except Exception as exc:
+        print(f"[Quota] allowance read failed: {type(exc).__name__}: {exc}")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Your remaining predictions could not be loaded.",
+        ) from exc
+
 
 @app.post("/api/auth/verify")
 def verify_token(user: dict = Depends(get_current_user)) -> dict[str, Any]:

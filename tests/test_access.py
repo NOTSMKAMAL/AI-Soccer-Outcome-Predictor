@@ -1,7 +1,9 @@
-"""Tests for backend/access.py — the allowlist + daily quota gate.
+"""Tests for backend/access.py — the gate in front of Gemini spend.
 
-These cover the two ways a public deployment can leak Gemini credit: an account
-that should not have access at all, and an account that predicts too often.
+These cover the ways a public deployment can leak Gemini credit: an unverified
+or disallowed account, an account that predicts too often, a counter that resets
+when the host sleeps, and a storage outage that must fail closed. Firestore is
+replaced by an in-memory fake; nothing here touches the network.
 """
 import os
 import sys
@@ -13,18 +15,116 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from backend import access
 
+OWNER = {"uid": "owner-uid", "email": "owner@example.com", "email_verified": True}
+PUBLIC = {"uid": "u1", "email": "someone@example.com", "email_verified": True}
+
+
+class FakeSnapshot:
+    def __init__(self, data):
+        self.exists = data is not None
+        self._data = data or {}
+
+    def to_dict(self):
+        return dict(self._data)
+
+
+class FakeDocument:
+    def __init__(self, db, path):
+        self._db = db
+        self.path = path
+
+    def collection(self, name):
+        return FakeCollection(self._db, f"{self.path}/{name}")
+
+    def get(self, transaction=None, timeout=None):
+        self._db.reads += 1
+        return FakeSnapshot(self._db.docs.get(self.path))
+
+
+class FakeCollection:
+    def __init__(self, db, path):
+        self._db = db
+        self._path = path
+
+    def document(self, doc_id):
+        return FakeDocument(self._db, f"{self._path}/{doc_id}")
+
+
+class FakeTransaction:
+    """Buffers writes until commit, as a real Firestore transaction does."""
+
+    def __init__(self, db):
+        self._db = db
+        self._writes = []
+
+    def set(self, ref, data, merge=False):
+        self._writes.append((ref.path, data))
+
+    def commit(self):
+        for path, data in self._writes:
+            self._db.docs.setdefault(path, {}).update(data)
+
+
+class FakeFirestore:
+    def __init__(self):
+        self.docs = {}
+        self.reads = 0
+
+    def collection(self, name):
+        return FakeCollection(self, name)
+
+
+def _fake_run_in_transaction(db, work):
+    transaction = FakeTransaction(db)
+    result = work(transaction)
+    transaction.commit()
+    return result
+
+
+def _make_quota(db, day="2026-10-30"):
+    return access.DailyQuota(client=lambda: db, today=lambda: day)
+
 
 @pytest.fixture(autouse=True)
 def _clean_env(monkeypatch):
-    """Every test starts with no allowlist and generous caps unless it sets them."""
-    for var in ("ALLOWED_EMAILS", "PREDICTIONS_PER_USER_PER_DAY", "PREDICTIONS_PER_DAY_TOTAL"):
+    """Every test starts with no allowlist, no owners and the default caps."""
+    for var in ("ALLOWED_EMAILS", "OWNER_EMAILS", "PREDICTIONS_PER_USER_PER_DAY", "PREDICTIONS_PER_DAY_TOTAL"):
         monkeypatch.delenv(var, raising=False)
+    monkeypatch.setattr(access, "_run_in_transaction", _fake_run_in_transaction)
     yield
+
+
+@pytest.fixture
+def db(monkeypatch):
+    """A fake Firestore wired in as the module-level quota."""
+    fake = FakeFirestore()
+    monkeypatch.setattr(access, "quota", _make_quota(fake))
+    return fake
+
+
+def _spend(quota, key, times=1):
+    return [quota.check_and_consume(key) for _ in range(times)]
+
+
+def _allowed(result) -> bool:
+    receipt, _message = result
+    return receipt is not None
+
+
+# ── Defaults ──────────────────────────────────────────────────────────────────
+
+def test_default_caps_are_three_per_user_and_fifty_total(db):
+    assert access.quota.limits() == (3, 50)
+
+
+def test_unparsable_cap_falls_back_to_the_default(monkeypatch, db):
+    monkeypatch.setenv("PREDICTIONS_PER_USER_PER_DAY", "lots")
+    assert access.quota.limits()[0] == 3
 
 
 # ── Allowlist ─────────────────────────────────────────────────────────────────
 
-def test_no_allowlist_means_any_signed_in_user(monkeypatch):
+def test_no_allowlist_means_any_signed_in_user():
     assert access.is_email_allowed("anyone@example.com") is True
     assert access.is_email_allowed(None) is True
 
@@ -47,75 +147,316 @@ def test_allowlist_rejects_missing_email(monkeypatch):
     assert access.is_email_allowed(None) is False
 
 
-def test_enforce_raises_403_for_blocked_account(monkeypatch):
+def test_enforce_raises_403_for_blocked_account(monkeypatch, db):
     monkeypatch.setenv("ALLOWED_EMAILS", "owner@example.com")
     with pytest.raises(HTTPException) as exc:
-        access.enforce({"uid": "u1", "email": "stranger@example.com"})
+        access.enforce({"uid": "u1", "email": "stranger@example.com", "email_verified": True})
     assert exc.value.status_code == 403
+
+
+# ── Verified email ────────────────────────────────────────────────────────────
+
+@pytest.mark.parametrize("claims", [
+    {"uid": "u1", "email": "new@example.com", "email_verified": False},
+    {"uid": "u1", "email": "new@example.com"},
+    {"uid": "u1", "email": "new@example.com", "email_verified": "true"},
+])
+def test_enforce_rejects_unverified_email_without_spending(claims, db):
+    with pytest.raises(HTTPException) as exc:
+        access.enforce(claims)
+    assert exc.value.status_code == 403
+    assert "Verify your email" in exc.value.detail
+    assert db.docs == {}
+
+
+# ── Owner ─────────────────────────────────────────────────────────────────────
+
+def test_owner_skips_both_caps(monkeypatch, db):
+    monkeypatch.setenv("OWNER_EMAILS", "owner@example.com")
+    monkeypatch.setenv("PREDICTIONS_PER_USER_PER_DAY", "1")
+    monkeypatch.setenv("PREDICTIONS_PER_DAY_TOTAL", "1")
+
+    for _ in range(5):
+        access.enforce(OWNER)
+
+    assert db.docs == {}
+
+
+def test_owner_match_is_case_insensitive(monkeypatch):
+    monkeypatch.setenv("OWNER_EMAILS", " Owner@Example.com , other@example.com")
+    assert access.is_owner(OWNER) is True
+
+
+def test_owner_email_unverified_gets_no_skip(monkeypatch, db):
+    monkeypatch.setenv("OWNER_EMAILS", "owner@example.com")
+    unverified = {**OWNER, "email_verified": False}
+
+    assert access.is_owner(unverified) is False
+    with pytest.raises(HTTPException) as exc:
+        access.enforce(unverified)
+    assert exc.value.status_code == 403
+
+
+def test_owner_needs_the_claim_to_be_exactly_true(monkeypatch):
+    monkeypatch.setenv("OWNER_EMAILS", "owner@example.com")
+    assert access.is_owner({**OWNER, "email_verified": "true"}) is False
+    assert access.is_owner({"uid": "x", "email": "owner@example.com"}) is False
+
+
+def test_non_owner_is_not_owner(monkeypatch):
+    monkeypatch.setenv("OWNER_EMAILS", "owner@example.com")
+    assert access.is_owner(PUBLIC) is False
+
+
+def test_owner_emails_do_not_support_wildcards(monkeypatch):
+    # Unlike ALLOWED_EMAILS: a domain entry here would make a whole domain unlimited.
+    monkeypatch.setenv("OWNER_EMAILS", "*@example.com")
+    assert access.is_owner(PUBLIC) is False
+
+
+def test_no_owner_configured_means_no_owner():
+    assert access.is_owner(OWNER) is False
+
+
+def test_owner_passes_a_configured_allowlist(monkeypatch, db):
+    monkeypatch.setenv("OWNER_EMAILS", "owner@example.com")
+    monkeypatch.setenv("ALLOWED_EMAILS", "friend@example.com")
+    access.enforce(OWNER)
+
+
+def test_owner_works_while_firestore_is_down(monkeypatch):
+    def broken():
+        raise RuntimeError("firestore down")
+    monkeypatch.setattr(access, "quota", access.DailyQuota(client=broken))
+    monkeypatch.setenv("OWNER_EMAILS", "owner@example.com")
+    access.enforce(OWNER)
+    assert access.allowance_for(OWNER) == {"unlimited": True, "remaining": None, "limit": None}
+
+
+def test_owner_refund_is_a_no_op(monkeypatch, db):
+    monkeypatch.setenv("OWNER_EMAILS", "owner@example.com")
+    access.quota.refund(access.enforce(OWNER))
+    assert db.docs == {}
 
 
 # ── Daily quota ───────────────────────────────────────────────────────────────
 
 def test_per_user_cap_blocks_the_next_call(monkeypatch):
     monkeypatch.setenv("PREDICTIONS_PER_USER_PER_DAY", "2")
-    q = access.DailyQuota()
-    assert q.check_and_consume("user-a")[0] is True
-    assert q.check_and_consume("user-a")[0] is True
-    allowed, message = q.check_and_consume("user-a")
-    assert allowed is False
+    q = _make_quota(FakeFirestore())
+    assert all(_allowed(r) for r in _spend(q, "user-a", 2))
+    receipt, message = q.check_and_consume("user-a")
+    assert receipt is None
     assert "2 predictions" in message
+
+
+def test_default_per_user_cap_allows_exactly_three(db):
+    results = _spend(access.quota, "user-a", 4)
+    assert [_allowed(r) for r in results] == [True, True, True, False]
 
 
 def test_per_user_cap_is_per_user(monkeypatch):
     monkeypatch.setenv("PREDICTIONS_PER_USER_PER_DAY", "1")
-    q = access.DailyQuota()
-    assert q.check_and_consume("user-a")[0] is True
-    assert q.check_and_consume("user-a")[0] is False
-    assert q.check_and_consume("user-b")[0] is True
+    q = _make_quota(FakeFirestore())
+    assert _allowed(q.check_and_consume("user-a"))
+    assert not _allowed(q.check_and_consume("user-a"))
+    assert _allowed(q.check_and_consume("user-b"))
 
 
 def test_global_cap_blocks_everyone(monkeypatch):
     monkeypatch.setenv("PREDICTIONS_PER_USER_PER_DAY", "10")
     monkeypatch.setenv("PREDICTIONS_PER_DAY_TOTAL", "2")
-    q = access.DailyQuota()
-    assert q.check_and_consume("user-a")[0] is True
-    assert q.check_and_consume("user-b")[0] is True
-    allowed, message = q.check_and_consume("user-c")
-    assert allowed is False
+    q = _make_quota(FakeFirestore())
+    assert _allowed(q.check_and_consume("user-a"))
+    assert _allowed(q.check_and_consume("user-b"))
+    receipt, message = q.check_and_consume("user-c")
+    assert receipt is None
     assert "shared daily prediction limit" in message
+
+
+@pytest.mark.parametrize("var", ["PREDICTIONS_PER_USER_PER_DAY", "PREDICTIONS_PER_DAY_TOTAL"])
+def test_cap_of_zero_blocks_rather_than_unlimits(monkeypatch, var):
+    monkeypatch.setenv(var, "0")
+    q = _make_quota(FakeFirestore())
+    assert not _allowed(q.check_and_consume("user-a"))
+
+
+def test_denied_call_writes_nothing(monkeypatch):
+    monkeypatch.setenv("PREDICTIONS_PER_USER_PER_DAY", "1")
+    db = FakeFirestore()
+    q = _make_quota(db)
+    q.check_and_consume("user-a")
+    before = {path: dict(doc) for path, doc in db.docs.items()}
+    q.check_and_consume("user-a")
+    assert db.docs == before
+
+
+def test_counts_survive_a_restart(monkeypatch):
+    # The reason for Firestore: a new process (Render waking up) sees the same counts.
+    monkeypatch.setenv("PREDICTIONS_PER_USER_PER_DAY", "1")
+    db = FakeFirestore()
+    assert _allowed(_make_quota(db).check_and_consume("user-a"))
+    assert not _allowed(_make_quota(db).check_and_consume("user-a"))
 
 
 def test_refund_returns_the_unit(monkeypatch):
     monkeypatch.setenv("PREDICTIONS_PER_USER_PER_DAY", "1")
-    q = access.DailyQuota()
-    assert q.check_and_consume("user-a")[0] is True
-    q.refund("user-a")
-    assert q.check_and_consume("user-a")[0] is True
+    q = _make_quota(FakeFirestore())
+    receipt, _ = q.check_and_consume("user-a")
+    q.refund(receipt)
+    assert _allowed(q.check_and_consume("user-a"))
+
+
+def test_refund_returns_the_global_unit_too(monkeypatch):
+    monkeypatch.setenv("PREDICTIONS_PER_USER_PER_DAY", "5")
+    monkeypatch.setenv("PREDICTIONS_PER_DAY_TOTAL", "1")
+    q = _make_quota(FakeFirestore())
+    receipt, _ = q.check_and_consume("user-a")
+    q.refund(receipt)
+    assert _allowed(q.check_and_consume("user-b"))
+
+
+def test_double_refund_never_goes_negative():
+    db = FakeFirestore()
+    q = _make_quota(db)
+    receipt, _ = q.check_and_consume("user-a")
+    q.refund(receipt)
+    q.refund(receipt)
+    assert all(v >= 0 for doc in db.docs.values() for k, v in doc.items() if k != "users")
+
+
+def test_refund_after_midnight_goes_to_the_day_charged(monkeypatch):
+    monkeypatch.setenv("PREDICTIONS_PER_USER_PER_DAY", "1")
+    db = FakeFirestore()
+    day = {"value": "2026-10-30"}
+    q = access.DailyQuota(client=lambda: db, today=lambda: day["value"])
+    receipt, _ = q.check_and_consume("user-a")
+
+    day["value"] = "2026-10-31"
+    assert _allowed(q.check_and_consume("user-a"))
+    q.refund(receipt)
+
+    # Refunding yesterday's unit must not free up today's.
+    assert not _allowed(q.check_and_consume("user-a"))
+
+
+def test_failed_refund_is_logged_not_raised(monkeypatch, capsys):
+    q = _make_quota(FakeFirestore())
+    receipt, _ = q.check_and_consume("user-a")
+
+    def boom(client, work):
+        raise ConnectionError("firestore unreachable")
+    monkeypatch.setattr(access, "_run_in_transaction", boom)
+
+    q.refund(receipt)
+
+    assert "ConnectionError: firestore unreachable" in capsys.readouterr().out
 
 
 def test_counters_reset_on_a_new_day(monkeypatch):
     monkeypatch.setenv("PREDICTIONS_PER_USER_PER_DAY", "1")
-    q = access.DailyQuota()
-    assert q.check_and_consume("user-a")[0] is True
-    q._day = "1999-01-01"  # simulate crossing UTC midnight
-    assert q.check_and_consume("user-a")[0] is True
+    db = FakeFirestore()
+    day = {"value": "2026-10-30"}
+    q = access.DailyQuota(client=lambda: db, today=lambda: day["value"])
+    assert _allowed(q.check_and_consume("user-a"))
+    assert not _allowed(q.check_and_consume("user-a"))
+
+    day["value"] = "2026-10-31"
+
+    assert _allowed(q.check_and_consume("user-a"))
 
 
-def test_enforce_raises_429_when_quota_is_spent(monkeypatch):
+def test_enforce_raises_429_when_quota_is_spent(monkeypatch, db):
     monkeypatch.setenv("PREDICTIONS_PER_USER_PER_DAY", "1")
-    monkeypatch.setattr(access, "quota", access.DailyQuota())
-    user = {"uid": "u1", "email": "owner@example.com"}
-    assert access.enforce(user) == "u1"
+    assert access.enforce(PUBLIC).key == "u1"
     with pytest.raises(HTTPException) as exc:
-        access.enforce(user)
+        access.enforce(PUBLIC)
     assert exc.value.status_code == 429
 
 
+# ── Firestore outage fails closed ─────────────────────────────────────────────
+
+def test_enforce_raises_503_when_firestore_is_down(monkeypatch, capsys):
+    def broken():
+        raise RuntimeError("firestore down")
+    monkeypatch.setattr(access, "quota", access.DailyQuota(client=broken))
+
+    with pytest.raises(HTTPException) as exc:
+        access.enforce(PUBLIC)
+
+    assert exc.value.status_code == 503
+    assert "RuntimeError: firestore down" in capsys.readouterr().out
+
+
+def test_enforce_raises_503_when_transaction_fails(monkeypatch, db):
+    def boom(client, work):
+        raise ConnectionError("aborted")
+    monkeypatch.setattr(access, "_run_in_transaction", boom)
+
+    with pytest.raises(HTTPException) as exc:
+        access.enforce(PUBLIC)
+
+    assert exc.value.status_code == 503
+
+
+# ── Allowance shown to the user ───────────────────────────────────────────────
+
+def test_allowance_for_a_new_user_is_the_full_cap(db):
+    assert access.allowance_for(PUBLIC) == {"unlimited": False, "remaining": 3, "limit": 3}
+
+
+def test_allowance_counts_down_and_stops_at_zero(db):
+    for expected in (2, 1, 0):
+        access.enforce(PUBLIC)
+        assert access.allowance_for(PUBLIC)["remaining"] == expected
+
+
+def test_allowance_is_limited_by_what_is_left_globally(monkeypatch, db):
+    monkeypatch.setenv("PREDICTIONS_PER_DAY_TOTAL", "1")
+    access.quota.check_and_consume("someone-else")
+    assert access.allowance_for(PUBLIC)["remaining"] == 0
+
+
+def test_allowance_for_owner_is_unlimited_and_reads_nothing(monkeypatch, db):
+    monkeypatch.setenv("OWNER_EMAILS", "owner@example.com")
+    assert access.allowance_for(OWNER) == {"unlimited": True, "remaining": None, "limit": None}
+    assert db.reads == 0
+
+
+def test_allowance_for_unverified_owner_is_not_unlimited(monkeypatch, db):
+    monkeypatch.setenv("OWNER_EMAILS", "owner@example.com")
+    assert access.allowance_for({**OWNER, "email_verified": False})["unlimited"] is False
+
+
+# ── /health snapshot ──────────────────────────────────────────────────────────
+
 def test_snapshot_reports_usage(monkeypatch):
     monkeypatch.setenv("PREDICTIONS_PER_DAY_TOTAL", "50")
-    q = access.DailyQuota()
+    q = _make_quota(FakeFirestore())
     q.check_and_consume("user-a")
     snap = q.snapshot()
     assert snap["used_today"] == 1
     assert snap["daily_total_limit"] == 50
     assert snap["distinct_users_today"] == 1
+
+
+def test_snapshot_counts_a_returning_user_once(monkeypatch):
+    q = _make_quota(FakeFirestore())
+    _spend(q, "user-a", 2)
+    assert q.snapshot()["distinct_users_today"] == 1
+
+
+def test_snapshot_is_cached_so_health_cannot_burn_firestore_reads():
+    db = FakeFirestore()
+    q = _make_quota(db)
+    for _ in range(100):
+        q.snapshot()
+    assert db.reads == 1
+
+
+def test_snapshot_survives_a_firestore_outage():
+    def broken():
+        raise RuntimeError("firestore down")
+    snap = access.DailyQuota(client=broken).snapshot()
+    assert snap["used_today"] is None
+    assert snap["per_user_limit"] == 3

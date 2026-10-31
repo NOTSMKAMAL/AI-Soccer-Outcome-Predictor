@@ -1,7 +1,9 @@
 import math
 import os
+import time
 from dotenv import load_dotenv
 from google import genai
+from google.genai import errors as genai_errors
 from storage.league_data_client import check_team_data, get_head_to_head, get_recent_fixtures, get_season_team_stats
 from engine import scoring
 
@@ -11,6 +13,8 @@ client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 _season_stats_cache: dict[int, dict] = {}
 _prediction_cache: dict[tuple, dict] = {}
+
+_GEMINI_RETRY_DELAY_SECONDS = 2
 
 # Per-league home advantage coefficients (Dixon-Coles research).
 # Keyed by football-data.org competition ids (the live data source). Legacy
@@ -490,9 +494,33 @@ def _data_limitations_note(missing_sections: list[str]) -> str:
     )
 
 
+def _call_gemini(prompt: str):
+    """Call Gemini, retrying once if it reports a temporary overload.
+
+    No Google Search grounding: the write-up must rest only on the data in the
+    prompt. Only server errors are retried; anything else won't fix itself.
+    """
+    def _generate():
+        return client.models.generate_content(model="gemini-2.5-flash", contents=prompt)
+
+    try:
+        return _generate()
+    except genai_errors.ServerError:
+        time.sleep(_GEMINI_RETRY_DELAY_SECONDS)
+        return _generate()
+
+
 def _enrichment_complete(enriched_data: dict | None) -> bool:
     """True when enrichment exists and no section's fetch failed."""
     return bool(enriched_data) and not enriched_data.get("missing_sections")
+
+
+def cached_prediction(
+    team_a_id: int, team_b_id: int,
+    team_a_name: str, team_b_name: str,
+) -> dict | None:
+    """The stored result of generate_prediction for this matchup, or None."""
+    return _prediction_cache.get((team_a_id, team_b_id, team_a_name, team_b_name))
 
 
 def generate_prediction(
@@ -501,9 +529,10 @@ def generate_prediction(
     enriched_data: dict = None,
 ) -> dict:
     # Check prediction cache first — avoid duplicate Gemini calls
+    cached = cached_prediction(team_a_id, team_b_id, team_a_name, team_b_name)
+    if cached is not None:
+        return cached
     cache_key = (team_a_id, team_b_id, team_a_name, team_b_name)
-    if cache_key in _prediction_cache:
-        return _prediction_cache[cache_key]
 
     comparison = compare_matchup(team_a_id, team_b_id, team_a_name, team_b_name)
     if comparison["status"] != "success":
@@ -614,13 +643,7 @@ Team B: {team_b_name}
 """
 
     try:
-        # No Google Search grounding: the write-up must rest only on the data in
-        # the prompt. Grounding let outside claims into the reasoning.
-        response = client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=prompt,
-        )
-        raw = response.text
+        raw = _call_gemini(prompt).text
 
         # Multi-line aware parser
         parsed: dict[str, str] = {}

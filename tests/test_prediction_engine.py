@@ -16,8 +16,10 @@ from pathlib import Path
 from unittest.mock import patch
 
 import pytest
+from google.genai.errors import ClientError, ServerError
 
 from engine.prediction_engine import (
+    cached_prediction,
     dixon_coles_probability,
     generate_prediction,
     prepare_matchup,
@@ -873,6 +875,38 @@ class TestDegradedEnrichment:
         fake_gemini.side_effect = None
         assert _predict({"missing_sections": []})["status"] == "success"
         assert fake_gemini.call_count == 2
+
+    def test_cached_prediction_returns_a_complete_prediction(self, fake_gemini):
+        result = _predict({"missing_sections": []})
+        assert cached_prediction(1, 2, "Home FC", "Away FC") == result
+
+    def test_cached_prediction_is_none_before_any_prediction(self, fake_gemini):
+        assert cached_prediction(1, 2, "Home FC", "Away FC") is None
+
+    def test_cached_prediction_is_none_after_a_partial_prediction(self, fake_gemini):
+        _predict({"missing_sections": ["standings"]})
+        assert cached_prediction(1, 2, "Home FC", "Away FC") is None
+
+    def test_gemini_overload_is_retried_once(self, fake_gemini):
+        ok = fake_gemini.return_value
+        fake_gemini.side_effect = [ServerError(503, {"error": {"message": "high demand"}}), ok]
+        with patch("engine.prediction_engine.time.sleep") as sleep:
+            result = _predict({"missing_sections": []})
+        assert result["status"] == "success"
+        assert fake_gemini.call_count == 2
+        sleep.assert_called_once()
+
+    def test_gemini_overload_twice_reports_reasoning_failed(self, fake_gemini):
+        fake_gemini.side_effect = ServerError(503, {"error": {"message": "high demand"}})
+        with patch("engine.prediction_engine.time.sleep"):
+            result = _predict({"missing_sections": []})
+        assert result["status"] == "reasoning_failed"
+        assert fake_gemini.call_count == 2
+
+    def test_non_server_gemini_error_is_not_retried(self, fake_gemini):
+        fake_gemini.side_effect = ClientError(400, {"error": {"message": "bad request"}})
+        assert _predict({"missing_sections": []})["status"] == "reasoning_failed"
+        assert fake_gemini.call_count == 1
 
     def test_prompt_never_invites_general_knowledge(self, fake_gemini):
         import engine.prediction_engine as pe

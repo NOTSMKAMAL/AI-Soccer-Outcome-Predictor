@@ -1,3 +1,5 @@
+import type { PredictionAllowance } from "./types";
+
 const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
 
@@ -76,5 +78,13 @@ export async function generatePrediction(matchId: string, token: string) {
     `/api/fixtures/${matchId}/prediction`,
     token,
     { method: "POST" }
+  );
+}
+
+/** Predictions the signed-in user has left today. Backed by GET /api/me/prediction-allowance. */
+export async function getPredictionAllowance(token: string) {
+  return authRequest<{ status: string; data: PredictionAllowance }>(
+    "/api/me/prediction-allowance",
+    token
   );
 }

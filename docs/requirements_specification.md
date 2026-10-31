@@ -78,7 +78,9 @@
 - `GEMINI_API_KEY` not set or engine import fails → HTTP 501 "Prediction engine unavailable"
 - Individual enrichment calls fail (e.g., the football-data.org rate limit) → `_safe()` wrapper returns an error envelope; the section is listed in `missing_sections` and logged as `[Enrich] <section> unavailable …`; the Gemini prompt gets a DATA LIMITATIONS note naming it; neither the enrichment nor the prediction is cached
 - Dixon-Coles returns `None` (insufficient stats data — e.g., team has 0 matches played) → falls back to confidence-estimate probability mapping `{high: (0.72, 0.18, 0.10), medium: (0.52, 0.23, 0.25), low: (0.38, 0.28, 0.34)}`
-- Gemini call throws any exception → HTTP 500 "Prediction engine error: {message}"
+- Prediction already cached for this matchup → returned without calling football-data.org or Gemini, and the quota unit is refunded; a user at their cap is still refused
+- Gemini reports a server error (e.g. overloaded) → retried once after 2 seconds
+- Gemini call still fails → HTTP 503 with a plain retry message; the quota unit is refunded and the raw error is logged
 
 ---
 
@@ -244,11 +246,11 @@ Return payload/status:
 
 Failure statuses:
 - `HTTP 401` — invalid or missing token
-- `HTTP 403` — signed-in account is not on the `ALLOWED_EMAILS` allowlist
+- `HTTP 403` — email not verified, or signed-in account is not on the `ALLOWED_EMAILS` allowlist
 - `HTTP 429` — per-user or shared daily prediction cap reached (resets 00:00 UTC)
+- `HTTP 503` — daily counts unreachable in Firestore, so the prediction is refused rather than run uncounted (owners are unaffected); or the prediction engine failed, in which case the unit is refunded and the raw reason is logged as `[Predict] …`
 - `HTTP 404` — fixture not found in cache or on football-data.org
 - `HTTP 501` — "Prediction engine unavailable — GEMINI_API_KEY may not be set"
-- `HTTP 500` — "Prediction engine error: {exception message}"
 
 **engine → storage**
 

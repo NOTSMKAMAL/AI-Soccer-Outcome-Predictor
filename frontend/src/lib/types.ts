@@ -53,6 +53,13 @@ export interface Prediction {
   recentFixtures?: unknown[];
 }
 
+/** What the signed-in user may still do today. `remaining` and `limit` are null when unlimited. */
+export interface PredictionAllowance {
+  unlimited: boolean;
+  remaining: number | null;
+  limit: number | null;
+}
+
 export interface ApiResponse<T> {
   status: string;
   data: T;

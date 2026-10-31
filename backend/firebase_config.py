@@ -2,7 +2,7 @@ import json
 import os
 
 import firebase_admin
-from firebase_admin import auth, credentials
+from firebase_admin import auth, credentials, firestore
 from firebase_admin.auth import (
     ExpiredIdTokenError,
     InvalidIdTokenError,
@@ -98,6 +98,17 @@ def _get_app() -> firebase_admin.App | None:
         "    then run: gcloud auth application-default login"
     )
     return None
+
+
+def firestore_client():
+    """Firestore client for this Firebase project (Admin SDK, so rules don't apply).
+
+    Raises RuntimeError when Firebase Admin could not be initialized.
+    """
+    app = _get_app()
+    if app is None:
+        raise RuntimeError("Firebase Admin SDK is not initialized")
+    return firestore.client(app)
 
 
 def _log_verify_failure(exc: Exception, token: str) -> None:
