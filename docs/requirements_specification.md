@@ -76,9 +76,8 @@
 **Failure / Edge Cases:**
 - Fixture not in cache and not found on football-data.org → HTTP 404 "Fixture not found"
 - `GEMINI_API_KEY` not set or engine import fails → HTTP 501 "Prediction engine unavailable"
-- Individual enrichment calls fail (e.g., xG returns 403 on Starter plan) → `_safe()` wrapper returns `None`; pipeline continues with available data; missing fields simply absent from Gemini prompt
+- Individual enrichment calls fail (e.g., the football-data.org rate limit) → `_safe()` wrapper returns an error envelope; the section is listed in `missing_sections` and logged as `[Enrich] <section> unavailable …`; the Gemini prompt gets a DATA LIMITATIONS note naming it; neither the enrichment nor the prediction is cached
 - Dixon-Coles returns `None` (insufficient stats data — e.g., team has 0 matches played) → falls back to confidence-estimate probability mapping `{high: (0.72, 0.18, 0.10), medium: (0.52, 0.23, 0.25), low: (0.38, 0.28, 0.34)}`
-- Gemini grounding (Google Search) unavailable → second `generate_content` call without tools is attempted automatically
 - Gemini call throws any exception → HTTP 500 "Prediction engine error: {message}"
 
 ---
@@ -130,7 +129,7 @@
 **Engine responsibilities:**
 - `backend/main.py` `fixture_prediction()`: resolves fixture from `_fixture_cache`; runs `_gather_enriched()` via `asyncio.gather` (7 parallel calls); calls `generate_prediction()` in a thread
 - `engine/prediction_engine.py` `dixon_coles_probability()`: implements Dixon & Coles (1997) adjusted Poisson model with τ low-score correction and per-league home-advantage coefficients; returns `{home_win, draw, away_win}` in [0.05, 0.90]
-- `engine/prediction_engine.py` `generate_prediction()`: fetches H2H via `compare_matchup()`; runs Dixon-Coles; builds structured Gemini prompt injecting DC winner and all enriched context; calls `gemini-2.5-flash` (with GoogleSearch grounding tool); parses structured response; overrides winner and confidence with DC values
+- `engine/prediction_engine.py` `generate_prediction()`: fetches H2H via `compare_matchup()`; runs Dixon-Coles; builds structured Gemini prompt injecting DC winner and all enriched context; calls `gemini-2.5-flash` (no search grounding — the write-up uses only the prompt's data); parses structured response; overrides winner and confidence with DC values
 - `engine/prediction_engine.py` `_build_enriched_section()`: formats enriched data (form, standings, xG, trends, injuries, lineups, top scorers, squad depth) into labeled prompt sections
 
 **Storage responsibilities:**

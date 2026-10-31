@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, type CSSProperties } from "react";
 import type { Fixture } from "@/lib/types";
 import { getTeamColor } from "@/lib/teamColors";
 import { parseFixtureDate, formatLATime, formatLADateLabel, formatLADateLong } from "@/lib/dateUtils";
@@ -95,7 +95,9 @@ export default function MatchCard({ fixture, leagueAccent = "#13BBAF" }: Props) 
   const s = fixture.status?.toLowerCase() ?? "";
   const isLive = s === "inplay" || s === "live" || s === "halftime";
   const isFinished = ["finished", "ft", "aet", "pen"].includes(s);
-  const canPredict = !isFinished;
+  // Mock fixtures have no real match behind them, so the backend can never predict them.
+  const isPreview = fixture._isMock === true;
+  const canPredict = !isFinished && !isPreview;
 
   const homeColors = getTeamColor(fixture.homeTeam.name);
   const awayColors = getTeamColor(fixture.awayTeam.name);
@@ -105,6 +107,31 @@ export default function MatchCard({ fixture, leagueAccent = "#13BBAF" }: Props) 
   const awayWin = score ? score.away > score.home : false;
 
   const { dateLabel, time, fullDate } = formatKickoff(fixture.startingAt);
+
+  const ctaStyle: CSSProperties = {
+    display: "inline-flex", alignItems: "center", gap: 5, flexShrink: 0,
+    padding: "8px 14px", borderRadius: 10,
+    fontSize: 12, fontWeight: 600,
+    textDecoration: "none",
+    transition: "opacity 0.15s ease, transform 0.15s ease",
+    ...(canPredict
+      ? {
+          background: `linear-gradient(180deg, ${leagueAccent}CC, ${leagueAccent})`,
+          color: "white",
+          boxShadow: `0 6px 16px -6px ${leagueAccent}88, inset 0 1px 0 rgba(255,255,255,0.2)`,
+        }
+      : isFinished
+      ? {
+          background: "var(--surface-2)",
+          color: "var(--muted)",
+          boxShadow: `inset 0 0 0 1px ${leagueAccent}33`,
+        }
+      : {
+          background: "var(--surface-2)",
+          color: "var(--muted-2)",
+          boxShadow: "inset 0 0 0 1px var(--border)",
+        }),
+  };
 
   return (
     <article
@@ -226,32 +253,14 @@ export default function MatchCard({ fixture, leagueAccent = "#13BBAF" }: Props) 
             )}
           </div>
 
+          {isPreview ? (
+            <span style={ctaStyle} aria-disabled="true" title="Preview data — live fixtures are needed to predict">
+              {isFinished ? "Full time" : "Preview only"}
+            </span>
+          ) : (
           <Link
             href={`/prediction/${fixture.id}`}
-            style={{
-              display: "inline-flex", alignItems: "center", gap: 5, flexShrink: 0,
-              padding: "8px 14px", borderRadius: 10,
-              fontSize: 12, fontWeight: 600,
-              textDecoration: "none",
-              transition: "opacity 0.15s ease, transform 0.15s ease",
-              ...(canPredict
-                ? {
-                    background: `linear-gradient(180deg, ${leagueAccent}CC, ${leagueAccent})`,
-                    color: "white",
-                    boxShadow: `0 6px 16px -6px ${leagueAccent}88, inset 0 1px 0 rgba(255,255,255,0.2)`,
-                  }
-                : isFinished
-                ? {
-                    background: "var(--surface-2)",
-                    color: "var(--muted)",
-                    boxShadow: `inset 0 0 0 1px ${leagueAccent}33`,
-                  }
-                : {
-                    background: "var(--surface-2)",
-                    color: "var(--muted-2)",
-                    boxShadow: "inset 0 0 0 1px var(--border)",
-                  }),
-            }}
+            style={ctaStyle}
             onMouseEnter={(e) => { if (canPredict) (e.currentTarget as HTMLElement).style.transform = "translateY(-1px)"; }}
             onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.transform = "translateY(0)"; }}
           >
@@ -265,12 +274,11 @@ export default function MatchCard({ fixture, leagueAccent = "#13BBAF" }: Props) 
                   <path d="M5 12h14M13 5l7 7-7 7" />
                 </svg>
               </>
-            ) : isFinished ? (
-              "Full time"
             ) : (
-              "Preview only"
+              "Full time"
             )}
           </Link>
+          )}
         </div>
       </div>
     </article>

@@ -12,6 +12,7 @@ from backend.access import enforce as enforce_prediction_access, quota
 from backend.firebase_config import verify_id_token
 from storage import _fdorg
 from storage.league_data_client import (
+    STANDINGS_TTL,
     get_upcoming_fixtures,
     get_fixture_detail,
     get_fixtures_between_for_team,
@@ -52,7 +53,14 @@ app.add_middleware(
 
 # ── In-memory caches ──────────────────────────────────────────────────────────
 _fixture_cache: dict[str, dict] = {}
+# Complete enrichment by match id: {"data", "ts"}. Expires with the standings it
+# is built from, so form and the table can't go stale on a long-running server.
 _enriched_cache: dict[str, dict] = {}
+ENRICHED_TTL_SECONDS = STANDINGS_TTL
+# Enrichment gathers currently running, by match id. The prediction page fires
+# POST /prediction and GET /enriched together; without this both would gather
+# the same data, doubling football-data.org calls against a 10/min budget.
+_enrich_in_flight: dict[str, asyncio.Task] = {}
 
 # Server-side TTL cache for the full fixture list.
 # Distinct from _fixture_cache (per-ID dict used for individual lookups).
@@ -224,6 +232,25 @@ def get_fixture(match_id: str) -> dict[str, Any]:
     raise HTTPException(status_code=404, detail="Fixture not found.")
 
 
+def _report_failed_sections(fixture_id: int, results: dict[str, Any]) -> list[str]:
+    """Return the names of sections whose fetch failed, printing why for each.
+
+    Covers the sections the Gemini prompt relies on. A failure here (usually the
+    football-data.org rate limit) would otherwise silently drop that section.
+    """
+    missing: list[str] = []
+    for section, result in results.items():
+        if isinstance(result, Exception):
+            reason = f"{type(result).__name__}: {result}"
+        elif isinstance(result, dict) and result.get("status") != "success":
+            reason = result.get("message") or "request failed"
+        else:
+            continue
+        missing.append(section)
+        print(f"[Enrich] {section} unavailable for fixture {fixture_id}: {reason}")
+    return missing
+
+
 async def _gather_enriched(
     team_a_id: int, team_b_id: int,
     season_id: int | None, fixture_id_int: int,
@@ -275,6 +302,13 @@ async def _gather_enriched(
 
     form_a_r, form_b_r, standings_r, xg_r, lineups_r, topscorers_r, squad_a_r = results
 
+    missing_sections = _report_failed_sections(fixture_id_int, {
+        "team_a_recent_form":    form_a_r,
+        "team_b_recent_form":    form_b_r,
+        "standings":             standings_r,
+        "topscorers_with_names": topscorers_r,
+    })
+
     team_a_recent_form: list[dict] | None = _ok(form_a_r) or None
     team_b_recent_form: list[dict] | None = _ok(form_b_r) or None
 
@@ -323,7 +357,43 @@ async def _gather_enriched(
         "lineup":             _ok(lineups_r),
         "topscorers_with_names": _ok(topscorers_r),
         "squad_a":            _ok(squad_a_r),
+        # Sections whose request failed (not ones that were legitimately empty).
+        # The engine won't cache a prediction made with any of these missing.
+        "missing_sections":   missing_sections,
     }
+
+
+async def _shared_enrichment(match_id: str, fixture: dict, fixture_id_int: int) -> dict:
+    """Gather enrichment for a match, joining a gather already in flight for it.
+
+    Caches the result in _enriched_cache only when every section arrived, so a
+    rate-limited, partial gather is retried next time instead of served forever.
+    """
+    task = _enrich_in_flight.get(match_id)
+    if task is None:
+        task = asyncio.create_task(_gather_enriched(
+            fixture["homeTeam"]["id"], fixture["awayTeam"]["id"],
+            fixture.get("seasonId"),
+            fixture_id_int,
+        ))
+        _enrich_in_flight[match_id] = task
+        task.add_done_callback(lambda _: _enrich_in_flight.pop(match_id, None))
+    # shield: one client disconnecting must not cancel the gather another awaits.
+    data = await asyncio.shield(task)
+    if not data.get("missing_sections"):
+        _enriched_cache[match_id] = {"data": data, "ts": time.time()}
+    return data
+
+
+def _cached_enrichment(match_id: str) -> dict | None:
+    """Fresh cached enrichment for a match, or None if absent or expired."""
+    entry = _enriched_cache.get(match_id)
+    if entry is None:
+        return None
+    if time.time() - entry["ts"] >= ENRICHED_TTL_SECONDS:
+        del _enriched_cache[match_id]
+        return None
+    return entry["data"]
 
 
 @app.post("/api/fixtures/{match_id}/prediction")
@@ -371,13 +441,9 @@ async def fixture_prediction(
 
     if not fixture.get("_isMock") and fixture_id_int:
         try:
-            enriched_data = await _gather_enriched(
-                home["id"], away["id"],
-                fixture.get("seasonId"),
-                fixture_id_int,
-            )
-            _enriched_cache[match_id] = enriched_data
-        except Exception:
+            enriched_data = await _shared_enrichment(match_id, fixture, fixture_id_int)
+        except Exception as exc:
+            print(f"[Enrich] gathering failed for fixture {fixture_id_int}: {type(exc).__name__}: {exc}")
             enriched_data = None
 
     try:
@@ -419,8 +485,9 @@ async def fixture_enriched(
     user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
     # Serve from cache when the prediction endpoint already populated it
-    if match_id in _enriched_cache:
-        return {"status": "success", "data": _enriched_cache[match_id]}
+    cached = _cached_enrichment(match_id)
+    if cached is not None:
+        return {"status": "success", "data": cached}
 
     # Resolve fixture
     fixture = _fixture_cache.get(match_id)
@@ -449,12 +516,7 @@ async def fixture_enriched(
     except ValueError:
         return {"status": "success", "data": _empty}
 
-    data = await _gather_enriched(
-        fixture["homeTeam"]["id"], fixture["awayTeam"]["id"],
-        fixture.get("seasonId"),
-        fixture_id_int,
-    )
-    _enriched_cache[match_id] = data
+    data = await _shared_enrichment(match_id, fixture, fixture_id_int)
     return {"status": "success", "data": data}
 
 

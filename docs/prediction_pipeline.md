@@ -422,13 +422,17 @@ SQUAD DEPTH NOTE (Team A):
   prediction confidence — lower their defensive/leadership rating accordingly.
 ```
 
-**Real-Time News Instruction**:
+**Data Limitations** (only when a section's fetch failed):
 ```
-REAL-TIME NEWS INSTRUCTION (Google Search):
-Search for: "Team A vs Team B injury news team news lineup 2026-05-24"
-If you find relevant injury reports, lineup hints, or manager press-conference quotes,
-include them in the format: REAL-TIME TEAM NEWS (from Google Search): ...
+DATA LIMITATIONS:
+  Not available for this match: the league standings and season statistics.
+  Base your reasoning only on the data above. Do not fill the gaps from general
+  knowledge or a team's reputation. If the data is too thin to explain the
+  prediction well, say plainly that the data is limited.
 ```
+
+Gemini is called without Google Search grounding, so the write-up rests only on
+the data above.
 
 ### Why the Predicted Winner Is Injected First
 

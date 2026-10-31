@@ -11,6 +11,8 @@ import ErrorState from "@/components/ErrorState";
 import { getFixtureById, generatePrediction } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import type { Fixture, Prediction } from "@/lib/types";
+import { resultFromScores, type MatchResult } from "@/lib/matchResult";
+import { extractInsightChips } from "@/lib/reasoningInsights";
 
 // ── Enriched data types ───────────────────────────────────────────────────────
 
@@ -158,17 +160,6 @@ function buildVerdictHeadline(winner: string, confidence: string): string {
   if (c === "high") return `${winner} looks like the clear favourite`;
   if (c === "medium") return `${winner} has the edge`;
   return `${winner} slightly ahead — a tight call`;
-}
-
-function extractInsightChips(reasoning: string): Array<{ label: string; text: string }> {
-  const sentences = reasoning
-    .replace(/\n+/g, " ")
-    .split(/(?<=[.!?])\s+/)
-    .map((s) => s.trim())
-    .filter((s) => s.length > 30);
-
-  const labels = ["Head-to-head edge", "Recent matchup signal", "Momentum factor", "Model confidence"];
-  return sentences.slice(0, 4).map((text, i) => ({ label: labels[i] ?? `Insight ${i + 1}`, text }));
 }
 
 // ── Team logo ─────────────────────────────────────────────────────────────────
@@ -566,6 +557,12 @@ function GeneralStatsTab({ myStats, oppStats }: { myStats: GeneralStats | null; 
   );
 }
 
+const RESULT_BADGE_CLS: Record<MatchResult, string> = {
+  W: "bg-teal-500/20 text-teal-400 border-teal-500/30",
+  D: "bg-amber-500/20 text-amber-400 border-amber-500/30",
+  L: "bg-red-500/20 text-red-400 border-red-500/30",
+};
+
 function MatchCardInner({ fixture, teamId, defaultExpanded }: { fixture: RecentFixture; teamId: number; defaultExpanded: boolean }) {
   const [expanded, setExpanded] = useState(defaultExpanded);
   const isHome  = fixture.home_team.id === teamId;
@@ -576,14 +573,8 @@ function MatchCardInner({ fixture, teamId, defaultExpanded }: { fixture: RecentF
   const myScore  = isHome ? fixture.score?.home : fixture.score?.away;
   const oppScore = isHome ? fixture.score?.away : fixture.score?.home;
   const scoreStr = myScore != null && oppScore != null ? `${myScore} — ${oppScore}` : "vs";
-  const ri = (fixture.result_info || "").toLowerCase();
-  let resultLabel: "W" | "D" | "L" = "L";
-  let resultCls = "bg-red-500/20 text-red-400 border-red-500/30";
-  if (myTeam.name.toLowerCase().split(" ").some((w) => ri.includes(w)) && ri.includes("won")) {
-    resultLabel = "W"; resultCls = "bg-teal-500/20 text-teal-400 border-teal-500/30";
-  } else if (ri.includes("draw") || ri.includes("drew")) {
-    resultLabel = "D"; resultCls = "bg-amber-500/20 text-amber-400 border-amber-500/30";
-  }
+  const resultLabel = resultFromScores(myScore, oppScore);
+  const resultCls = resultLabel ? RESULT_BADGE_CLS[resultLabel] : "";
 
   return (
     <div className="rounded-xl overflow-hidden mb-2" style={{ border: "1px solid var(--border)", background: "rgba(255,255,255,0.025)" }}>
@@ -599,7 +590,9 @@ function MatchCardInner({ fixture, teamId, defaultExpanded }: { fixture: RecentF
         <span className="text-sm font-bold px-2 shrink-0" style={{ color: "var(--ink)" }}>{scoreStr}</span>
         <span className="text-xs flex-1 text-right truncate" style={{ color: "var(--ink-2)" }}>{oppTeam.name}</span>
         <TeamLogo src={oppTeam.logo} name={oppTeam.name} size={24} />
-        <span className={`ml-2 shrink-0 rounded-full border px-1.5 py-0.5 text-[9px] font-bold ${resultCls}`}>{resultLabel}</span>
+        {resultLabel && (
+          <span className={`ml-2 shrink-0 rounded-full border px-1.5 py-0.5 text-[9px] font-bold ${resultCls}`}>{resultLabel}</span>
+        )}
         <span className="text-[10px] ml-1 shrink-0" style={{ color: "var(--muted-2)" }}>{fixture.date}</span>
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
           className={`ml-1 transition-transform ${expanded ? "rotate-180" : ""}`} style={{ color: "var(--muted-2)" }}>

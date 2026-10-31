@@ -780,3 +780,104 @@ class TestRegressionBaseline:
                 f"Competition {league_id} is supported but missing from "
                 f"_HOME_ADVANTAGE — add a calibrated coefficient or remove the league."
             )
+
+
+# ── GROUP 5: Degraded enrichment — caching and prompt ──────────────────────────
+
+_NO_H2H = {"status": "success", "data": {
+    "team_a_wins": 0, "team_b_wins": 0, "draws": 0, "total_h2h": 0, "recent_results": [],
+}}
+_DC_PROBS = {"home_win": 0.2, "draw": 0.2, "away_win": 0.6, "method": "test"}
+_GEMINI_TEXT = "Winner: Away FC\nConfidence: high\nReasoning: Away FC are 1st with 17 points."
+
+
+@pytest.fixture
+def fake_gemini():
+    """Mock Gemini and the H2H/Dixon-Coles inputs; yield the generate_content mock."""
+    import engine.prediction_engine as pe
+    pe._prediction_cache.clear()
+    with patch.object(pe, "compare_matchup", return_value=_NO_H2H), \
+         patch.object(pe, "dixon_coles_probability", return_value=_DC_PROBS), \
+         patch.object(pe, "client") as client:
+        client.models.generate_content.return_value.text = _GEMINI_TEXT
+        yield client.models.generate_content
+    pe._prediction_cache.clear()
+
+
+def _predict(enriched):
+    return generate_prediction(1, 2, "Home FC", "Away FC", enriched)
+
+
+def _prompt_sent(generate_content) -> str:
+    return generate_content.call_args.kwargs["contents"]
+
+
+class TestDegradedEnrichment:
+    """A rate-limited fetch must not pin a stats-free prediction to a matchup."""
+
+    def test_complete_enrichment_is_cached(self, fake_gemini):
+        complete = {"missing_sections": []}
+        _predict(complete)
+        _predict(complete)
+        assert fake_gemini.call_count == 1
+
+    def test_partial_enrichment_is_not_cached(self, fake_gemini):
+        partial = {"missing_sections": ["standings"]}
+        _predict(partial)
+        _predict(partial)
+        assert fake_gemini.call_count == 2
+
+    def test_missing_enrichment_is_not_cached(self, fake_gemini):
+        _predict(None)
+        _predict(None)
+        assert fake_gemini.call_count == 2
+
+    def test_complete_retry_after_partial_is_cached(self, fake_gemini):
+        _predict({"missing_sections": ["standings"]})
+        _predict({"missing_sections": []})
+        _predict({"missing_sections": []})
+        assert fake_gemini.call_count == 2
+
+    def test_prompt_names_missing_sections(self, fake_gemini):
+        _predict({"missing_sections": ["standings", "team_b_recent_form"]})
+        prompt = _prompt_sent(fake_gemini)
+        assert "DATA LIMITATIONS" in prompt
+        assert "the league standings and season statistics" in prompt
+        assert "the away team's recent form" in prompt
+        assert "say plainly that the data is limited" in prompt
+
+    def test_prompt_has_no_limitations_note_when_complete(self, fake_gemini):
+        _predict({"missing_sections": []})
+        assert "DATA LIMITATIONS" not in _prompt_sent(fake_gemini)
+
+    def test_prompt_without_enrichment_lists_everything_missing(self, fake_gemini):
+        _predict(None)
+        prompt = _prompt_sent(fake_gemini)
+        assert "DATA LIMITATIONS" in prompt
+        assert "the league's top scorers" in prompt
+
+    def test_gemini_called_once_without_search_tools(self, fake_gemini):
+        _predict({"missing_sections": []})
+        assert fake_gemini.call_count == 1
+        assert "tools" not in fake_gemini.call_args.kwargs
+
+    def test_prompt_has_no_search_instruction(self, fake_gemini):
+        _predict({"missing_sections": []})
+        assert "Google Search" not in _prompt_sent(fake_gemini)
+
+    def test_gemini_failure_reports_reasoning_failed_and_is_not_cached(self, fake_gemini):
+        fake_gemini.side_effect = RuntimeError("503 model overloaded")
+        result = _predict({"missing_sections": []})
+        assert result == {"status": "reasoning_failed", "message": "503 model overloaded"}
+
+        fake_gemini.side_effect = None
+        assert _predict({"missing_sections": []})["status"] == "success"
+        assert fake_gemini.call_count == 2
+
+    def test_prompt_never_invites_general_knowledge(self, fake_gemini):
+        import engine.prediction_engine as pe
+        for enriched in ({"missing_sections": []}, {"missing_sections": ["standings"]}, None):
+            pe._prediction_cache.clear()  # the complete case caches; each case needs a fresh call
+            fake_gemini.reset_mock()
+            _predict(enriched)
+            assert "Use your general knowledge" not in _prompt_sent(fake_gemini)

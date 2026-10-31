@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { getLeagueAccent } from "@/lib/leagueColors";
 
 export type DateTab = "live" | "upcoming";
 
@@ -22,14 +23,6 @@ function LeagueIcon() {
   );
 }
 
-const LEAGUE_COLORS: Record<string, string> = {
-  "Premier League":    "#9381FF",
-  "La Liga":           "#EE8707",
-  "Serie A":           "#4A9FFF",
-  "Ligue 1":           "#4A9FFF",
-  "Major League Soccer": "#E82E2E",
-};
-
 export default function FilterBar({ search, onSearchChange, league, onLeagueChange, leagues, tab, onTabChange }: Props) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropRef = useRef<HTMLDivElement>(null);
@@ -50,10 +43,10 @@ export default function FilterBar({ search, onSearchChange, league, onLeagueChan
       WebkitBackdropFilter: "saturate(180%) blur(20px)",
       borderBottom: "1px solid var(--border)",
     }}>
-      <div style={{ maxWidth: 1240, margin: "0 auto", padding: "10px 32px", display: "flex", alignItems: "center", gap: 10 }}>
+      <div style={{ maxWidth: 1240, margin: "0 auto", padding: "10px clamp(16px, 4vw, 32px)", display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10 }}>
 
-        {/* Search */}
-        <div style={{ flex: 1, position: "relative", maxWidth: 440 }}>
+        {/* Search — takes its own row on phones, the dropdown and tabs wrap below */}
+        <div style={{ flex: "1 1 220px", position: "relative", maxWidth: 440 }}>
           <svg
             width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
             strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
@@ -141,7 +134,7 @@ export default function FilterBar({ search, onSearchChange, league, onLeagueChan
                 >
                   <span style={{
                     width: 8, height: 8, borderRadius: "50%",
-                    background: LEAGUE_COLORS[l] ?? "#13BBAF",
+                    background: getLeagueAccent(l),
                     display: "inline-block", flexShrink: 0,
                   }} />
                   {l}

@@ -12,27 +12,27 @@ import { getTopLeagueFixtures } from "@/lib/api";
 import { MOCK_FIXTURES } from "@/lib/mockData";
 import type { Fixture } from "@/lib/types";
 import { parseFixtureDate, toLADateStr, isUpcomingLA } from "@/lib/dateUtils";
+import { getLeagueAccent } from "@/lib/leagueColors";
 
 type LoadState = "loading" | "success" | "error";
 
-const LEAGUE_ACCENTS: Record<string, string> = {
-  "Major League Soccer":   "#E82E2E",
-  "MLS":                   "#E82E2E",
-  "Premier League":        "#9381FF",
-  "La Liga":               "#EE8707",
-  "Serie A":               "#4A9FFF",
-  "Bundesliga":            "#E82E2E",
-  "Ligue 1":               "#4A9FFF",
-  "Champions League":      "#F8C25C",
-  "UEFA Champions League": "#F8C25C",
-};
-const DEFAULT_ACCENT = "#13BBAF";
+// 16px on phones, growing to 32px on desktop.
+const SIDE_GUTTER = "clamp(16px, 4vw, 32px)";
 
-function getAccent(leagueName: string): string {
-  const key = Object.keys(LEAGUE_ACCENTS).find((k) =>
-    leagueName?.toLowerCase().includes(k.toLowerCase())
-  );
-  return key ? LEAGUE_ACCENTS[key] : DEFAULT_ACCENT;
+const LIVE_STATUSES = ["live", "inplay", "halftime"];
+
+function isLiveFixture(f: Fixture): boolean {
+  return LIVE_STATUSES.includes(f.status?.toLowerCase() ?? "");
+}
+
+const FINISHED_STATUSES = ["finished", "ft", "aet", "pen"];
+
+// Not started yet, kicking off today or later. Status matters as well as date:
+// the backend keeps matches that finished earlier today.
+function isUpcomingFixture(f: Fixture): boolean {
+  const status = f.status?.toLowerCase() ?? "";
+  if (LIVE_STATUSES.includes(status) || FINISHED_STATUSES.includes(status)) return false;
+  return isUpcomingLA(parseFixtureDate(f.startingAt));
 }
 
 function groupByLeague(fixtures: Fixture[]): Record<string, Fixture[]> {
@@ -46,10 +46,9 @@ function groupByLeague(fixtures: Fixture[]): Record<string, Fixture[]> {
 
 // ── Stats row ──────────────────────────────────────────────────────────────────
 
-function StatsRow({ fixtures, isLive }: { fixtures: Fixture[]; isLive: boolean }) {
-  const liveCount = fixtures.filter((f) =>
-    ["live", "inplay", "halftime"].includes(f.status?.toLowerCase() ?? "")
-  ).length;
+// `liveCount` is passed in rather than derived from `fixtures`: `fixtures` is the
+// tab-filtered list, and the Upcoming tab never contains live matches.
+function StatsRow({ fixtures, liveCount, isLive }: { fixtures: Fixture[]; liveCount: number; isLive: boolean }) {
   const leagueCount = new Set(fixtures.map((f) => f.leagueName)).size;
 
   const stats = [
@@ -60,7 +59,7 @@ function StatsRow({ fixtures, isLive }: { fixtures: Fixture[]; isLive: boolean }
   ];
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 28 }}>
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12, marginBottom: 28 }}>
       {stats.map((s) => (
         <div key={s.label} style={{
           background: "var(--surface)", borderRadius: 14, padding: "16px 20px",
@@ -132,9 +131,9 @@ function DashboardContent() {
   const filtered = useMemo(() => {
     let list = fixtures;
     if (tab === "live") {
-      list = list.filter((f) => ["live", "inplay", "halftime"].includes(f.status?.toLowerCase() ?? ""));
+      list = list.filter(isLiveFixture);
     } else {
-      list = list.filter((f) => isUpcomingLA(parseFixtureDate(f.startingAt)));
+      list = list.filter(isUpcomingFixture);
     }
     if (league) list = list.filter((f) => f.leagueName === league);
     if (search.trim()) {
@@ -147,6 +146,8 @@ function DashboardContent() {
     }
     return list;
   }, [fixtures, tab, league, search]);
+
+  const liveCount = useMemo(() => fixtures.filter(isLiveFixture).length, [fixtures]);
 
   const grouped = groupByLeague(filtered);
 
@@ -170,7 +171,7 @@ function DashboardContent() {
           background: "radial-gradient(ellipse 70% 40% at 50% 0%, rgba(39,90,83,0.18) 0%, transparent 70%)",
           pointerEvents: "none",
         }} />
-        <div style={{ position: "relative", maxWidth: 1240, margin: "0 auto", padding: "28px 32px 20px" }}>
+        <div style={{ position: "relative", maxWidth: 1240, margin: "0 auto", padding: `28px ${SIDE_GUTTER} 20px` }}>
           <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-end", justifyContent: "space-between", gap: 16, marginBottom: 24 }}>
             <div>
               <h1 style={{
@@ -207,13 +208,13 @@ function DashboardContent() {
           </div>
 
           {state !== "loading" && fixtures.length > 0 && (
-            <StatsRow fixtures={filtered} isLive={isLiveData} />
+            <StatsRow fixtures={filtered} liveCount={liveCount} isLive={isLiveData} />
           )}
         </div>
       </div>
 
       {/* Main content */}
-      <div style={{ maxWidth: 1240, margin: "0 auto", padding: "0 32px 64px" }}>
+      <div style={{ maxWidth: 1240, margin: "0 auto", padding: `0 ${SIDE_GUTTER} 64px` }}>
 
         {/* Mock warning */}
         {isMockData && state !== "error" && (
@@ -241,7 +242,7 @@ function DashboardContent() {
 
         {/* Loading */}
         {state === "loading" && (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(360px, 1fr))", gap: 14 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(360px, 100%), 1fr))", gap: 14 }}>
             {Array.from({ length: 6 }).map((_, i) => <MatchCardSkeleton key={i} />)}
           </div>
         )}
@@ -250,7 +251,7 @@ function DashboardContent() {
         {state !== "loading" && filtered.length > 0 && (
           <div style={{ display: "flex", flexDirection: "column", gap: 36 }}>
             {Object.entries(grouped).map(([leagueName, leagueFixtures]) => {
-              const accent = getAccent(leagueName);
+              const accent = getLeagueAccent(leagueName);
               return (
                 <section key={leagueName}>
                   <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
@@ -263,7 +264,7 @@ function DashboardContent() {
                       {leagueFixtures.length} {leagueFixtures.length === 1 ? "fixture" : "fixtures"}
                     </span>
                   </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))", gap: 12 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(340px, 100%), 1fr))", gap: 12 }}>
                     {leagueFixtures.map((f) => (
                       <MatchCard key={f.id} fixture={f} leagueAccent={accent} />
                     ))}

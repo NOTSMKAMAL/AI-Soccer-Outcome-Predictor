@@ -3,6 +3,8 @@ fastapi==0.109.0
 uvicorn==0.27.0
 python-dotenv==1.2.2
 requests==2.34.2
+# Windows has no system time zone database; backend/main.py's ZoneInfo needs it.
+tzdata==2026.6
 
 # ── Auth ──────────────────────────────────────────────────────────────────────
 firebase-admin==6.4.0

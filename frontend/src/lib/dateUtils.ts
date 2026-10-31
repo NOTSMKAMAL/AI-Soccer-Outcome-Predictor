@@ -64,10 +64,10 @@ export function formatLATime(date: Date): string {
   });
 }
 
-/** Returns true when the fixture date (LA calendar) is strictly after tomorrow. */
+/** Returns true when the fixture date (LA calendar) is today or later. */
 export function isUpcomingLA(date: Date): boolean {
   if (isNaN(date.getTime())) return false;
-  return toLADateStr(date) > tomorrowLA();
+  return toLADateStr(date) >= todayLA();
 }
 
 /** "Saturday, May 16, 2026" */

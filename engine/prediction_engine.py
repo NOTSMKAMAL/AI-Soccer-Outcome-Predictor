@@ -1,9 +1,7 @@
 import math
 import os
-from datetime import date as _date
 from dotenv import load_dotenv
 from google import genai
-from google.genai import types
 from storage.league_data_client import check_team_data, get_head_to_head, get_recent_fixtures, get_season_team_stats
 from engine import scoring
 
@@ -466,6 +464,37 @@ def _build_enriched_section(
     return "\n\n".join(parts)
 
 
+_SECTION_DESCRIPTIONS = {
+    "team_a_recent_form":    "the home team's recent form",
+    "team_b_recent_form":    "the away team's recent form",
+    "standings":             "the league standings and season statistics",
+    "topscorers_with_names": "the league's top scorers",
+}
+
+
+def _data_limitations_note(missing_sections: list[str]) -> str:
+    """Prompt text naming data that could not be fetched, or "" when none is missing.
+
+    Tells Gemini to say the data is limited rather than fill gaps from general
+    knowledge — the failure that produced stats-free, reputation-based write-ups.
+    """
+    if not missing_sections:
+        return ""
+    described = [_SECTION_DESCRIPTIONS.get(s, s) for s in missing_sections]
+    return (
+        "DATA LIMITATIONS:\n"
+        f"  Not available for this match: {'; '.join(described)}.\n"
+        "  Base your reasoning only on the data above. Do not fill the gaps from general\n"
+        "  knowledge or a team's reputation. If the data is too thin to explain the\n"
+        "  prediction well, say plainly that the data is limited."
+    )
+
+
+def _enrichment_complete(enriched_data: dict | None) -> bool:
+    """True when enrichment exists and no section's fetch failed."""
+    return bool(enriched_data) and not enriched_data.get("missing_sections")
+
+
 def generate_prediction(
     team_a_id: int, team_b_id: int,
     team_a_name: str, team_b_name: str,
@@ -495,10 +524,7 @@ def generate_prediction(
             f"Recent results:\n{results_lines}"
         )
     else:
-        h2h_section = (
-            "No head-to-head history exists between these teams in the database. "
-            "Use your general knowledge of these teams to make a prediction."
-        )
+        h2h_section = "No head-to-head history exists between these teams in the database."
 
     # Dixon-Coles probabilities — computed from standings data, never from Gemini
     dc_probs: dict | None = None
@@ -530,20 +556,10 @@ def generate_prediction(
         enriched_section = _build_enriched_section(
             team_a_name, team_b_name, team_a_id, team_b_id, enriched_data
         )
-        today_str = _date.today().isoformat()
-        grounding_instruction = (
-            f"REAL-TIME NEWS INSTRUCTION (Google Search):\n"
-            f"Search for: \"{team_a_name} vs {team_b_name} injury news team news lineup {today_str}\"\n"
-            f"If you find relevant injury reports, lineup hints, or manager press-conference\n"
-            f"quotes, include them in this format inside your response:\n\n"
-            f"REAL-TIME TEAM NEWS (from Google Search):\n"
-            f"- [finding about {team_a_name} injuries or lineup hints]\n"
-            f"- [finding about {team_b_name} injuries or lineup hints]\n"
-            f"- [manager quote or press-conference note if found]\n\n"
-            f"Weave these findings into the Reasoning sentences alongside the statistical data.\n"
-            f"If no relevant real-time information is found, proceed with the data above only."
-        )
-        data_block = f"{h2h_section}\n\n{enriched_section}\n\n{grounding_instruction}"
+        data_block = f"{h2h_section}\n\n{enriched_section}"
+        limitations = _data_limitations_note(enriched_data.get("missing_sections") or [])
+        if limitations:
+            data_block = f"{data_block}\n\n{limitations}"
         response_format = (
             "Respond in this exact format:\n"
             "Winner: <team name>\n"
@@ -555,7 +571,7 @@ def generate_prediction(
             "Key Factor 3: <title> | <one sentence with specific stat>"
         )
     else:
-        data_block = h2h_section
+        data_block = f"{h2h_section}\n\n{_data_limitations_note(list(_SECTION_DESCRIPTIONS))}"
         response_format = (
             "Respond in this exact format:\n"
             "Winner: <team name>\n"
@@ -597,23 +613,13 @@ Team B: {team_b_name}
 {response_format}
 """
 
-    _search_tools = [types.Tool(google_search=types.GoogleSearch())]
-
     try:
-        # Attempt grounded call so Gemini can retrieve real-time injury/team news.
-        # If grounding is unavailable (plan restriction, SDK mismatch, etc.) fall back
-        # to a plain call so the prediction always completes.
-        try:
-            response = client.models.generate_content(
-                model="gemini-2.5-flash",
-                contents=prompt,
-                tools=_search_tools,
-            )
-        except Exception:
-            response = client.models.generate_content(
-                model="gemini-2.5-flash",
-                contents=prompt,
-            )
+        # No Google Search grounding: the write-up must rest only on the data in
+        # the prompt. Grounding let outside claims into the reasoning.
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=prompt,
+        )
         raw = response.text
 
         # Multi-line aware parser
@@ -717,9 +723,12 @@ Team B: {team_b_name}
         # market snapshots that drive edge/CLV).
         result_data.setdefault("value_signal", None)
 
-        # Cache successful prediction result
         result = {"status": "success", "data": result_data}
-        _prediction_cache[cache_key] = result
+        # The cache never expires, so only keep a prediction built from complete
+        # data — otherwise one rate-limited fetch would pin a stats-free write-up
+        # (and confidence-estimate probabilities) to this matchup for good.
+        if _enrichment_complete(enriched_data):
+            _prediction_cache[cache_key] = result
         return result
     except Exception as e:
         return {"status": "reasoning_failed", "message": str(e)}
