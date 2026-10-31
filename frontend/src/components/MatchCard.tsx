@@ -8,7 +8,6 @@ import { parseFixtureDate, formatLATime, formatLADateLabel, formatLADateLong } f
 
 interface Props {
   fixture: Fixture;
-  leagueAccent?: string;
 }
 
 function formatKickoff(isoString: string): { dateLabel: string; time: string; fullDate: string } {
@@ -34,10 +33,10 @@ function StatusChip({ status }: { status: string }) {
       <span style={{
         display: "inline-flex", alignItems: "center", gap: 5,
         fontSize: 10, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase",
-        color: "#4ADE80", background: "rgba(34,197,94,0.12)", border: "1px solid rgba(34,197,94,0.3)",
+        color: "var(--primary-text)", background: "var(--primary-soft)", border: "1px solid var(--primary-edge)",
         borderRadius: 999, padding: "3px 9px",
       }}>
-        <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#22C55E", boxShadow: "0 0 6px #22C55E", display: "inline-block" }} />
+        <span style={{ width: 5, height: 5, borderRadius: "50%", background: "var(--primary)", display: "inline-block" }} />
         {s === "halftime" ? "Half-time" : "Live"}
       </span>
     );
@@ -56,7 +55,7 @@ function StatusChip({ status }: { status: string }) {
   return (
     <span style={{
       fontSize: 10, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase",
-      color: "var(--accent-3)", background: "var(--accent-soft)", border: "1px solid var(--accent-edge)",
+      color: "var(--primary-text)", background: "var(--primary-soft)", border: "1px solid var(--primary-edge)",
       borderRadius: 999, padding: "3px 9px",
     }}>
       Upcoming
@@ -64,7 +63,7 @@ function StatusChip({ status }: { status: string }) {
   );
 }
 
-export default function MatchCard({ fixture, leagueAccent = "#13BBAF" }: Props) {
+export default function MatchCard({ fixture }: Props) {
   const s = fixture.status?.toLowerCase() ?? "";
   const isLive = s === "inplay" || s === "live" || s === "halftime";
   const isFinished = ["finished", "ft", "aet", "pen"].includes(s);
@@ -86,15 +85,14 @@ export default function MatchCard({ fixture, leagueAccent = "#13BBAF" }: Props) 
     transition: "opacity 0.15s ease, transform 0.15s ease",
     ...(canPredict
       ? {
-          background: `linear-gradient(180deg, ${leagueAccent}CC, ${leagueAccent})`,
-          color: "white",
-          boxShadow: `0 6px 16px -6px ${leagueAccent}88, inset 0 1px 0 rgba(255,255,255,0.2)`,
+          background: "var(--primary)",
+          color: "var(--on-accent)",
         }
       : isFinished
       ? {
           background: "var(--surface-2)",
           color: "var(--muted)",
-          boxShadow: `inset 0 0 0 1px ${leagueAccent}33`,
+          boxShadow: "inset 0 0 0 1px var(--border)",
         }
       : {
           background: "var(--surface-2)",
@@ -114,7 +112,7 @@ export default function MatchCard({ fixture, leagueAccent = "#13BBAF" }: Props) 
         transition: "box-shadow 0.2s ease, transform 0.2s ease",
       }}
       onMouseEnter={(e) => {
-        (e.currentTarget as HTMLElement).style.boxShadow = `inset 0 0 0 1px ${leagueAccent}55, 0 12px 40px -16px ${leagueAccent}44`;
+        (e.currentTarget as HTMLElement).style.boxShadow = "inset 0 0 0 1px var(--primary-edge)";
         (e.currentTarget as HTMLElement).style.transform = "translateY(-2px)";
       }}
       onMouseLeave={(e) => {
@@ -122,20 +120,11 @@ export default function MatchCard({ fixture, leagueAccent = "#13BBAF" }: Props) 
         (e.currentTarget as HTMLElement).style.transform = "translateY(0)";
       }}
     >
-      {/* League accent top strip */}
-      <div style={{ height: 3, background: `linear-gradient(90deg, transparent, ${leagueAccent} 30%, ${leagueAccent} 70%, transparent)` }} />
-
-      {/* Subtle corner glow */}
-      <div aria-hidden style={{
-        position: "absolute", inset: 0, pointerEvents: "none",
-        background: `radial-gradient(55% 35% at 100% 0%, ${leagueAccent}08, transparent 60%)`,
-      }} />
-
       <div style={{ padding: "16px 20px", display: "flex", flexDirection: "column", gap: 14, position: "relative" }}>
         {/* Header */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <span style={{ width: 7, height: 7, borderRadius: 2, background: leagueAccent, flexShrink: 0, display: "inline-block" }} />
+            <span style={{ width: 7, height: 7, borderRadius: 2, background: "var(--primary)", flexShrink: 0, display: "inline-block" }} />
             <span style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)", letterSpacing: "0.02em" }}>
               {fixture.leagueName}
             </span>
@@ -173,13 +162,13 @@ export default function MatchCard({ fixture, leagueAccent = "#13BBAF" }: Props) 
                     {score.away}
                   </span>
                 </div>
-                <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: isLive ? "#4ADE80" : "var(--muted-2)", opacity: 0.8 }}>
+                <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: isLive ? "var(--primary-text)" : "var(--muted-2)", opacity: 0.8 }}>
                   {isLive ? "LIVE" : "FT"}
                 </span>
               </>
             ) : (
               <>
-                <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.08em", color: "var(--warm)", textTransform: "uppercase" }}>
+                <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.08em", color: "var(--muted)", textTransform: "uppercase" }}>
                   {dateLabel}
                 </span>
                 <span style={{ fontSize: 18, fontWeight: 800, lineHeight: 1.1, letterSpacing: "-0.01em", color: "var(--ink)", whiteSpace: "nowrap", fontFamily: "var(--font-display), system-ui" }}>

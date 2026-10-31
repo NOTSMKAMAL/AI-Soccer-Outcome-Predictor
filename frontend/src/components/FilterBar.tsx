@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { getLeagueAccent } from "@/lib/leagueColors";
 
 export type DateTab = "live" | "upcoming";
 
@@ -38,9 +37,7 @@ export default function FilterBar({ search, onSearchChange, league, onLeagueChan
   return (
     <div style={{
       position: "sticky", top: 60, zIndex: 30,
-      background: "color-mix(in srgb, var(--bg) 88%, transparent)",
-      backdropFilter: "saturate(180%) blur(20px)",
-      WebkitBackdropFilter: "saturate(180%) blur(20px)",
+      background: "var(--bg)",
       borderBottom: "1px solid var(--border)",
     }}>
       <div style={{ maxWidth: 1240, margin: "0 auto", padding: "10px clamp(16px, 4vw, 32px)", display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10 }}>
@@ -65,7 +62,7 @@ export default function FilterBar({ search, onSearchChange, league, onLeagueChan
               borderRadius: 10, color: "var(--ink)", fontSize: 13, outline: "none",
               transition: "border-color 0.15s", boxSizing: "border-box",
             }}
-            onFocus={(e) => (e.currentTarget.style.borderColor = "var(--accent-edge)")}
+            onFocus={(e) => (e.currentTarget.style.borderColor = "var(--primary-edge)")}
             onBlur={(e) => (e.currentTarget.style.borderColor = "var(--border-s)")}
           />
         </div>
@@ -77,9 +74,9 @@ export default function FilterBar({ search, onSearchChange, league, onLeagueChan
             style={{
               display: "flex", alignItems: "center", gap: 7,
               padding: "9px 14px", borderRadius: 10,
-              background: league ? "var(--accent-soft)" : "var(--surface)",
-              border: `1px solid ${league ? "var(--accent-edge)" : "var(--border-s)"}`,
-              color: league ? "var(--accent-2)" : "var(--ink-2)",
+              background: league ? "var(--primary-soft)" : "var(--surface)",
+              border: `1px solid ${league ? "var(--primary-edge)" : "var(--border-s)"}`,
+              color: league ? "var(--primary-text)" : "var(--ink-2)",
               fontSize: 13, fontWeight: 500, cursor: "pointer", whiteSpace: "nowrap",
             }}
           >
@@ -98,7 +95,7 @@ export default function FilterBar({ search, onSearchChange, league, onLeagueChan
             <div style={{
               position: "absolute", top: "calc(100% + 8px)", left: 0, minWidth: 180,
               background: "var(--surface)", borderRadius: 12,
-              boxShadow: "0 16px 40px -12px rgba(0,0,0,0.5), inset 0 0 0 1px var(--border-s)",
+              boxShadow: "inset 0 0 0 1px var(--border-s)",
               padding: "6px", zIndex: 50,
               animation: "dropIn 0.15s cubic-bezier(0.16,1,0.3,1)",
             }}>
@@ -109,8 +106,8 @@ export default function FilterBar({ search, onSearchChange, league, onLeagueChan
                 style={{
                   width: "100%", display: "flex", alignItems: "center", gap: 8,
                   padding: "8px 10px", borderRadius: 8, border: "none", cursor: "pointer",
-                  fontSize: 13, color: !league ? "var(--accent-2)" : "var(--ink-2)",
-                  background: !league ? "var(--accent-soft)" : "none",
+                  fontSize: 13, color: !league ? "var(--primary-text)" : "var(--ink-2)",
+                  background: !league ? "var(--primary-soft)" : "none",
                   textAlign: "left", fontWeight: !league ? 600 : 400,
                 }}
               >
@@ -125,8 +122,8 @@ export default function FilterBar({ search, onSearchChange, league, onLeagueChan
                   style={{
                     width: "100%", display: "flex", alignItems: "center", gap: 8,
                     padding: "8px 10px", borderRadius: 8, border: "none", cursor: "pointer",
-                    fontSize: 13, color: league === l ? "var(--accent-2)" : "var(--ink-2)",
-                    background: league === l ? "var(--accent-soft)" : "none",
+                    fontSize: 13, color: league === l ? "var(--primary-text)" : "var(--ink-2)",
+                    background: league === l ? "var(--primary-soft)" : "none",
                     textAlign: "left", fontWeight: league === l ? 600 : 400,
                   }}
                   onMouseEnter={(e) => { if (league !== l) (e.currentTarget as HTMLElement).style.background = "var(--surface-2)"; }}
@@ -134,7 +131,7 @@ export default function FilterBar({ search, onSearchChange, league, onLeagueChan
                 >
                   <span style={{
                     width: 8, height: 8, borderRadius: "50%",
-                    background: getLeagueAccent(l),
+                    background: "var(--primary)",
                     display: "inline-block", flexShrink: 0,
                   }} />
                   {l}
@@ -158,7 +155,7 @@ export default function FilterBar({ search, onSearchChange, league, onLeagueChan
                 fontSize: 13, fontWeight: tab === t ? 600 : 400,
                 color: tab === t ? "var(--ink)" : "var(--muted)",
                 background: tab === t ? "var(--surface-3)" : "none",
-                boxShadow: tab === t ? "0 1px 4px rgba(0,0,0,0.3), inset 0 0 0 1px var(--border-s)" : "none",
+                boxShadow: tab === t ? "inset 0 0 0 1px var(--border-s)" : "none",
                 transition: "all 0.15s ease",
               }}
             >

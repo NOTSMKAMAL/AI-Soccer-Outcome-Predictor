@@ -32,7 +32,7 @@ export default function RootLayout({
     <html lang="en" className={`dark ${barlowCondensed.variable} ${plusJakarta.variable}`}>
       <body
         style={{ fontFamily: "var(--font-body), system-ui, sans-serif" }}
-        className="bg-[#030C0A] text-white antialiased"
+        className="antialiased"
       >
         <Providers>{children}</Providers>
         <SiteFooter />

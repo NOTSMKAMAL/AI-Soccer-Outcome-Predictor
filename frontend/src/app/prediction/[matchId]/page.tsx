@@ -93,15 +93,15 @@ const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000"
 function SectionBadge({ label }: { label: string }) {
   return (
     <span className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest"
-      style={{ borderColor: "var(--accent-edge)", background: "var(--accent-soft)", color: "var(--accent-3)" }}>
-      <span className="h-1 w-1 rounded-full" style={{ background: "var(--accent-2)" }} />
+      style={{ borderColor: "var(--primary-edge)", background: "var(--primary-soft)", color: "var(--primary-text)" }}>
+      <span className="h-1 w-1 rounded-full" style={{ background: "var(--primary-text)" }} />
       {label}
     </span>
   );
 }
 
 function SectionSkeleton({ height = 120 }: { height?: number }) {
-  return <div className="card-glass animate-pulse rounded-2xl bg-white/4" style={{ height }} />;
+  return <div className="card animate-pulse rounded-2xl" style={{ height }} />;
 }
 
 function DataUnavailable() {
@@ -119,9 +119,9 @@ function confidenceBadgeClass(level: string) {
 
 function confidenceColor(level: string): string {
   const c = level?.toLowerCase();
-  if (c === "high") return "from-teal-500 to-teal-400";
-  if (c === "medium") return "from-amber-500 to-amber-400";
-  return "from-red-500 to-red-400";
+  if (c === "high") return "var(--primary)";
+  if (c === "medium") return "var(--orange)";
+  return "var(--neutral)";
 }
 
 // Display fallback only — used when the backend returns no probability fields at all
@@ -185,7 +185,7 @@ function ThreeSegmentBar({
           transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1], delay: 0.15 }}
           style={{
             height: "100%", minWidth: hW > 0 ? 6 : 0,
-            background: "linear-gradient(90deg, #1A453F, #275A53)",
+            background: "var(--home)",
             borderRadius: "999px 2px 2px 999px",
           }}
         />
@@ -195,7 +195,7 @@ function ThreeSegmentBar({
           transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1], delay: 0.3 }}
           style={{
             height: "100%", minWidth: dW > 0 ? 6 : 0,
-            background: "#F8C25C",
+            background: "var(--draw)",
           }}
         />
         <motion.div
@@ -204,7 +204,7 @@ function ThreeSegmentBar({
           transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1], delay: 0.45 }}
           style={{
             height: "100%", minWidth: aW > 0 ? 6 : 0,
-            background: "linear-gradient(90deg, #4A90B0, #3A7A9A)",
+            background: "var(--away)",
             borderRadius: "2px 999px 999px 2px",
           }}
         />
@@ -213,9 +213,9 @@ function ThreeSegmentBar({
       {/* Percentages */}
       <div className="grid grid-cols-3 text-center font-bold text-sm"
         style={{ fontFamily: "var(--font-display), system-ui" }}>
-        <span style={{ color: "#13BBAF" }}>{(homeP * 100).toFixed(0)}%</span>
-        <span style={{ color: "#F8C25C" }}>{(drawP * 100).toFixed(0)}%</span>
-        <span style={{ color: "#82B5CC" }}>{(awayP * 100).toFixed(0)}%</span>
+        <span style={{ color: "var(--home-text)" }}>{(homeP * 100).toFixed(0)}%</span>
+        <span style={{ color: "var(--muted)" }}>{(drawP * 100).toFixed(0)}%</span>
+        <span style={{ color: "var(--away)" }}>{(awayP * 100).toFixed(0)}%</span>
       </div>
     </div>
   );
@@ -225,15 +225,12 @@ function ThreeSegmentBar({
 
 function MatchHeaderCard({ fixture }: { fixture: Fixture }) {
   return (
-    <div className="card-glass-elevated p-6 relative overflow-hidden">
-      <div aria-hidden className="absolute inset-x-0 top-0 h-32 pointer-events-none" style={{
-        background: "radial-gradient(ellipse 50% 60% at 50% 0%, rgba(39,90,83,0.22) 0%, transparent 70%)",
-      }} />
+    <div className="card p-6 relative overflow-hidden">
       <div className="relative z-10">
         {/* Badges */}
         <div className="mb-5 flex flex-wrap items-center gap-2">
           <span className="badge-football-data flex items-center gap-1.5">
-            <span className="h-1.5 w-1.5 rounded-full" style={{ background: "var(--accent-2)" }} />
+            <span className="h-1.5 w-1.5 rounded-full" style={{ background: "var(--primary-text)" }} />
             football-data.org
           </span>
           <span className="badge-gemini flex items-center gap-1.5">
@@ -243,7 +240,7 @@ function MatchHeaderCard({ fixture }: { fixture: Fixture }) {
             Gemini AI
           </span>
           {fixture._isMock && <span className="badge-preview">Preview data</span>}
-          <span className="ml-auto text-xs rounded-full px-2.5 py-0.5" style={{ color: "var(--warm)", background: "var(--warm-bg)", border: "1px solid rgba(248,194,92,0.2)" }}>
+          <span className="ml-auto text-xs rounded-full px-2.5 py-0.5" style={{ color: "var(--muted)", background: "var(--neutral-soft)", border: "1px solid var(--neutral-edge)" }}>
             {fixture.leagueName}
           </span>
         </div>
@@ -259,7 +256,7 @@ function MatchHeaderCard({ fixture }: { fixture: Fixture }) {
           </div>
           <div className="flex flex-col items-center gap-2">
             <span className="text-xs font-black tracking-[0.2em]" style={{ color: "var(--muted-2)" }}>VS</span>
-            <div className="h-px w-12" style={{ background: "linear-gradient(to right, transparent, var(--accent-edge), transparent)" }} />
+            <div className="h-px w-12" style={{ background: "var(--border-s)" }} />
           </div>
           <div className="flex-1 text-center">
             <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center">
@@ -322,11 +319,8 @@ function AIVerdictCard({
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-      className="card-glass-elevated p-8 text-center relative overflow-hidden"
+      className="card p-8 text-center relative overflow-hidden"
     >
-      <div aria-hidden className="absolute inset-x-0 top-0 h-44 pointer-events-none" style={{
-        background: "radial-gradient(ellipse 60% 50% at 50% 0%, rgba(19,187,175,0.18) 0%, transparent 70%)",
-      }} />
 
       <div className="relative z-10">
         {/* AI Verdict badge */}
@@ -335,12 +329,12 @@ function AIVerdictCard({
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.1, duration: 0.4 }}
           className="mb-3 inline-flex items-center gap-1.5 rounded-full px-3 py-1"
-          style={{ border: "1px solid var(--accent-edge)", background: "var(--accent-soft)" }}
+          style={{ border: "1px solid var(--primary-edge)", background: "var(--primary-soft)" }}
         >
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" style={{ color: "var(--accent-2)" }}>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" style={{ color: "var(--primary-text)" }}>
             <path d="M13 10V3L4 14h7v7l9-11h-7z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
-          <span className="text-xs font-bold uppercase tracking-widest" style={{ color: "var(--accent-3)" }}>
+          <span className="text-xs font-bold uppercase tracking-widest" style={{ color: "var(--primary-text)" }}>
             AI Verdict
           </span>
         </motion.div>
@@ -390,7 +384,8 @@ function AIVerdictCard({
                 initial={{ width: 0 }}
                 animate={{ width: `${Math.min(Math.max(Math.round(pct), 5), 95)}%` }}
                 transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1], delay: 0.3 }}
-                className={`h-full rounded-full bg-gradient-to-r ${barColor}`}
+                className="h-full rounded-full"
+                style={{ background: barColor }}
               />
             </div>
             <p className="mt-1.5 text-center text-xs" style={{ color: "var(--muted-2)" }}>
@@ -412,23 +407,23 @@ function H2HTimeline({ h2h, teamA, teamB }: { h2h: Prediction["headToHead"]; tea
   function resultBadge(result_info: string): { label: string; cls: string } {
     const ri = (result_info || "").toLowerCase();
     if (teamA.toLowerCase().split(" ").some((w) => ri.includes(w)) && ri.includes("won"))
-      return { label: "W", cls: "bg-teal-500/20 text-teal-400 border-teal-500/30" };
+      return { label: "W", cls: "result-W" };
     if (teamB.toLowerCase().split(" ").some((w) => ri.includes(w)) && ri.includes("won"))
-      return { label: "L", cls: "bg-red-500/20 text-red-400 border-red-500/30" };
-    return { label: "D", cls: "bg-amber-500/20 text-amber-400 border-amber-500/30" };
+      return { label: "L", cls: "result-L" };
+    return { label: "D", cls: "result-D" };
   }
 
   function rowBorder(result_info: string) {
     const ri = (result_info || "").toLowerCase();
     if (teamA.toLowerCase().split(" ").some((w) => ri.includes(w)) && ri.includes("won"))
-      return "border-l-teal-500/50";
+      return "[border-left-color:var(--primary)]";
     if (teamB.toLowerCase().split(" ").some((w) => ri.includes(w)) && ri.includes("won"))
-      return "border-l-red-500/50";
-    return "border-l-amber-500/50";
+      return "[border-left-color:var(--orange)]";
+    return "[border-left-color:var(--neutral)]";
   }
 
   return (
-    <div className="card-glass p-6">
+    <div className="card p-6">
       <div className="flex items-center justify-between mb-4">
         <h3 className="section-label">Head to Head History</h3>
         <SectionBadge label="HISTORICAL DATA • football-data.org" />
@@ -451,7 +446,7 @@ function H2HTimeline({ h2h, teamA, teamB }: { h2h: Prediction["headToHead"]; tea
             const badge = resultBadge(r.result_info);
             return (
               <div key={i} className={`flex items-center gap-3 rounded-lg border-l-2 px-3 py-2.5 text-xs ${rowBorder(r.result_info)}`}
-                style={{ background: "rgba(255,255,255,0.025)" }}>
+                style={{ background: "var(--surface-2)" }}>
                 <span className="shrink-0 w-20" style={{ color: "var(--muted)" }}>{r.date}</span>
                 <span className="flex-1 truncate" style={{ color: "var(--ink-2)" }}>{r.name}</span>
                 <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-bold ${badge.cls}`}>
@@ -469,25 +464,23 @@ function H2HTimeline({ h2h, teamA, teamB }: { h2h: Prediction["headToHead"]; tea
 
 // ── Recent Form ───────────────────────────────────────────────────────────────
 
-function SplitBar({ homeVal, awayVal, redBars = false }: { homeVal: number | null; awayVal: number | null; redBars?: boolean }) {
+function SplitBar({ homeVal, awayVal }: { homeVal: number | null; awayVal: number | null }) {
   const h = homeVal ?? 0;
   const a = awayVal ?? 0;
   const total = h + a;
   const homeW = total > 0 ? (h / total) * 100 : 50;
   const awayW = total > 0 ? (a / total) * 100 : 50;
-  const homeColor = redBars ? "#ef4444" : "#275A53";
-  const awayColor = redBars ? "#ef4444" : "#13BBAF";
   return (
     <div className="flex w-full h-1.5 rounded-full overflow-hidden mt-1">
-      <div style={{ width: `${homeW}%`, background: homeColor, transition: "width 0.4s ease" }} />
-      <div style={{ width: `${awayW}%`, background: awayColor, transition: "width 0.4s ease" }} />
+      <div style={{ width: `${homeW}%`, background: "var(--home)", transition: "width 0.4s ease" }} />
+      <div style={{ width: `${awayW}%`, background: "var(--away)", transition: "width 0.4s ease" }} />
     </div>
   );
 }
 
-function StatRow({ name, homeVal, awayVal, fmt = String, redBars = false }: {
+function StatRow({ name, homeVal, awayVal, fmt = String }: {
   name: string; homeVal: number | null; awayVal: number | null;
-  fmt?: (v: number) => string; redBars?: boolean;
+  fmt?: (v: number) => string;
 }) {
   return (
     <div className="mb-3">
@@ -501,7 +494,7 @@ function StatRow({ name, homeVal, awayVal, fmt = String, redBars = false }: {
         </span>
       </div>
       {(homeVal != null || awayVal != null) && (
-        <SplitBar homeVal={homeVal} awayVal={awayVal} redBars={redBars} />
+        <SplitBar homeVal={homeVal} awayVal={awayVal} />
       )}
     </div>
   );
@@ -519,15 +512,15 @@ function GeneralStatsTab({ myStats, oppStats }: { myStats: GeneralStats | null; 
       <StatRow name="Pass Accuracy"   homeVal={myStats?.pass_accuracy ?? null}   awayVal={oppStats?.pass_accuracy ?? null} fmt={pct} />
       <StatRow name="Corners"         homeVal={myStats?.corners ?? null}         awayVal={oppStats?.corners ?? null} />
       <StatRow name="Fouls"           homeVal={myStats?.fouls ?? null}           awayVal={oppStats?.fouls ?? null} />
-      <StatRow name="Yellow Cards"    homeVal={myStats?.yellow_cards ?? null}    awayVal={oppStats?.yellow_cards ?? null} redBars />
+      <StatRow name="Yellow Cards"    homeVal={myStats?.yellow_cards ?? null}    awayVal={oppStats?.yellow_cards ?? null} />
     </div>
   );
 }
 
 const RESULT_BADGE_CLS: Record<MatchResult, string> = {
-  W: "bg-teal-500/20 text-teal-400 border-teal-500/30",
-  D: "bg-amber-500/20 text-amber-400 border-amber-500/30",
-  L: "bg-red-500/20 text-red-400 border-red-500/30",
+  W: "result-W",
+  D: "result-D",
+  L: "result-L",
 };
 
 function MatchCardInner({ fixture, teamId, defaultExpanded }: { fixture: RecentFixture; teamId: number; defaultExpanded: boolean }) {
@@ -544,12 +537,12 @@ function MatchCardInner({ fixture, teamId, defaultExpanded }: { fixture: RecentF
   const resultCls = resultLabel ? RESULT_BADGE_CLS[resultLabel] : "";
 
   return (
-    <div className="rounded-xl overflow-hidden mb-2" style={{ border: "1px solid var(--border)", background: "rgba(255,255,255,0.025)" }}>
+    <div className="rounded-xl overflow-hidden mb-2" style={{ border: "1px solid var(--border)", background: "var(--surface-2)" }}>
       <button
         onClick={() => setExpanded((e) => !e)}
         className="w-full flex items-center gap-2 px-4 py-3 text-left transition-colors"
         style={{ cursor: "pointer" }}
-        onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.04)")}
+        onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.background = "var(--surface-3)")}
         onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.background = "transparent")}
       >
         <TeamBadge name={myTeam.name} size={24} />
@@ -585,7 +578,7 @@ function RecentFormSection({ formA, formB, teamA, teamB, teamAId, teamBId }: {
   teamA: string; teamB: string; teamAId: number; teamBId: number;
 }) {
   return (
-    <div className="card-glass p-6">
+    <div className="card p-6">
       <div className="flex items-center justify-between mb-4">
         <h3 className="section-label">Recent Form</h3>
         <SectionBadge label="SCHEDULES & RESULTS • football-data.org" />
@@ -622,7 +615,7 @@ function XGSection({ xg, teamA, teamB }: { xg: { team_a_xg: number; team_b_xg: n
   const leader = xg.team_a_xg > xg.team_b_xg ? teamA : teamB;
 
   return (
-    <div className="card-glass p-6">
+    <div className="card p-6">
       <div className="flex items-center justify-between mb-4">
         <h3 className="section-label">xG Match Analysis</h3>
         <SectionBadge label="EXPECTED GOALS (xG) • football-data.org" />
@@ -632,8 +625,8 @@ function XGSection({ xg, teamA, teamB }: { xg: { team_a_xg: number; team_b_xg: n
       </p>
       <div className="space-y-4">
         {[
-          { name: teamA, xgVal: xg.team_a_xg, pct: pctA, color: "#275A53" },
-          { name: teamB, xgVal: xg.team_b_xg, pct: pctB, color: "#13BBAF" },
+          { name: teamA, xgVal: xg.team_a_xg, pct: pctA, color: "var(--home)" },
+          { name: teamB, xgVal: xg.team_b_xg, pct: pctB, color: "var(--away)" },
         ].map(({ name, xgVal, pct, color }) => (
           <div key={name}>
             <div className="flex justify-between text-xs mb-1.5">
@@ -652,7 +645,7 @@ function XGSection({ xg, teamA, teamB }: { xg: { team_a_xg: number; team_b_xg: n
           </div>
         ))}
       </div>
-      <p className="mt-4 text-xs" style={{ color: "var(--accent-3)" }}>
+      <p className="mt-4 text-xs" style={{ color: "var(--primary-text)" }}>
         {leader} created {diff} more xG — created better scoring chances
       </p>
     </div>
@@ -661,17 +654,15 @@ function XGSection({ xg, teamA, teamB }: { xg: { team_a_xg: number; team_b_xg: n
 
 // ── Season Stats ──────────────────────────────────────────────────────────────
 
-function StatBar({ label, valA, valB, nameA, nameB, invert = false }: {
+function StatBar({ label, valA, valB, nameA, nameB }: {
   label: string; valA: number | null; valB: number | null;
-  nameA: string; nameB: string; invert?: boolean;
+  nameA: string; nameB: string;
 }) {
   const a = valA ?? 0;
   const b = valB ?? 0;
   const max = Math.max(a, b, 1);
   const pA = Math.round((a / max) * 100);
   const pB = Math.round((b / max) * 100);
-  const barA = invert ? "#ef4444" : "#275A53";
-  const barB = invert ? "#ef4444" : "#13BBAF";
 
   return (
     <div className="mb-4">
@@ -683,7 +674,7 @@ function StatBar({ label, valA, valB, nameA, nameB, invert = false }: {
             <span className="font-bold" style={{ color: "var(--ink)" }}>{valA ?? "—"}</span>
           </div>
           <div className="h-2 rounded-full overflow-hidden" style={{ background: "var(--surface-2)" }}>
-            <div className="h-full rounded-full transition-all duration-700" style={{ width: `${pA}%`, background: barA }} />
+            <div className="h-full rounded-full transition-all duration-700" style={{ width: `${pA}%`, background: "var(--home)" }} />
           </div>
         </div>
         <div className="flex-1">
@@ -692,7 +683,7 @@ function StatBar({ label, valA, valB, nameA, nameB, invert = false }: {
             <span className="truncate max-w-[60%] text-right" style={{ color: "var(--muted)" }}>{nameB}</span>
           </div>
           <div className="h-2 rounded-full overflow-hidden" style={{ background: "var(--surface-2)" }}>
-            <div className="h-full rounded-full transition-all duration-700" style={{ width: `${pB}%`, background: barB }} />
+            <div className="h-full rounded-full transition-all duration-700" style={{ width: `${pB}%`, background: "var(--away)" }} />
           </div>
         </div>
       </div>
@@ -708,7 +699,7 @@ function SeasonStatsSection({ statsA, statsB, teamA, teamB }: { statsA: TeamStat
   const wrB = statsB?.wins != null ? Math.round((statsB.wins / totalB) * 100) : null;
 
   return (
-    <div className="card-glass p-6">
+    <div className="card p-6">
       <div className="flex items-center justify-between mb-4">
         <h3 className="section-label">Season Statistics</h3>
         <SectionBadge label="STATISTICS • football-data.org" />
@@ -716,7 +707,7 @@ function SeasonStatsSection({ statsA, statsB, teamA, teamB }: { statsA: TeamStat
       {noData ? <DataUnavailable /> : (
         <>
           <StatBar label="Goals Scored"   valA={statsA?.goals_scored ?? null}   valB={statsB?.goals_scored ?? null}   nameA={teamA} nameB={teamB} />
-          <StatBar label="Goals Conceded" valA={statsA?.goals_conceded ?? null} valB={statsB?.goals_conceded ?? null} nameA={teamA} nameB={teamB} invert />
+          <StatBar label="Goals Conceded" valA={statsA?.goals_conceded ?? null} valB={statsB?.goals_conceded ?? null} nameA={teamA} nameB={teamB} />
           <StatBar label="Win Rate (%)"   valA={wrA} valB={wrB} nameA={teamA} nameB={teamB} />
         </>
       )}
@@ -738,7 +729,7 @@ function StandingsSection({ standings, teamAId, teamBId }: { standings: Standing
   const slice = standings.slice(start, end);
 
   return (
-    <div className="card-glass p-6 overflow-x-auto">
+    <div className="card p-6 overflow-x-auto">
       <div className="flex items-center justify-between mb-4">
         <h3 className="section-label">League Standings</h3>
         <SectionBadge label="STANDINGS • football-data.org" />
@@ -759,8 +750,8 @@ function StandingsSection({ standings, teamAId, teamBId }: { standings: Standing
             const isHighlighted = row.participant_id === teamAId || row.participant_id === teamBId;
             return (
               <tr key={row.participant_id}
-                className={`border-l-2 transition-colors ${isHighlighted ? "border-l-teal-500" : "border-l-transparent"}`}
-                style={{ background: isHighlighted ? "rgba(19,187,175,0.07)" : "transparent" }}
+                className={`border-l-2 transition-colors ${isHighlighted ? "[border-left-color:var(--primary)]" : "border-l-transparent"}`}
+                style={{ background: isHighlighted ? "var(--primary-soft)" : "transparent" }}
               >
                 <td className="py-2 text-center font-mono">{row.position}</td>
                 <td className="py-2 pl-2 text-left">
@@ -799,7 +790,7 @@ function TrendsSection({ trends, teamA, teamB }: { trends: { team_a: string[]; t
   if (!trends || !hasAny) return null;
 
   return (
-    <div className="card-glass p-6">
+    <div className="card p-6">
       <div className="flex items-center justify-between mb-4">
         <h3 className="section-label">Current Trends</h3>
         <SectionBadge label="LIVESCORES & EVENTS • football-data.org" />
@@ -814,7 +805,7 @@ function TrendsSection({ trends, teamA, teamB }: { trends: { team_a: string[]; t
               <div className="flex flex-wrap gap-1.5">
                 {items.map((t, i) => (
                   <span key={i} className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs"
-                    style={{ border: "1px solid var(--accent-edge)", background: "var(--accent-soft)", color: "var(--accent-3)" }}>
+                    style={{ border: "1px solid var(--primary-edge)", background: "var(--primary-soft)", color: "var(--primary-text)" }}>
                     {trendEmoji(t)} {t}
                   </span>
                 ))}
@@ -832,18 +823,18 @@ function TrendsSection({ trends, teamA, teamB }: { trends: { team_a: string[]; t
 function ReasoningBreakdown({ reasoning }: { reasoning: string }) {
   const chips = extractInsightChips(reasoning);
   return (
-    <div className="card-glass p-6">
+    <div className="card p-6">
       <h3 className="section-label mb-4">AI Reasoning Breakdown</h3>
       {chips.length > 0 ? (
         <div className="space-y-3 mb-4">
           {chips.map((chip, i) => (
             <div key={i} className="insight-chip">
               <div className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md"
-                style={{ background: "var(--accent-soft)", border: "1px solid var(--accent-edge)" }}>
-                <span className="text-[10px] font-bold" style={{ color: "var(--accent-2)" }}>{i + 1}</span>
+                style={{ background: "var(--primary-soft)", border: "1px solid var(--primary-edge)" }}>
+                <span className="text-[10px] font-bold" style={{ color: "var(--primary-text)" }}>{i + 1}</span>
               </div>
               <div>
-                <p className="text-xs font-semibold mb-0.5" style={{ color: "var(--accent-3)" }}>{chip.label}</p>
+                <p className="text-xs font-semibold mb-0.5" style={{ color: "var(--primary-text)" }}>{chip.label}</p>
                 <p className="text-sm leading-relaxed" style={{ color: "var(--ink-2)" }}>{chip.text}</p>
               </div>
             </div>
@@ -856,7 +847,7 @@ function ReasoningBreakdown({ reasoning }: { reasoning: string }) {
         <details className="group">
           <summary className="cursor-pointer text-xs transition-colors select-none"
             style={{ color: "var(--muted-2)" }}
-            onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.color = "var(--accent-3)")}
+            onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.color = "var(--primary-text)")}
             onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.color = "var(--muted-2)")}
           >
             View full reasoning ↓
@@ -873,17 +864,17 @@ function ReasoningBreakdown({ reasoning }: { reasoning: string }) {
 function KeyFactorsList({ keyFactors }: { keyFactors: Array<{ title: string; text: string }> }) {
   if (!keyFactors || keyFactors.length === 0) return null;
   return (
-    <div className="card-glass p-6">
+    <div className="card p-6">
       <h3 className="section-label mb-4">Key Factors</h3>
       <div className="space-y-3">
         {keyFactors.map((kf, i) => (
           <div key={i} className="flex items-start gap-3">
             <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-[10px] font-bold"
-              style={{ background: "var(--brand-soft)", border: "1px solid rgba(39,90,83,0.3)", color: "var(--accent-2)" }}>
+              style={{ background: "var(--primary-soft)", border: "1px solid var(--border-s)", color: "var(--primary-text)" }}>
               {i + 1}
             </span>
             <div>
-              <p className="text-xs font-semibold mb-0.5" style={{ color: "var(--accent-3)" }}>{kf.title}</p>
+              <p className="text-xs font-semibold mb-0.5" style={{ color: "var(--primary-text)" }}>{kf.title}</p>
               <p className="text-sm leading-relaxed" style={{ color: "var(--ink-2)" }}>{kf.text}</p>
             </div>
           </div>
@@ -895,7 +886,7 @@ function KeyFactorsList({ keyFactors }: { keyFactors: Array<{ title: string; tex
 
 function PredictionSummaryPanel({ fixture, prediction }: { fixture: Fixture; prediction: Prediction }) {
   return (
-    <div className="card-glass p-5">
+    <div className="card p-5">
       <h3 className="section-label mb-4">Prediction Summary</h3>
       <dl className="space-y-3">
         {[
@@ -918,11 +909,11 @@ function PredictionSummaryPanel({ fixture, prediction }: { fixture: Fixture; pre
 
 function DataAvailabilitySection() {
   return (
-    <div className="card-glass p-6 border-dashed" style={{ borderColor: "var(--accent-edge)" }}>
+    <div className="card p-6 border-dashed" style={{ borderColor: "var(--primary-edge)" }}>
       <div className="flex items-start gap-3">
         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg mt-0.5"
-          style={{ background: "var(--accent-soft)", border: "1px solid var(--accent-edge)" }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style={{ color: "var(--accent-2)" }}>
+          style={{ background: "var(--primary-soft)", border: "1px solid var(--primary-edge)" }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style={{ color: "var(--primary-text)" }}>
             <path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
         </div>
@@ -966,7 +957,7 @@ function PredictLoadingState({ home, away }: { home: string; away: string }) {
     <div style={{ display:"flex", flexDirection:"column", alignItems:"center", textAlign:"center", padding:"56px 24px", animation:"fadeUp 0.4s cubic-bezier(0.16,1,0.3,1)" }}>
       <div className="loading-orb" style={{ marginBottom: 36 }}>
         <div className="loading-orb-inner">
-          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ color:"var(--accent-2)" }}>
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ color:"var(--primary-text)" }}>
             <circle cx="12" cy="12" r="10"/>
             <path d="M12 2a10 10 0 0 0-6.88 2.77L12 12l7.47-4.5A10 10 0 0 0 12 2z" fill="currentColor" fillOpacity="0.4"/>
           </svg>
@@ -985,24 +976,24 @@ function PredictLoadingState({ home, away }: { home: string; away: string }) {
           return (
             <div key={label} style={{
               display:"flex", alignItems:"center", gap:12, padding:"11px 16px", borderRadius:12,
-              background: done ? "rgba(19,187,175,0.08)" : active ? "var(--accent-soft)" : "var(--surface)",
-              border: `1px solid ${done ? "rgba(19,187,175,0.22)" : active ? "var(--accent-edge)" : "var(--border)"}`,
+              background: done ? "var(--primary-soft)" : active ? "var(--primary-soft)" : "var(--surface)",
+              border: `1px solid ${done ? "var(--primary-soft)" : active ? "var(--primary-edge)" : "var(--border)"}`,
               transition:"all 0.35s ease",
             }}>
               <div style={{
                 width:22, height:22, borderRadius:"50%", flexShrink:0, display:"grid", placeItems:"center",
-                background: done ? "#13BBAF" : active ? "var(--accent)" : "var(--surface-2)",
+                background: done ? "var(--primary-text)" : active ? "var(--primary)" : "var(--surface-2)",
                 transition:"background 0.3s ease",
               }}>
                 {done ? (
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#020E0C" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--on-accent)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
                 ) : active ? (
-                  <svg width="10" height="10" viewBox="0 0 24 24" fill="white" style={{ animation:"orbSpin 0.8s linear infinite" }}><path d="M12 2 14 9l7 2-7 2-2 7-2-7-7-2 7-2 2-7Z" /></svg>
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="var(--on-accent)" style={{ animation:"orbSpin 0.8s linear infinite" }}><path d="M12 2 14 9l7 2-7 2-2 7-2-7-7-2 7-2 2-7Z" /></svg>
                 ) : (
                   <span style={{ width:6, height:6, borderRadius:"50%", background:"var(--border-s)" }} />
                 )}
               </div>
-              <span style={{ fontSize:13, fontWeight:500, color: done ? "#13BBAF" : active ? "var(--accent-ink)" : "var(--muted)", transition:"color 0.3s ease" }}>
+              <span style={{ fontSize:13, fontWeight:500, color: done ? "var(--primary-text)" : active ? "var(--primary-text)" : "var(--muted)", transition:"color 0.3s ease" }}>
                 {label}
               </span>
             </div>
@@ -1159,13 +1150,10 @@ function PredictionContent({ matchId }: { matchId: string }) {
       <Navbar />
 
       <div className="relative pt-20">
-        <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-48" style={{
-          background: "radial-gradient(ellipse 60% 40% at 50% 0%, rgba(39,90,83,0.18) 0%, transparent 70%)",
-        }} />
         <div className="relative mx-auto max-w-4xl px-4 pt-10 pb-4 sm:px-6">
           <Link href="/dashboard" className="mb-4 inline-flex items-center gap-1.5 text-sm transition-colors"
             style={{ color: "var(--muted)" }}
-            onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.color = "var(--accent-2)")}
+            onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.color = "var(--primary-text)")}
             onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.color = "var(--muted)")}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1188,10 +1176,10 @@ function PredictionContent({ matchId }: { matchId: string }) {
         {pageState === "ready" && fixture && (
           <div className="space-y-4">
             <MatchHeaderCard fixture={fixture} />
-            <div className="card-glass p-8 flex flex-col items-center text-center gap-5">
+            <div className="card p-8 flex flex-col items-center text-center gap-5">
               <div className="flex h-16 w-16 items-center justify-center rounded-2xl"
-                style={{ background: "linear-gradient(135deg, rgba(39,90,83,0.3), rgba(19,187,175,0.2))", border: "1px solid var(--accent-edge)" }}>
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" style={{ color: "var(--accent-2)" }}>
+                style={{ background: "var(--primary-soft)", border: "1px solid var(--primary-edge)" }}>
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" style={{ color: "var(--primary-text)" }}>
                   <path d="M13 10V3L4 14h7v7l9-11h-7z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
               </div>
@@ -1277,9 +1265,9 @@ function PredictionContent({ matchId }: { matchId: string }) {
         )}
 
         {pageState === "unavailable" && (
-          <div className="card-glass p-8 flex flex-col items-center text-center gap-4" style={{ borderColor: "rgba(248,194,92,0.2)" }}>
-            <div className="flex h-14 w-14 items-center justify-center rounded-full" style={{ background: "var(--warm-bg)", border: "1px solid rgba(248,194,92,0.2)" }}>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" style={{ color: "#F8C25C" }}>
+          <div className="card p-8 flex flex-col items-center text-center gap-4" style={{ borderColor: "var(--orange-soft)" }}>
+            <div className="flex h-14 w-14 items-center justify-center rounded-full" style={{ background: "var(--orange-soft)", border: "1px solid var(--orange-edge)" }}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" style={{ color: "var(--orange)" }}>
                 <path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
             </div>

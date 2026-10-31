@@ -8,46 +8,59 @@ html {
 
 @layer base {
   :root {
-    /* ── Soccer AI Design System — Myrtle Green + Turquoise + Saffron Mango ── */
-    --bg:          #030C0A;
-    --bg-2:        #060F0D;
-    --surface:     #0B1A17;
-    --surface-2:   #0F2118;
-    --surface-3:   #142B21;
-    --border:      rgba(39,90,83,0.16);
-    --border-s:    rgba(39,90,83,0.26);
-    --border-b:    rgba(39,90,83,0.44);
-    --border-strong: rgba(39,90,83,0.32);
-    --ink:         #ECF5F3;
-    --ink-2:       #D0E8E4;
-    --muted:       #6B9E97;
-    --muted-2:     #3D7068;
-    /* ── Turquoise Topaz — primary accent ── */
-    --accent:      #13BBAF;
-    --accent-2:    #19D4C6;
-    --accent-3:    #5CDDD7;
-    --accent-soft: rgba(19,187,175,0.12);
-    --accent-edge: rgba(19,187,175,0.28);
-    --accent-ink:  #A8EDEA;
-    /* ── Myrtle Green — brand primary ── */
-    --brand:       #275A53;
-    --brand-light: #366E65;
-    --brand-soft:  rgba(39,90,83,0.18);
-    /* ── Saffron Mango — energy/action ── */
-    --warm:        #F8C25C;
-    --warm-light:  #FAD07E;
-    --warm-bg:     rgba(248,194,92,0.12);
-    /* ── Confidence states ── */
-    --hi:          #13BBAF;
-    --hi-bg:       rgba(19,187,175,0.14);
-    --mid:         #F8C25C;
-    --mid-bg:      rgba(248,194,92,0.14);
-    --lo:          #F07070;
-    --lo-bg:       rgba(240,112,112,0.14);
-    /* ── Three-segment probability bar ── */
-    --bar-home:    #275A53;
-    --bar-draw:    #F8C25C;
-    --bar-away:    #4A90B0;
+    /* ── Palette: Midnight Black #02070A, Electric Blue #0297DE, Cantaloupe Orange #FC734D ──
+       Every text/background pair here is 4.5:1 or better. Keep it that way. */
+
+    /* ── Surfaces, derived from Midnight Black ── */
+    --bg:            #02070A;
+    --surface:       #0A1218;
+    --surface-2:     #101A22;
+    --surface-3:     #17232D;
+    --scrim:         rgba(2,7,10,0.72);
+
+    /* ── Borders: low-opacity Electric Blue ── */
+    --border:        rgba(2,151,222,0.14);
+    --border-s:      rgba(2,151,222,0.22);
+    --border-strong: rgba(2,151,222,0.32);
+
+    /* ── Text ── */
+    --ink:           #EDF3F7;
+    --ink-2:         #CBD6DE;
+    --muted:         #9AA8B2;
+    --muted-2:       #84929C;
+
+    /* ── Electric Blue: primary, success, home, high confidence ── */
+    --primary:       #0297DE;
+    --primary-hover: #2BABE8;
+    --primary-text:  #35AEEA;  /* blue as text or an icon on surfaces */
+    --primary-soft:  rgba(2,151,222,0.14);
+    --primary-edge:  rgba(2,151,222,0.36);
+
+    /* ── Cantaloupe Orange: highlights, away, medium confidence. Use sparingly ── */
+    --orange:        #FC734D;
+    --orange-hover:  #FD8A6A;
+    --orange-soft:   rgba(252,115,77,0.14);
+    --orange-edge:   rgba(252,115,77,0.36);
+
+    /* ── Text on a solid blue or orange fill. White fails here (3.2:1 on blue) ── */
+    --on-accent:     #02070A;
+
+    /* ── Neutral grey: draw, low confidence ── */
+    --neutral:       #84929C;
+    --neutral-soft:  rgba(132,146,156,0.16);
+    --neutral-edge:  rgba(132,146,156,0.36);
+
+    /* ── Red: errors and destructive actions only ── */
+    --danger:        #F26B6B;
+    --danger-soft:   rgba(242,107,107,0.12);
+    --danger-edge:   rgba(242,107,107,0.36);
+
+    /* ── What the colours mean ── */
+    --home:          var(--primary);
+    --home-text:     var(--primary-text);
+    --away:          var(--orange);
+    --draw:          var(--neutral);
+
     /* ── Easing ── */
     --ease:     cubic-bezier(0.2,0.6,0.2,1);
     --ease-out: cubic-bezier(0.16,1,0.3,1);
@@ -56,11 +69,6 @@ html {
   html { scroll-behavior: smooth; }
 
   body {
-    background:
-      radial-gradient(ellipse 65% 45% at 50% 0%, rgba(39,90,83,0.28) 0%, transparent 65%),
-      radial-gradient(ellipse 40% 35% at 95% 95%, rgba(19,187,175,0.10) 0%, transparent 60%),
-      var(--bg);
-    background-attachment: fixed;
     min-height: 100vh;
     background-color: var(--bg);
     color: var(--ink);
@@ -69,77 +77,41 @@ html {
     -moz-osx-font-smoothing: grayscale;
   }
 
-  ::selection { background: rgba(19,187,175,0.30); color: #ECF5F3; }
+  ::selection { background: var(--primary); color: var(--on-accent); }
 
   ::-webkit-scrollbar { width: 6px; }
   ::-webkit-scrollbar-track { background: var(--bg); }
-  ::-webkit-scrollbar-thumb { background: rgba(39,90,83,0.55); border-radius: 3px; }
-  ::-webkit-scrollbar-thumb:hover { background: rgba(19,187,175,0.5); }
+  ::-webkit-scrollbar-thumb { background: var(--surface-3); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--muted-2); }
 }
 
 @layer components {
 
-  /* ── Glass cards ── */
-  .card-glass {
-    background: rgba(255,255,255,0.025);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
+  /* ── Card: flat surface with a hairline border ── */
+  .card {
+    background: var(--surface);
     border: 1px solid var(--border-s);
     border-radius: 16px;
-    box-shadow: 0 0 40px rgba(39,90,83,0.07), inset 0 1px 0 rgba(255,255,255,0.04);
-  }
-  .card-glass-elevated {
-    background: rgba(19,187,175,0.04);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1px solid rgba(19,187,175,0.20);
-    border-radius: 16px;
-    box-shadow: 0 0 60px rgba(19,187,175,0.12), inset 0 1px 0 rgba(255,255,255,0.06);
   }
 
-  /* ── Surface cards ── */
-  .card-surface {
-    background: var(--surface);
-    border-radius: 16px;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.4), inset 0 0 0 1px var(--border);
-  }
-  .card-surface-2 {
-    background: var(--surface-2);
-    border-radius: 12px;
-    box-shadow: inset 0 0 0 1px var(--border-s);
-  }
-
-  /* ── Primary button (Turquoise CTA) ── */
+  /* ── Primary button ── */
   .btn-primary {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 8px;
-    background: linear-gradient(180deg, #19D4C6 0%, #0EA89E 100%);
-    color: #020E0C;
+    background: var(--primary);
+    color: var(--on-accent);
     font-weight: 700;
     border-radius: 12px;
     padding: 14px 22px;
     font-size: 15px;
     letter-spacing: -0.01em;
-    transition: transform 0.15s var(--ease), box-shadow 0.2s var(--ease);
-    box-shadow:
-      0 1px 0 rgba(255,255,255,0.22) inset,
-      0 -1px 0 rgba(0,0,0,0.18) inset,
-      0 12px 26px -10px rgba(19,187,175,0.55),
-      0 0 0 1px rgba(19,187,175,0.4);
+    transition: background 0.15s var(--ease);
     cursor: pointer;
   }
-  .btn-primary:hover:not(:disabled) {
-    transform: translateY(-1px);
-    box-shadow:
-      0 1px 0 rgba(255,255,255,0.22) inset,
-      0 -1px 0 rgba(0,0,0,0.18) inset,
-      0 18px 32px -12px rgba(19,187,175,0.65),
-      0 0 0 1px rgba(25,212,198,0.55);
-  }
-  .btn-primary:active:not(:disabled) { transform: translateY(0); }
-  .btn-primary:disabled { opacity: 0.4; filter: saturate(0.6); cursor: not-allowed; }
+  .btn-primary:hover:not(:disabled) { background: var(--primary-hover); }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
 
   .btn-ghost {
     display: inline-flex;
@@ -159,96 +131,62 @@ html {
   .btn-ghost:hover { background: var(--surface-2); }
   .btn-ghost:disabled { opacity: 0.4; cursor: not-allowed; }
 
-  /* ── Dark input ── */
-  .input-dark {
-    width: 100%;
-    background: var(--surface-2);
-    border: 1px solid var(--border-s);
-    border-radius: 10px;
-    padding: 12px 14px;
-    color: var(--ink);
-    font-size: 14px;
-    transition: border-color 0.2s var(--ease), box-shadow 0.2s var(--ease);
-    outline: none;
-  }
-  .input-dark::placeholder { color: var(--muted-2); }
-  .input-dark:focus {
-    border-color: var(--accent);
-    box-shadow: 0 0 0 3px var(--accent-soft);
-  }
-
-  /* ── Confidence badges ── */
+  /* ── Confidence badges: high = blue, medium = orange, low = grey ── */
   .badge-high {
     display: inline-flex; align-items: center; gap: 5px;
-    background: var(--hi-bg); color: var(--hi);
-    border: 1px solid rgba(19,187,175,0.32);
+    background: var(--primary-soft); color: var(--primary-text);
+    border: 1px solid var(--primary-edge);
     border-radius: 999px; padding: 4px 12px;
     font-size: 12px; font-weight: 600;
   }
   .badge-medium {
     display: inline-flex; align-items: center; gap: 5px;
-    background: var(--mid-bg); color: var(--mid);
-    border: 1px solid rgba(248,194,92,0.32);
+    background: var(--orange-soft); color: var(--orange);
+    border: 1px solid var(--orange-edge);
     border-radius: 999px; padding: 4px 12px;
     font-size: 12px; font-weight: 600;
   }
   .badge-low {
     display: inline-flex; align-items: center; gap: 5px;
-    background: var(--lo-bg); color: var(--lo);
-    border: 1px solid rgba(240,112,112,0.32);
+    background: var(--neutral-soft); color: var(--muted);
+    border: 1px solid var(--neutral-edge);
     border-radius: 999px; padding: 4px 12px;
     font-size: 12px; font-weight: 600;
   }
 
   /* ── Source badges ── */
-  .badge-football-data {
+  .badge-football-data, .badge-gemini, .badge-live, .badge-preview {
     display: inline-flex; align-items: center; gap: 5px;
-    background: rgba(19,187,175,0.10); color: var(--accent-3);
-    border: 1px solid rgba(19,187,175,0.22);
     border-radius: 999px; padding: 3px 10px;
     font-size: 11px; font-weight: 600;
+  }
+  .badge-football-data, .badge-live {
+    background: var(--primary-soft); color: var(--primary-text);
+    border: 1px solid var(--primary-edge);
   }
   .badge-gemini {
-    display: inline-flex; align-items: center; gap: 5px;
-    background: rgba(248,194,92,0.12); color: #F8C25C;
-    border: 1px solid rgba(248,194,92,0.28);
-    border-radius: 999px; padding: 3px 10px;
-    font-size: 11px; font-weight: 600;
-  }
-  .badge-live {
-    display: inline-flex; align-items: center; gap: 5px;
-    background: rgba(34,197,94,0.12); color: #4ADE80;
-    border: 1px solid rgba(34,197,94,0.25);
-    border-radius: 999px; padding: 3px 10px;
-    font-size: 11px; font-weight: 600;
+    background: var(--neutral-soft); color: var(--ink-2);
+    border: 1px solid var(--neutral-edge);
   }
   .badge-preview {
-    display: inline-flex; align-items: center; gap: 5px;
-    background: rgba(248,194,92,0.10); color: #F8C25C;
-    border: 1px solid rgba(248,194,92,0.22);
-    border-radius: 999px; padding: 3px 10px;
-    font-size: 11px; font-weight: 600;
+    background: var(--orange-soft); color: var(--orange);
+    border: 1px solid var(--orange-edge);
   }
+
+  /* ── Result chips: win = blue, draw = grey, loss = orange ── */
+  .result-W, .result-D, .result-L { border-width: 1px; border-style: solid; }
+  .result-W { background: var(--primary-soft); color: var(--primary-text); border-color: var(--primary-edge); }
+  .result-D { background: var(--neutral-soft); color: var(--muted); border-color: var(--neutral-edge); }
+  .result-L { background: var(--orange-soft); color: var(--orange); border-color: var(--orange-edge); }
 
   /* ── Insight chips ── */
   .insight-chip {
     display: flex; align-items: flex-start; gap: 12px;
     border-radius: 12px;
-    border: 1px solid rgba(19,187,175,0.15);
-    background: rgba(19,187,175,0.05);
+    border: 1px solid var(--border-s);
+    background: var(--surface-2);
     padding: 14px 16px;
   }
-
-  /* ── Form pill (W/D/L) ── */
-  .form-pill {
-    display: inline-grid; place-items: center;
-    width: 18px; height: 18px;
-    border-radius: 4px; font-size: 10px;
-    font-weight: 700; letter-spacing: 0.02em;
-  }
-  .form-pill-W { background: rgba(19,187,175,0.2); color: #13BBAF; }
-  .form-pill-D { background: rgba(248,194,92,0.15); color: #F8C25C; }
-  .form-pill-L { background: rgba(248,113,113,0.2); color: #F87171; }
 
   /* ── Section label ── */
   .section-label {
@@ -267,38 +205,29 @@ html {
   /* ── Live dot ── */
   .live-dot {
     display: inline-block; width: 7px; height: 7px;
-    border-radius: 50%; background: #22C55E;
-    box-shadow: 0 0 0 4px rgba(34,197,94,0.18);
+    border-radius: 50%; background: var(--primary);
     animation: livePulse 2.2s ease infinite;
   }
   @keyframes livePulse {
-    0%,100% { box-shadow: 0 0 0 4px rgba(34,197,94,0.18); }
-    50%      { box-shadow: 0 0 0 7px rgba(34,197,94,0.05); }
+    0%,100% { opacity: 1; }
+    50%      { opacity: 0.4; }
   }
 
-  /* ── Spinning orb (prediction loading) — soccer-green ── */
+  /* ── Spinning ring (prediction loading) ── */
   .loading-orb {
     width: 120px; height: 120px; border-radius: 50%; position: relative;
-    background: conic-gradient(from 0deg, #0D3D38, #13BBAF, #275A53, #5DCFC9, #F8C25C, #0D3D38);
-    animation: orbSpin 3.5s linear infinite;
-    box-shadow:
-      0 40px 80px -20px rgba(19,187,175,0.45),
-      0 0 0 1px rgba(19,187,175,0.25);
   }
-  .loading-orb::after {
-    content: ""; position: absolute; inset: 10px; border-radius: 50%;
-    background: radial-gradient(circle at 30% 30%, var(--surface) 0%, var(--bg) 100%);
-    box-shadow: inset 0 0 30px rgba(19,187,175,0.25);
+  .loading-orb::before {
+    content: ""; position: absolute; inset: 0; border-radius: 50%;
+    border: 3px solid var(--surface-3);
+    border-top-color: var(--primary);
+    animation: orbSpin 1.4s linear infinite;
   }
   .loading-orb-inner {
     position: absolute; inset: 0; display: grid; place-items: center;
-    z-index: 1; animation: pulseScale 2s ease infinite;
+    z-index: 1;
   }
   @keyframes orbSpin { to { transform: rotate(360deg); } }
-  @keyframes pulseScale {
-    0%,100% { transform: scale(1); opacity: 0.95; }
-    50%      { transform: scale(1.08); opacity: 1; }
-  }
 
   /* ── Fade-in ── */
   .animate-fade-in { animation: fadeUp 0.45s var(--ease-out); }

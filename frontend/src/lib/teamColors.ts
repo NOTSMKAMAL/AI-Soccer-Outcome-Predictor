@@ -234,11 +234,24 @@ function generateAbbr(name: string): string {
   return words.slice(0, 3).map((w) => w[0]).join("").toUpperCase();
 }
 
-/** Black or white, whichever stays readable on a "#RRGGBB" background. */
+const BADGE_TEXT_DARK = "#02070A";
+const BADGE_TEXT_LIGHT = "#FFFFFF";
+
+/** WCAG relative luminance of a "#RRGGBB" colour. */
+function relativeLuminance(hex: string): number {
+  const channel = (start: number) => {
+    const value = parseInt(hex.slice(start, start + 2), 16) / 255;
+    return value <= 0.03928 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+  };
+  return 0.2126 * channel(1) + 0.7152 * channel(3) + 0.0722 * channel(5);
+}
+
+/** The dark or light text colour with the higher contrast on a "#RRGGBB" background. */
 export function readableTextOn(hex: string): string {
-  const channel = (start: number) => parseInt(hex.slice(start, start + 2), 16);
-  const luminance = 0.299 * channel(1) + 0.587 * channel(3) + 0.114 * channel(5);
-  return luminance > 150 ? "#04110F" : "#FFFFFF";
+  const background = relativeLuminance(hex);
+  const onLight = (background + 0.05) / (relativeLuminance(BADGE_TEXT_DARK) + 0.05);
+  const onDark = 1.05 / (background + 0.05);
+  return onLight >= onDark ? BADGE_TEXT_DARK : BADGE_TEXT_LIGHT;
 }
 
 export function getTeamColor(name: string): { primary: string; abbr: string } {

@@ -16,7 +16,7 @@ export default function TeamBadge({ name, size = 52 }: { name: string; size?: nu
         width: size, height: size, flexShrink: 0,
         borderRadius: Math.round(size * 0.27),
         background: primary,
-        boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.14)",
+        boxShadow: "inset 0 0 0 1px var(--border-s)",
         display: "grid", placeItems: "center",
         color: readableTextOn(primary),
         fontSize: Math.max(MIN_FONT_SIZE, Math.round(size * 0.27)),

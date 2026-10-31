@@ -37,5 +37,5 @@ export function LegalSection({ heading, children }: { heading: string; children:
 }
 
 export function ContactLink() {
-  return <a href={`mailto:${CONTACT_EMAIL}`} style={{ color: "var(--accent-2)" }}>{CONTACT_EMAIL}</a>;
+  return <a href={`mailto:${CONTACT_EMAIL}`} style={{ color: "var(--primary-text)" }}>{CONTACT_EMAIL}</a>;
 }

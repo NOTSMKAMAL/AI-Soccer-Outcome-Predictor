@@ -97,8 +97,7 @@ function Field({
         style={{
           minWidth: 0,
           background: "var(--surface-2)",
-          border: `1px solid ${error ? "rgba(248,113,113,0.5)" : "var(--border-s)"}`,
-          boxShadow: error ? "0 0 0 3px rgba(248,113,113,0.12)" : undefined,
+          border: `1px solid ${error ? "var(--danger-edge)" : "var(--border-s)"}`,
         }}
       >
         <span style={{ color: "var(--muted-2)", display: "inline-flex", flexShrink: 0 }}>
@@ -123,7 +122,7 @@ function Field({
         />
         {extra}
       </div>
-      {error && <p className="text-xs" style={{ color: "var(--lo)" }}>{error}</p>}
+      {error && <p className="text-xs" style={{ color: "var(--danger)" }}>{error}</p>}
     </div>
   );
 }
@@ -212,47 +211,15 @@ export default function AuthPage() {
       {/* ── LEFT PANEL ── */}
       <aside
         style={{
-          background: "linear-gradient(135deg, #020D0B 0%, #0B2420 40%, #1A4039 100%)",
+          background: "var(--surface)",
+          borderRight: "1px solid var(--border-s)",
           position: "relative",
           overflow: "hidden",
           padding: "56px",
-          color: "white",
+          color: "var(--ink)",
         }}
         className="hidden lg:flex lg:flex-col"
       >
-        {/* Animated orbs */}
-        <div aria-hidden style={{ position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none" }}>
-          <div
-            style={{
-              position: "absolute", borderRadius: "50%",
-              width: 460, height: 460, top: -160, right: -120,
-              background: "radial-gradient(closest-side, rgba(19,187,175,0.35), transparent 70%)",
-              filter: "blur(60px)",
-              animation: "drift 18s ease infinite",
-            }}
-          />
-          <div
-            style={{
-              position: "absolute", borderRadius: "50%",
-              width: 380, height: 380, bottom: -100, left: -100,
-              background: "radial-gradient(closest-side, rgba(248,194,92,0.25), transparent 70%)",
-              filter: "blur(60px)",
-              animation: "drift 18s ease -7s infinite",
-            }}
-          />
-          <div
-            style={{
-              position: "absolute", borderRadius: "50%",
-              width: 260, height: 260, bottom: "30%", right: -60,
-              background: "radial-gradient(closest-side, rgba(39,90,83,0.5), transparent 70%)",
-              filter: "blur(40px)",
-              animation: "drift 22s ease -3s infinite",
-            }}
-          />
-        </div>
-
-        <style>{`@keyframes drift { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-16px)} }`}</style>
-
         {/* Content */}
         <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", height: "100%", maxWidth: 520, margin: "0 auto", width: "100%" }}>
           {/* Brand */}
@@ -275,7 +242,7 @@ export default function AuthPage() {
           >
             Get started with AI match predictions.
           </h1>
-          <p style={{ fontSize: 16, lineHeight: 1.55, color: "rgba(255,255,255,0.72)", marginBottom: 36 }}>
+          <p style={{ fontSize: 16, lineHeight: 1.55, color: "var(--ink-2)", marginBottom: 36 }}>
             Create an account to access live fixtures, AI predictions and match insights across
             the top leagues.
           </p>
@@ -292,35 +259,34 @@ export default function AuthPage() {
                 style={{
                   display: "flex", alignItems: "flex-start", gap: 14,
                   padding: "14px 18px",
-                  background: "rgba(255,255,255,0.06)",
+                  background: "var(--surface-2)",
                   borderRadius: 14,
-                  boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.12)",
-                  backdropFilter: "blur(8px)",
+                  boxShadow: "inset 0 0 0 1px var(--border-s)",
                 }}
               >
                 <span
                   style={{
                     fontFamily: "var(--font-display), monospace", fontSize: 11, fontWeight: 700, letterSpacing: "0.06em",
-                    color: "#13BBAF",
-                    background: "rgba(19,187,175,0.18)",
+                    color: "var(--primary-text)",
+                    background: "var(--primary-soft)",
                     padding: "5px 9px",
                     borderRadius: 8,
-                    boxShadow: "inset 0 0 0 1px rgba(19,187,175,0.3)",
+                    boxShadow: "inset 0 0 0 1px var(--primary-edge)",
                     flexShrink: 0,
                   }}
                 >
                   {s.n}
                 </span>
                 <div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: "white" }}>{s.title}</div>
-                  <div style={{ fontSize: 12, color: "rgba(255,255,255,0.65)", marginTop: 3, lineHeight: 1.5 }}>{s.desc}</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)" }}>{s.title}</div>
+                  <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 3, lineHeight: 1.5 }}>{s.desc}</div>
                 </div>
               </li>
             ))}
           </ol>
 
           {/* Footer disclaimer */}
-          <div style={{ marginTop: 32, display: "flex", alignItems: "center", gap: 8, fontSize: 11, color: "rgba(255,255,255,0.5)" }}>
+          <div style={{ marginTop: 32, display: "flex", alignItems: "center", gap: 8, fontSize: 11, color: "var(--muted)" }}>
             <InfoIcon />
             <span>Analytics and entertainment only. Not betting advice.</span>
           </div>
@@ -348,7 +314,7 @@ export default function AuthPage() {
             width: "100%", maxWidth: 440,
             background: "var(--surface)",
             borderRadius: 20,
-            boxShadow: "0 30px 70px -30px rgba(0,0,0,0.5), inset 0 0 0 1px var(--border-s)",
+            boxShadow: "inset 0 0 0 1px var(--border-s)",
             padding: 32,
           }}
         >
@@ -373,8 +339,7 @@ export default function AuthPage() {
                 left: 4,
                 width: "calc(50% - 4px)",
                 borderRadius: 999,
-                background: "linear-gradient(180deg, #19D4C6, #13BBAF)",
-                boxShadow: "0 6px 16px -4px rgba(19,187,175,0.55)",
+                background: "var(--primary)",
                 transition: "transform 0.3s cubic-bezier(0.2,0.6,0.2,1)",
                 transform: tab === "signup" ? "translateX(100%)" : "translateX(0)",
                 zIndex: 0,
@@ -390,7 +355,7 @@ export default function AuthPage() {
                   padding: "10px",
                   fontSize: 13,
                   fontWeight: 600,
-                  color: tab === t ? "#020E0C" : "var(--muted)",
+                  color: tab === t ? "var(--on-accent)" : "var(--muted)",
                   background: "transparent",
                   border: "none",
                   cursor: "pointer",
@@ -501,7 +466,7 @@ export default function AuthPage() {
                   <button
                     type="button"
                     disabled={busy}
-                    style={{ fontSize: 12, color: "var(--accent-2)", background: "none", border: "none", cursor: "pointer", flexShrink: 0 }}
+                    style={{ fontSize: 12, color: "var(--primary-text)", background: "none", border: "none", cursor: "pointer", flexShrink: 0 }}
                     onClick={handleForgotPassword}
                   >
                     Forgot?
@@ -516,8 +481,8 @@ export default function AuthPage() {
                 style={{
                   padding: "10px 14px",
                   borderRadius: 10,
-                  background: "var(--accent-soft)",
-                  border: "1px solid var(--accent-edge)",
+                  background: "var(--primary-soft)",
+                  border: "1px solid var(--primary-edge)",
                 }}
               >
                 <p style={{ margin: 0, fontSize: 13, color: "var(--ink-2)" }}>
@@ -531,11 +496,11 @@ export default function AuthPage() {
                 style={{
                   padding: "10px 14px",
                   borderRadius: 10,
-                  background: "var(--lo-bg)",
-                  border: "1px solid rgba(248,113,113,0.25)",
+                  background: "var(--danger-soft)",
+                  border: "1px solid var(--danger-edge)",
                 }}
               >
-                <p style={{ margin: 0, fontSize: 13, color: "var(--lo)" }}>{globalError}</p>
+                <p style={{ margin: 0, fontSize: 13, color: "var(--danger)" }}>{globalError}</p>
               </div>
             )}
 
@@ -559,8 +524,8 @@ export default function AuthPage() {
           {/* Shown on both tabs: Continue with Google can also create an account */}
           <p style={{ marginTop: 16, textAlign: "center", fontSize: 12, color: "var(--muted)", lineHeight: 1.5 }}>
             By creating an account you agree to the{" "}
-            <Link href="/terms" style={{ color: "var(--accent-2)" }}>Terms</Link> and{" "}
-            <Link href="/privacy" style={{ color: "var(--accent-2)" }}>Privacy Policy</Link>.
+            <Link href="/terms" style={{ color: "var(--primary-text)" }}>Terms</Link> and{" "}
+            <Link href="/privacy" style={{ color: "var(--primary-text)" }}>Privacy Policy</Link>.
           </p>
 
           {/* Switch */}
@@ -571,7 +536,7 @@ export default function AuthPage() {
                 <button
                   type="button"
                   onClick={() => { setTab("signup"); setErrors({}); setGlobalError(""); }}
-                  style={{ color: "var(--accent-2)", background: "none", border: "none", cursor: "pointer", fontWeight: 600 }}
+                  style={{ color: "var(--primary-text)", background: "none", border: "none", cursor: "pointer", fontWeight: 600 }}
                 >
                   Sign up
                 </button>
@@ -582,7 +547,7 @@ export default function AuthPage() {
                 <button
                   type="button"
                   onClick={() => { setTab("signin"); setErrors({}); setGlobalError(""); }}
-                  style={{ color: "var(--accent-2)", background: "none", border: "none", cursor: "pointer", fontWeight: 600 }}
+                  style={{ color: "var(--primary-text)", background: "none", border: "none", cursor: "pointer", fontWeight: 600 }}
                 >
                   Log in
                 </button>

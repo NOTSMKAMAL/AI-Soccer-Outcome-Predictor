@@ -105,8 +105,7 @@ function AccountSettingsModal({
       onClick={handleOverlayClick}
       style={{
         position: "fixed", inset: 0, zIndex: 200,
-        background: "rgba(0,0,0,0.60)",
-        backdropFilter: "blur(4px)",
+        background: "var(--scrim)",
         display: "grid", placeItems: "center",
         padding: 24,
         animation: "fadeIn 0.15s ease",
@@ -122,7 +121,7 @@ function AccountSettingsModal({
         maxHeight: "calc(100dvh - 48px)", overflowY: "auto",
         background: "var(--surface)",
         borderRadius: 20,
-        boxShadow: "0 40px 80px -30px rgba(0,0,0,0.7), inset 0 0 0 1px rgba(19,187,175,0.15)",
+        boxShadow: "inset 0 0 0 1px var(--border-s)",
         padding: 28,
         animation: "slideUp 0.2s cubic-bezier(0.16,1,0.3,1)",
       }}>
@@ -153,10 +152,9 @@ function AccountSettingsModal({
         <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 24, padding: "14px 16px", borderRadius: 12, background: "var(--surface-2)", border: "1px solid var(--border)" }}>
           <div style={{
             width: 44, height: 44, borderRadius: "50%", flexShrink: 0,
-            background: "linear-gradient(135deg, #13BBAF, #275A53)",
+            background: "var(--primary)",
             display: "grid", placeItems: "center",
-            color: "white", fontWeight: 700, fontSize: 18,
-            boxShadow: "0 6px 16px -4px rgba(19,187,175,0.4)",
+            color: "var(--on-accent)", fontWeight: 700, fontSize: 18,
           }}>
             {firstName ? firstName[0].toUpperCase() : initial}
           </div>
@@ -188,7 +186,7 @@ function AccountSettingsModal({
                   background: "var(--surface-2)", color: "var(--ink)",
                   border: "1px solid var(--border-strong)", outline: "none",
                 }}
-                onFocus={(e) => (e.currentTarget.style.borderColor = "rgba(19,187,175,0.5)")}
+                onFocus={(e) => (e.currentTarget.style.borderColor = "var(--primary)")}
                 onBlur={(e)  => (e.currentTarget.style.borderColor = "var(--border-strong)")}
               />
             </div>
@@ -206,14 +204,14 @@ function AccountSettingsModal({
                   background: "var(--surface-2)", color: "var(--ink)",
                   border: "1px solid var(--border-strong)", outline: "none",
                 }}
-                onFocus={(e) => (e.currentTarget.style.borderColor = "rgba(19,187,175,0.5)")}
+                onFocus={(e) => (e.currentTarget.style.borderColor = "var(--primary)")}
                 onBlur={(e)  => (e.currentTarget.style.borderColor = "var(--border-strong)")}
               />
             </div>
           </div>
 
           {error && (
-            <p style={{ margin: 0, fontSize: 13, color: "var(--lo)", padding: "8px 12px", borderRadius: 8, background: "rgba(240,112,112,0.08)", border: "1px solid rgba(240,112,112,0.2)" }}>
+            <p style={{ margin: 0, fontSize: 13, color: "var(--danger)", padding: "8px 12px", borderRadius: 8, background: "var(--danger-soft)", border: "1px solid var(--danger-edge)" }}>
               {error}
             </p>
           )}
@@ -236,13 +234,12 @@ function AccountSettingsModal({
               style={{
                 flex: 1, padding: "10px 16px", borderRadius: 10, fontSize: 14, fontWeight: 600,
                 background: saved
-                  ? "rgba(19,187,175,0.15)"
-                  : "linear-gradient(135deg, #19D4C6 0%, #0EA89E 100%)",
-                color: saved ? "#13BBAF" : "#020E0C",
-                border: saved ? "1px solid rgba(19,187,175,0.3)" : "none",
+                  ? "var(--primary-soft)"
+                  : "var(--primary)",
+                color: saved ? "var(--primary-text)" : "var(--on-accent)",
+                border: saved ? "1px solid var(--primary-edge)" : "none",
                 cursor: busy || saved ? "default" : "pointer",
                 display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-                boxShadow: saved ? "none" : "0 6px 16px -4px rgba(19,187,175,0.35)",
                 transition: "all 0.2s",
                 opacity: busy ? 0.7 : 1,
               }}
@@ -290,12 +287,11 @@ function UserMenu({
         onClick={() => setOpen((o) => !o)}
         style={{
           width: 34, height: 34, borderRadius: "50%",
-          background: "linear-gradient(135deg, #13BBAF 0%, #275A53 100%)",
+          background: "var(--primary)",
           display: "grid", placeItems: "center",
-          color: "white", fontWeight: 700, fontSize: 13,
-          border: open ? "2px solid rgba(19,187,175,0.7)" : "2px solid transparent",
+          color: "var(--on-accent)", fontWeight: 700, fontSize: 13,
+          border: open ? "2px solid var(--primary-edge)" : "2px solid transparent",
           cursor: "pointer", transition: "border-color 0.2s",
-          boxShadow: "0 6px 16px -4px rgba(19,187,175,0.4)",
         }}
         aria-label="User menu"
       >
@@ -306,7 +302,7 @@ function UserMenu({
         <div style={{
           position: "absolute", top: "calc(100% + 10px)", right: 0,
           minWidth: 220, background: "var(--surface)", borderRadius: 14,
-          boxShadow: "0 20px 60px -20px rgba(0,0,0,0.6), inset 0 0 0 1px var(--border-s)",
+          boxShadow: "inset 0 0 0 1px var(--border-s)",
           padding: "6px", zIndex: 50,
           animation: "dropIn 0.18s cubic-bezier(0.16,1,0.3,1)",
         }}>
@@ -315,9 +311,9 @@ function UserMenu({
           <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", marginBottom: 4 }}>
             <div style={{
               width: 36, height: 36, borderRadius: "50%",
-              background: "linear-gradient(135deg, #13BBAF, #275A53)",
+              background: "var(--primary)",
               display: "grid", placeItems: "center",
-              color: "white", fontWeight: 700, fontSize: 14, flexShrink: 0,
+              color: "var(--on-accent)", fontWeight: 700, fontSize: 14, flexShrink: 0,
             }}>
               {initial}
             </div>
@@ -357,10 +353,10 @@ function UserMenu({
               display: "flex", alignItems: "center", gap: 10,
               width: "100%", padding: "9px 12px",
               background: "none", border: "none", cursor: "pointer",
-              fontSize: 13, color: "var(--lo)", borderRadius: 8, textAlign: "left",
+              fontSize: 13, color: "var(--danger)", borderRadius: 8, textAlign: "left",
               transition: "background 0.15s",
             }}
-            onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.background = "rgba(240,112,112,0.1)")}
+            onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.background = "var(--danger-soft)")}
             onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.background = "none")}
           >
             <span style={{ display: "inline-flex" }}><LogoutIcon /></span>
@@ -389,9 +385,7 @@ export default function Navbar() {
     <>
       <header style={{
         position: "fixed", top: 0, left: 0, right: 0, zIndex: 40,
-        background: "color-mix(in srgb, var(--bg) 80%, transparent)",
-        backdropFilter: "saturate(180%) blur(20px)",
-        WebkitBackdropFilter: "saturate(180%) blur(20px)",
+        background: "var(--bg)",
         borderBottom: "1px solid var(--border)",
       }}>
         <div style={{

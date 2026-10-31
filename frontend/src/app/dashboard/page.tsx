@@ -12,7 +12,6 @@ import { getTopLeagueFixtures } from "@/lib/api";
 import { MOCK_FIXTURES } from "@/lib/mockData";
 import type { Fixture } from "@/lib/types";
 import { parseFixtureDate, toLADateStr, isUpcomingLA } from "@/lib/dateUtils";
-import { getLeagueAccent } from "@/lib/leagueColors";
 
 type LoadState = "loading" | "success" | "error";
 
@@ -52,10 +51,10 @@ function StatsRow({ fixtures, liveCount, isLive }: { fixtures: Fixture[]; liveCo
   const leagueCount = new Set(fixtures.map((f) => f.leagueName)).size;
 
   const stats = [
-    { label: "Matches available", value: fixtures.length, accent: "var(--accent-2)" },
-    { label: "Live now",          value: liveCount, accent: "#4ADE80", live: liveCount > 0 },
-    { label: "Leagues covered",   value: leagueCount || "—", accent: "var(--warm)" },
-    { label: "Data source",       value: isLive ? "Live" : "Preview", accent: isLive ? "#4ADE80" : "var(--warm)" },
+    { label: "Matches available", value: fixtures.length, accent: "var(--primary-text)" },
+    { label: "Live now",          value: liveCount, accent: "var(--primary-text)", live: liveCount > 0 },
+    { label: "Leagues covered",   value: leagueCount || "—", accent: "var(--ink)" },
+    { label: "Data source",       value: isLive ? "Live" : "Preview", accent: isLive ? "var(--primary-text)" : "var(--orange)" },
   ];
 
   return (
@@ -166,11 +165,6 @@ function DashboardContent() {
 
       {/* Hero strip */}
       <div style={{ position: "relative", paddingTop: 24 }}>
-        <div aria-hidden style={{
-          position: "absolute", inset: "0 0 auto 0", height: 180,
-          background: "radial-gradient(ellipse 70% 40% at 50% 0%, rgba(39,90,83,0.18) 0%, transparent 70%)",
-          pointerEvents: "none",
-        }} />
         <div style={{ position: "relative", maxWidth: 1240, margin: "0 auto", padding: `28px ${SIDE_GUTTER} 20px` }}>
           <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-end", justifyContent: "space-between", gap: 16, marginBottom: 24 }}>
             <div>
@@ -194,7 +188,7 @@ function DashboardContent() {
               )}
               {isMockData && !isLiveData && (
                 <span className="badge-preview">
-                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#F8C25C", display: "inline-block" }} />
+                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--orange)", display: "inline-block" }} />
                   Preview Data
                 </span>
               )}
@@ -221,13 +215,13 @@ function DashboardContent() {
           <div style={{
             display: "flex", alignItems: "center", gap: 12, marginBottom: 20,
             padding: "12px 16px", borderRadius: 12,
-            border: "1px solid rgba(248,194,92,0.2)", background: "rgba(248,194,92,0.06)",
+            border: "1px solid var(--orange-edge)", background: "var(--orange-soft)",
           }}>
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0, color: "#F8C25C" }}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0, color: "var(--orange)" }}>
               <path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"
                 stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
-            <p style={{ margin: 0, fontSize: 13, color: "#F8C25C" }}>
+            <p style={{ margin: 0, fontSize: 13, color: "var(--orange)" }}>
               Showing preview fixtures because live football-data.org data is not available.
             </p>
           </div>
@@ -251,22 +245,21 @@ function DashboardContent() {
         {state !== "loading" && filtered.length > 0 && (
           <div style={{ display: "flex", flexDirection: "column", gap: 36 }}>
             {Object.entries(grouped).map(([leagueName, leagueFixtures]) => {
-              const accent = getLeagueAccent(leagueName);
               return (
                 <section key={leagueName}>
                   <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
-                    <div style={{ width: 4, height: 22, borderRadius: 2, background: accent, flexShrink: 0 }} />
+                    <div style={{ width: 4, height: 22, borderRadius: 2, background: "var(--primary)", flexShrink: 0 }} />
                     <h2 style={{ fontWeight: 700, fontSize: 15, color: "var(--ink)", margin: 0, fontFamily: "var(--font-display), system-ui", letterSpacing: "-0.01em" }}>
                       {leagueName}
                     </h2>
-                    <div style={{ flex: 1, height: 1, background: "linear-gradient(to right, var(--border-s), transparent)" }} />
+                    <div style={{ flex: 1, height: 1, background: "var(--border-s)" }} />
                     <span style={{ fontSize: 12, color: "var(--muted-2)" }}>
                       {leagueFixtures.length} {leagueFixtures.length === 1 ? "fixture" : "fixtures"}
                     </span>
                   </div>
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(340px, 100%), 1fr))", gap: 12 }}>
                     {leagueFixtures.map((f) => (
-                      <MatchCard key={f.id} fixture={f} leagueAccent={accent} />
+                      <MatchCard key={f.id} fixture={f} />
                     ))}
                   </div>
                 </section>

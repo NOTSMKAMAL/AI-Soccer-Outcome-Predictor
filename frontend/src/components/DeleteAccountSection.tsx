@@ -11,8 +11,8 @@ const POPUP_CLOSED_CODES = ["auth/popup-closed-by-user", "auth/cancelled-popup-r
 
 const dangerButton: React.CSSProperties = {
   padding: "9px 14px", borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: "pointer",
-  background: "rgba(240,112,112,0.12)", color: "var(--lo)",
-  border: "1px solid rgba(240,112,112,0.35)",
+  background: "var(--danger-soft)", color: "var(--danger)",
+  border: "1px solid var(--danger-edge)",
 };
 const plainButton: React.CSSProperties = {
   padding: "9px 14px", borderRadius: 10, fontSize: 13, fontWeight: 500, cursor: "pointer",
@@ -138,7 +138,7 @@ export default function DeleteAccountSection() {
         </form>
       )}
 
-      {error && <p role="alert" style={{ margin: "10px 0 0", fontSize: 12, color: "var(--lo)" }}>{error}</p>}
+      {error && <p role="alert" style={{ margin: "10px 0 0", fontSize: 12, color: "var(--danger)" }}>{error}</p>}
     </div>
   );
 }

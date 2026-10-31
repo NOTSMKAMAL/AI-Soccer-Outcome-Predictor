@@ -11,13 +11,13 @@ function useLandingCta() {
 // ── Static hero preview card ──────────────────────────────────────────────────
 
 const SAMPLE_FIXTURES = [
-  { league: "EPL", leagueColor: "#9381FF", home: "Liverpool", away: "Man City",  status: "live", minute: "67'", conf: 72, level: "medium" },
-  { league: "LIG", leagueColor: "#EE8707", home: "Real Ma…", away: "Barcel…",   status: "today", time: "21:00", conf: 68, level: "medium" },
-  { league: "SA",  leagueColor: "#4A9FFF", home: "Inter Mil…", away: "AC Mil…", status: "today", time: "20:45", conf: 81, level: "high" },
+  { league: "EPL", home: "Liverpool", away: "Man City",  status: "live", minute: "67'", conf: 72, level: "medium" },
+  { league: "LIG", home: "Real Ma…", away: "Barcel…",   status: "today", time: "21:00", conf: 68, level: "medium" },
+  { league: "SA",  home: "Inter Mil…", away: "AC Mil…", status: "today", time: "20:45", conf: 81, level: "high" },
 ];
 
 function ConfDot({ level }: { level: string }) {
-  const color = level === "high" ? "#13BBAF" : level === "medium" ? "#F8C25C" : "#F87171";
+  const color = level === "high" ? "var(--primary-text)" : level === "medium" ? "var(--orange)" : "var(--muted-2)";
   return <span style={{ width: 6, height: 6, borderRadius: "50%", background: color, display: "inline-block", marginRight: 4 }} />;
 }
 
@@ -35,27 +35,18 @@ function HeroPreviewCard() {
   const cta = useLandingCta();
   return (
     <div style={{ position: "relative", flex: "0 0 auto", width: "min(460px, 100%)" }}>
-      {/* Glow */}
-      <div aria-hidden style={{
-        position: "absolute", inset: "-40px -60px",
-        background: "radial-gradient(ellipse 70% 60% at 55% 45%, rgba(19,187,175,0.25) 0%, transparent 70%)",
-        pointerEvents: "none",
-      }} />
       {/* Card */}
       <div style={{
         position: "relative",
         background: "var(--surface)",
         borderRadius: 20,
-        boxShadow: "0 30px 70px -24px rgba(0,0,0,0.7), inset 0 0 0 1px rgba(255,255,255,0.10)",
+        boxShadow: "inset 0 0 0 1px var(--border-s)",
         overflow: "hidden",
       }}>
-        {/* Top accent line */}
-        <div style={{ height: 2, background: "linear-gradient(90deg, transparent, #13BBAF 30%, #275A53 70%, transparent)" }} />
-
         {/* Header */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px 12px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#13BBAF", display: "inline-block", boxShadow: "0 0 6px #13BBAF" }} />
+            <span style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--primary)", display: "inline-block" }} />
             <span style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)" }}>Prediction board preview</span>
           </div>
           <span style={{
@@ -80,7 +71,7 @@ function HeroPreviewCard() {
               {/* League badge */}
               <span style={{
                 fontSize: 10, fontWeight: 700, letterSpacing: "0.05em",
-                color: f.leagueColor, minWidth: 28, flexShrink: 0,
+                color: "var(--muted)", minWidth: 28, flexShrink: 0,
               }}>
                 {f.league}
               </span>
@@ -95,7 +86,7 @@ function HeroPreviewCard() {
               {/* Status */}
               <span style={{ fontSize: 11, color: "var(--muted)", whiteSpace: "nowrap", flexShrink: 0 }}>
                 {f.status === "live" ? (
-                  <><span style={{ color: "#4ADE80" }}>● </span>Live · {f.minute}</>
+                  <><span style={{ color: "var(--primary-text)" }}>● </span>Live · {f.minute}</>
                 ) : (
                   <>Today · {f.time}</>
                 )}
@@ -105,8 +96,8 @@ function HeroPreviewCard() {
               <span style={{
                 fontSize: 11, fontWeight: 700,
                 padding: "3px 8px", borderRadius: 20,
-                background: f.level === "high" ? "rgba(19,187,175,0.12)" : "rgba(248,194,92,0.12)",
-                color: f.level === "high" ? "#13BBAF" : "#F8C25C",
+                background: f.level === "high" ? "var(--primary-soft)" : "var(--orange-soft)",
+                color: f.level === "high" ? "var(--primary-text)" : "var(--orange)",
                 display: "flex", alignItems: "center", flexShrink: 0,
               }}>
                 <ConfDot level={f.level} />
@@ -124,7 +115,7 @@ function HeroPreviewCard() {
           marginTop: 4,
         }}>
           <span style={{ fontSize: 12, color: "var(--muted)" }}>Illustrative, not real matches</span>
-          <Link href={cta.href} style={{ fontSize: 12, color: "var(--accent-2)", fontWeight: 600, textDecoration: "none" }}>
+          <Link href={cta.href} style={{ fontSize: 12, color: "var(--primary-text)", fontWeight: 600, textDecoration: "none" }}>
             View all →
           </Link>
         </div>
@@ -136,12 +127,12 @@ function HeroPreviewCard() {
 // ── Data ──────────────────────────────────────────────────────────────────────
 
 const LEAGUES = [
-  { name: "Premier League",   country: "England", color: "#9381FF" },
-  { name: "La Liga",          country: "Spain",   color: "#EE8707" },
-  { name: "Serie A",          country: "Italy",   color: "#4A9FFF" },
-  { name: "Bundesliga",       country: "Germany", color: "#EE8707" },
-  { name: "Ligue 1",          country: "France",  color: "#4A9FFF" },
-  { name: "Champions League", country: "Europe",  color: "#00B2A9" },
+  { name: "Premier League",   country: "England" },
+  { name: "La Liga",          country: "Spain" },
+  { name: "Serie A",          country: "Italy" },
+  { name: "Bundesliga",       country: "Germany" },
+  { name: "Ligue 1",          country: "France" },
+  { name: "Champions League", country: "Europe" },
 ];
 
 const FEATURES = [
@@ -185,18 +176,11 @@ export default function HomePage() {
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", overflowX: "clip" }}>
 
-      {/* ── Ambient top glow ── */}
-      <div aria-hidden style={{
-        position: "fixed", inset: "0 0 auto 0", height: 600, pointerEvents: "none", zIndex: 0,
-        background: "radial-gradient(ellipse 70% 50% at 50% 0%, rgba(39,90,83,0.22) 0%, transparent 70%)",
-      }} />
 
       {/* ── Landing nav ── */}
       <header style={{
         position: "sticky", top: 0, zIndex: 40,
-        background: "color-mix(in srgb, var(--bg) 80%, transparent)",
-        backdropFilter: "saturate(180%) blur(20px)",
-        WebkitBackdropFilter: "saturate(180%) blur(20px)",
+        background: "var(--bg)",
         borderBottom: "1px solid var(--border)",
       }}>
         <div style={{
@@ -257,9 +241,8 @@ export default function HomePage() {
           <Link href={cta.href} style={{
             display: "inline-flex", alignItems: "center", gap: 6,
             padding: "9px 18px", borderRadius: 10, fontSize: 14, fontWeight: 600,
-            background: "linear-gradient(180deg, #19D4C6 0%, #0EA89E 100%)",
-            color: "#020E0C", textDecoration: "none",
-            boxShadow: "0 6px 16px -4px rgba(19,187,175,0.5)",
+            background: "var(--primary)",
+            color: "var(--on-accent)", textDecoration: "none",
             transition: "opacity 0.15s",
             visibility: cta.ready ? "visible" : "hidden",
           }}>
@@ -283,19 +266,18 @@ export default function HomePage() {
             <div style={{
               display: "inline-flex", alignItems: "center", gap: 8,
               padding: "5px 14px 5px 6px", borderRadius: 999,
-              background: "rgba(19,187,175,0.10)",
-              border: "1px solid rgba(19,187,175,0.25)",
+              background: "var(--primary-soft)",
+              border: "1px solid var(--primary-edge)",
               marginBottom: 28,
             }}>
               <span style={{
                 width: 22, height: 22, borderRadius: "50%",
-                background: "linear-gradient(135deg, #13BBAF, #275A53)",
-                display: "grid", placeItems: "center", color: "white", fontSize: 10,
-                boxShadow: "0 2px 8px rgba(19,187,175,0.4)",
+                background: "var(--primary)",
+                display: "grid", placeItems: "center", color: "var(--on-accent)", fontSize: 10,
               }}>
                 <SoccerBallSm />
               </span>
-              <span style={{ fontSize: 12, fontWeight: 500, color: "var(--accent-2)" }}>
+              <span style={{ fontSize: 12, fontWeight: 500, color: "var(--primary-text)" }}>
                 Football predictions from a statistical model and AI
               </span>
             </div>
@@ -309,8 +291,7 @@ export default function HomePage() {
               Predict football outcomes with{" "}
               <em style={{
                 fontStyle: "normal",
-                background: "linear-gradient(135deg, #5CDDD7 0%, #13BBAF 40%, #275A53 100%)",
-                WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent",
+                color: "var(--primary-text)",
               }}>
                 real match data
               </em>
@@ -326,9 +307,8 @@ export default function HomePage() {
               <Link href={cta.href} style={{
                 display: "inline-flex", alignItems: "center", gap: 8,
                 padding: "14px 28px", borderRadius: 12, fontSize: 16, fontWeight: 600,
-                background: "linear-gradient(180deg, #19D4C6 0%, #0EA89E 100%)",
-                color: "#020E0C", textDecoration: "none",
-                boxShadow: "0 8px 24px -6px rgba(19,187,175,0.5)",
+                background: "var(--primary)",
+                color: "var(--on-accent)", textDecoration: "none",
                 visibility: cta.ready ? "visible" : "hidden",
               }}>
                 {cta.label}
@@ -350,7 +330,7 @@ export default function HomePage() {
             <div style={{ display: "flex", flexWrap: "wrap", gap: "8px 20px" }}>
               {["No credit card", "football-data.org data", "Gemini reasoning"].map((t) => (
                 <span key={t} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--muted)" }}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#13BBAF" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--primary-text)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M20 6L9 17l-5-5" />
                   </svg>
                   {t}
@@ -377,7 +357,7 @@ export default function HomePage() {
                 padding: "7px 14px", borderRadius: 999,
                 background: "var(--surface-2)", border: "1px solid var(--border-strong)",
               }}>
-                <span style={{ width: 8, height: 8, borderRadius: "50%", background: l.color, display: "inline-block" }} />
+                <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--primary)", display: "inline-block" }} />
                 <strong style={{ fontSize: 13, color: "var(--ink)", fontWeight: 600 }}>{l.name}</strong>
                 <span style={{ fontSize: 12, color: "var(--muted)" }}>· {l.country}</span>
               </div>
@@ -392,7 +372,7 @@ export default function HomePage() {
           <header style={{ textAlign: "center", marginBottom: 56 }}>
             <div style={{
               display: "inline-block", fontSize: 11, fontWeight: 700, letterSpacing: "0.12em",
-              textTransform: "uppercase", color: "var(--accent-2)",
+              textTransform: "uppercase", color: "var(--primary-text)",
               marginBottom: 14,
             }}>
               Why this exists
@@ -415,7 +395,7 @@ export default function HomePage() {
               }}
               onMouseEnter={e => {
                 (e.currentTarget as HTMLElement).style.transform = "translateY(-3px)";
-                (e.currentTarget as HTMLElement).style.boxShadow = "0 20px 40px -16px rgba(0,0,0,0.4), inset 0 0 0 1px rgba(19,187,175,0.2)";
+                (e.currentTarget as HTMLElement).style.boxShadow = "inset 0 0 0 1px var(--border-s)";
               }}
               onMouseLeave={e => {
                 (e.currentTarget as HTMLElement).style.transform = "";
@@ -424,8 +404,8 @@ export default function HomePage() {
               >
                 <div style={{
                   width: 44, height: 44, borderRadius: 12, marginBottom: 20,
-                  background: "rgba(19,187,175,0.10)", border: "1px solid rgba(19,187,175,0.22)",
-                  display: "grid", placeItems: "center", color: "var(--accent-2)",
+                  background: "var(--primary-soft)", border: "1px solid var(--primary-edge)",
+                  display: "grid", placeItems: "center", color: "var(--primary-text)",
                 }}>
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                     {f.icon}
@@ -452,7 +432,7 @@ export default function HomePage() {
           <header style={{ textAlign: "center", marginBottom: 56 }}>
             <div style={{
               display: "inline-block", fontSize: 11, fontWeight: 700, letterSpacing: "0.12em",
-              textTransform: "uppercase", color: "var(--accent-2)", marginBottom: 14,
+              textTransform: "uppercase", color: "var(--primary-text)", marginBottom: 14,
             }}>
               How it works
             </div>
@@ -469,9 +449,9 @@ export default function HomePage() {
               }}>
                 <div style={{
                   fontFamily: "var(--font-display), monospace", fontSize: 12, fontWeight: 700, letterSpacing: "0.08em",
-                  color: "#13BBAF", marginBottom: 14,
+                  color: "var(--primary-text)", marginBottom: 14,
                   padding: "5px 10px", borderRadius: 8, display: "inline-block",
-                  background: "rgba(19,187,175,0.10)", border: "1px solid rgba(19,187,175,0.22)",
+                  background: "var(--primary-soft)", border: "1px solid var(--primary-edge)",
                 }}>
                   {s.n}
                 </div>
@@ -498,9 +478,8 @@ export default function HomePage() {
             <Link href={cta.href} style={{
               display: "inline-flex", alignItems: "center", gap: 8,
               padding: "14px 32px", borderRadius: 12, fontSize: 16, fontWeight: 600,
-              background: "linear-gradient(180deg, #19D4C6 0%, #0EA89E 100%)",
-              color: "#020E0C", textDecoration: "none",
-              boxShadow: "0 8px 24px -6px rgba(19,187,175,0.5)",
+              background: "var(--primary)",
+              color: "var(--on-accent)", textDecoration: "none",
             }}>
               {cta.signedIn ? cta.label : "Create your account"}
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">

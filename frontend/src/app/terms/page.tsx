@@ -11,7 +11,7 @@ export default function TermsPage() {
         <p>
           FUTURE FC is a public, non-commercial portfolio project. By creating an account or using
           the site you agree to these terms. You must be at least 13 to use it. Our{" "}
-          <Link href="/privacy" style={{ color: "var(--accent-2)" }}>Privacy Policy</Link> explains
+          <Link href="/privacy" style={{ color: "var(--primary-text)" }}>Privacy Policy</Link> explains
           how data is handled.
         </p>
       </LegalSection>

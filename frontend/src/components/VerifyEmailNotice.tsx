@@ -62,7 +62,7 @@ export default function VerifyEmailNotice() {
       </div>
       {status && (
         <p role="status" className="text-xs max-w-xs"
-          style={{ color: status.tone === "warn" ? "#F8C25C" : "var(--muted)" }}>
+          style={{ color: status.tone === "warn" ? "var(--orange)" : "var(--muted)" }}>
           {status.text}
         </p>
       )}
