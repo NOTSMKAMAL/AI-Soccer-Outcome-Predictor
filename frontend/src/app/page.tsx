@@ -9,8 +9,8 @@ import { useAuth } from "@/context/AuthContext";
 
 const SAMPLE_FIXTURES = [
   { league: "EPL", home: "Liverpool", away: "Man City",  status: "live", minute: "67'", conf: 72, level: "medium" },
-  { league: "LIG", home: "Real Ma…", away: "Barcel…",   status: "today", time: "21:00", conf: 68, level: "medium" },
-  { league: "SA",  home: "Inter Mil…", away: "AC Mil…", status: "today", time: "20:45", conf: 81, level: "high" },
+  { league: "LIG", home: "Real Madrid", away: "Barcelona", status: "today", time: "21:00", conf: 68, level: "medium" },
+  { league: "SA",  home: "Inter Milan", away: "AC Milan", status: "today", time: "20:45", conf: 81, level: "high" },
 ];
 
 function ConfDot({ level }: { level: string }) {
@@ -43,7 +43,7 @@ function HeroPreviewCard() {
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px 12px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <span style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--primary)", display: "inline-block" }} />
-            <span style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)" }}>Prediction board preview</span>
+            <span style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)" }}>Match list preview</span>
           </div>
           <span style={{
             fontSize: 12, color: "var(--muted)", fontWeight: 500,
@@ -73,10 +73,10 @@ function HeroPreviewCard() {
               </span>
 
               {/* Teams */}
-              <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 500, color: "var(--ink-2)", minWidth: 0 }}>
-                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.home}</span>
+              <div style={{ flex: 1, display: "flex", alignItems: "center", flexWrap: "wrap", gap: 5, fontSize: 12, fontWeight: 500, color: "var(--ink-2)", minWidth: 0 }}>
+                <span>{f.home}</span>
                 <span style={{ color: "var(--muted-2)", flexShrink: 0 }}>vs</span>
-                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.away}</span>
+                <span>{f.away}</span>
               </div>
 
               {/* Status */}
@@ -112,7 +112,7 @@ function HeroPreviewCard() {
         }}>
           <span style={{ fontSize: 12, color: "var(--muted)" }}>Illustrative, not real matches</span>
           <Link href="/auth" replace style={{ display: "inline-flex", alignItems: "center", minHeight: 24, fontSize: 12, color: "var(--primary-text)", fontWeight: 600, textDecoration: "none" }}>
-            View all →
+            Sign in to see all →
           </Link>
         </div>
       </div>
@@ -159,7 +159,7 @@ const FEATURES = [
 ];
 
 const STEPS = [
-  { n: "01", title: "Sign in",                   desc: "Email / password or Google. Firebase Auth handles the rest." },
+  { n: "01", title: "Sign in",                   desc: "Use email and password, or your Google account." },
   { n: "02", title: "Browse upcoming matches",   desc: "Real fixtures across all six competitions, filtered by league." },
   { n: "03", title: "Generate an AI prediction", desc: "One click runs the model and asks Gemini to explain the result." },
   { n: "04", title: "Review the breakdown",      desc: "Probabilities, confidence band, reasoning and key factors." },
@@ -308,7 +308,7 @@ function LandingPage() {
                 background: "var(--surface)", color: "var(--ink-2)", textDecoration: "none",
                 border: "1px solid var(--border-strong)",
               }}>
-                View matches
+                Sign in
               </Link>
             </div>
 
@@ -445,7 +445,7 @@ function LandingPage() {
       <section style={{ position: "relative", zIndex: 1, padding: "96px clamp(16px, 4vw, 32px)" }}>
         <div style={{ maxWidth: 640, margin: "0 auto", textAlign: "center" }}>
           <h2 style={{ fontSize: "clamp(28px, 4vw, 42px)", fontWeight: 700, letterSpacing: "-0.03em", color: "var(--ink)", margin: "0 0 16px", fontFamily: "var(--font-display), system-ui" }}>
-            Ready to see today&apos;s board?
+            Ready to see today&apos;s matches?
           </h2>
           <p style={{ fontSize: 16, color: "var(--muted)", maxWidth: 480, margin: "0 auto 32px", lineHeight: 1.6 }}>
             Sign in to access fixtures and AI predictions across all six competitions.

@@ -88,7 +88,7 @@ function AccountSettingsModal({
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     const name = [firstName.trim(), lastName.trim()].filter(Boolean).join(" ");
-    if (!name) { setError("First name is required."); return; }
+    if (!name) { setError("Enter your first name."); return; }
     setBusy(true);
     setError("");
     try {
@@ -96,7 +96,7 @@ function AccountSettingsModal({
       setSaved(true);
       setTimeout(close, 900);
     } catch {
-      setError("Failed to update name. Please try again.");
+      setError("Unable to save your name. Check your connection and try again.");
     } finally {
       setBusy(false);
     }

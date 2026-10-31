@@ -22,11 +22,11 @@ const plainButton: React.CSSProperties = {
 
 function describeError(err: unknown): string {
   const code = (err as { code?: string })?.code ?? "";
-  if (WRONG_PASSWORD_CODES.includes(code)) return "That password isn't right. Please try again.";
+  if (WRONG_PASSWORD_CODES.includes(code)) return "That password isn't right. Try again.";
   if (POPUP_CLOSED_CODES.includes(code)) return "Sign-in was cancelled, so nothing was deleted.";
-  if (code === "auth/too-many-requests") return "Too many attempts. Please wait a few minutes and try again.";
+  if (code === "auth/too-many-requests") return "Too many attempts. Wait a few minutes and try again.";
   const message = err instanceof Error ? err.message : "";
-  return message.replace(/^API \d+:\s*/, "") || "Something went wrong, so nothing was deleted. Please try again.";
+  return message.replace(/^API \d+:\s*/, "") || "Your account wasn't deleted. Check your connection and try again.";
 }
 
 /** Account settings section: confirm, sign in again if needed, delete. */
@@ -110,7 +110,7 @@ export default function DeleteAccountSection() {
       {stage === "reauth" && (
         <form onSubmit={handleReauth}>
           <p style={{ fontSize: 12, color: "var(--muted)", margin: "0 0 10px" }}>
-            For your security, please sign in again to confirm it&apos;s you.
+            For your security, sign in again to confirm it&apos;s you.
             Your account will be deleted straight after.
           </p>
           {usesPassword && (

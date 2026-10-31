@@ -159,8 +159,8 @@ export default function AuthPage() {
     e.preventDefault();
     const errs: Record<string, string> = {};
     if (!email.includes("@")) errs.email = "Enter a valid email.";
-    if (password.length < 6) errs.password = "At least 6 characters.";
-    if (tab === "signup" && !firstName) errs.firstName = "Required";
+    if (password.length < 6) errs.password = "Use at least 6 characters.";
+    if (tab === "signup" && !firstName) errs.firstName = "Enter your first name.";
     setErrors(errs);
     if (Object.keys(errs).length) return;
 
@@ -256,7 +256,7 @@ export default function AuthPage() {
           {/* Steps */}
           <ol style={{ listStyle: "none", padding: 0, margin: "0 0 auto", display: "flex", flexDirection: "column", gap: 10 }}>
             {[
-              { n: "01", title: "Create your account", desc: "Email / password or Google — Firebase handles auth." },
+              { n: "01", title: "Create your account", desc: "Use email and password, or your Google account." },
               { n: "02", title: "Browse fixtures", desc: "Real football-data.org data across six top competitions." },
               { n: "03", title: "Generate predictions", desc: "One-click probabilities with Gemini reasoning and confidence." },
             ].map((s) => (
@@ -382,7 +382,7 @@ export default function AuthPage() {
               {tab === "signin" ? "Welcome back" : "Create your account"}
             </h1>
             <p style={{ fontSize: 13, color: "var(--muted)", margin: 0 }}>
-              {tab === "signin" ? "Sign in to view today's prediction board." : "Free to use. No payment needed."}
+              {tab === "signin" ? "Sign in to see today's matches." : "Free to use. No payment needed."}
             </p>
           </div>
 
@@ -556,7 +556,7 @@ export default function AuthPage() {
                   onClick={() => { setTab("signin"); setErrors({}); setGlobalError(""); }}
                   style={{ minHeight: 24, color: "var(--primary-text)", background: "none", border: "none", cursor: "pointer", fontWeight: 600 }}
                 >
-                  Log in
+                  Sign in
                 </button>
               </>
             )}

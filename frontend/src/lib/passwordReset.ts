@@ -6,7 +6,7 @@ export const RESET_SENT_MESSAGE =
 // account exists, so reporting them reveals nothing about who has signed up.
 const RETRY_MESSAGES: Record<string, string> = {
   "auth/network-request-failed": "Couldn't reach the server. Check your connection and try again.",
-  "auth/too-many-requests": "Too many attempts. Please wait a few minutes and try again.",
+  "auth/too-many-requests": "Too many attempts. Wait a few minutes and try again.",
 };
 
 /**

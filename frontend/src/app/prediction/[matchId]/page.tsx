@@ -338,7 +338,7 @@ function AIVerdictCard({
             {prediction.confidence
               ? prediction.confidence.charAt(0).toUpperCase() + prediction.confidence.slice(1)
               : "Unknown"}{" "}
-            Confidence
+            confidence
           </span>
         </div>
 
@@ -465,18 +465,17 @@ function StatRow({ name, homeVal, awayVal, fmt = String }: {
 }
 
 function GeneralStatsTab({ myStats, oppStats }: { myStats: GeneralStats | null; oppStats: GeneralStats | null }) {
-  if (!myStats && !oppStats) return <p className="text-xs italic py-2" style={{ color: "var(--muted-2)" }}>Match stats not available</p>;
   const pct = (v: number) => `${v}%`;
   return (
     <div className="pt-2">
-      <StatRow name="Shots Total"     homeVal={myStats?.shots_total ?? null}     awayVal={oppStats?.shots_total ?? null} />
-      <StatRow name="Shots On Target" homeVal={myStats?.shots_on_target ?? null} awayVal={oppStats?.shots_on_target ?? null} />
+      <StatRow name="Shots total"     homeVal={myStats?.shots_total ?? null}     awayVal={oppStats?.shots_total ?? null} />
+      <StatRow name="Shots on target" homeVal={myStats?.shots_on_target ?? null} awayVal={oppStats?.shots_on_target ?? null} />
       <StatRow name="Possession"      homeVal={myStats?.possession ?? null}      awayVal={oppStats?.possession ?? null}  fmt={pct} />
       <StatRow name="Passes"          homeVal={myStats?.passes ?? null}          awayVal={oppStats?.passes ?? null} />
-      <StatRow name="Pass Accuracy"   homeVal={myStats?.pass_accuracy ?? null}   awayVal={oppStats?.pass_accuracy ?? null} fmt={pct} />
+      <StatRow name="Pass accuracy"   homeVal={myStats?.pass_accuracy ?? null}   awayVal={oppStats?.pass_accuracy ?? null} fmt={pct} />
       <StatRow name="Corners"         homeVal={myStats?.corners ?? null}         awayVal={oppStats?.corners ?? null} />
       <StatRow name="Fouls"           homeVal={myStats?.fouls ?? null}           awayVal={oppStats?.fouls ?? null} />
-      <StatRow name="Yellow Cards"    homeVal={myStats?.yellow_cards ?? null}    awayVal={oppStats?.yellow_cards ?? null} />
+      <StatRow name="Yellow cards"    homeVal={myStats?.yellow_cards ?? null}    awayVal={oppStats?.yellow_cards ?? null} />
     </div>
   );
 }
@@ -494,6 +493,8 @@ function MatchCardInner({ fixture, teamId, defaultExpanded }: { fixture: RecentF
   const oppTeam = isHome ? fixture.away_team  : fixture.home_team;
   const myGeneral  = isHome ? fixture.general_stats?.home : fixture.general_stats?.away;
   const oppGeneral = isHome ? fixture.general_stats?.away : fixture.general_stats?.home;
+  // Only matches with stats open: the free data plan has none, and an empty panel promises nothing.
+  const hasStats = Boolean(myGeneral || oppGeneral);
   const myScore  = isHome ? fixture.score?.home : fixture.score?.away;
   const oppScore = isHome ? fixture.score?.away : fixture.score?.home;
   const scoreStr = myScore != null && oppScore != null ? `${myScore} — ${oppScore}` : "vs";
@@ -504,8 +505,10 @@ function MatchCardInner({ fixture, teamId, defaultExpanded }: { fixture: RecentF
     <div className="rounded-xl overflow-hidden mb-2" style={{ border: "1px solid var(--border)", background: "var(--surface-2)" }}>
       <button
         onClick={() => setExpanded((e) => !e)}
-        className="hover-fill-strong w-full flex flex-wrap items-center gap-2 px-4 py-3 text-left transition-colors"
-        style={{ cursor: "pointer" }}
+        disabled={!hasStats}
+        aria-expanded={hasStats ? expanded : undefined}
+        className={`${hasStats ? "hover-fill-strong " : ""}w-full flex flex-wrap items-center gap-2 px-4 py-3 text-left transition-colors`}
+        style={{ cursor: hasStats ? "pointer" : "default" }}
       >
         <TeamBadge name={myTeam.name} size={32} />
         <span className="text-xs flex-1 min-w-0 break-words" style={{ color: "var(--ink-2)" }}>{myTeam.name}</span>
@@ -517,13 +520,15 @@ function MatchCardInner({ fixture, teamId, defaultExpanded }: { fixture: RecentF
             <span className={`shrink-0 rounded-full border px-1.5 py-0.5 text-xs font-bold ${resultCls}`}>{resultLabel}</span>
           )}
           <span className="text-xs" style={{ color: "var(--muted-2)" }}>{fixture.date}</span>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-            className={`ml-auto transition-transform ${expanded ? "rotate-180" : ""}`} style={{ color: "var(--muted-2)" }}>
-            <path d="M6 9l6 6 6-6" />
-          </svg>
+          {hasStats && (
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+              className={`ml-auto transition-transform ${expanded ? "rotate-180" : ""}`} style={{ color: "var(--muted-2)" }}>
+              <path d="M6 9l6 6 6-6" />
+            </svg>
+          )}
         </span>
       </button>
-      {expanded && (
+      {hasStats && expanded && (
         <div className="px-4 pb-4">
           <div className="flex items-center justify-between py-2 mb-1" style={{ borderTop: "1px solid var(--border)" }}>
             <TeamBadge name={myTeam.name} size={32} />
@@ -671,9 +676,9 @@ function SeasonStatsSection({ statsA, statsB, teamA, teamB }: { statsA: TeamStat
       </div>
       {noData ? <DataUnavailable /> : (
         <>
-          <StatBar label="Goals Scored"   valA={statsA?.goals_scored ?? null}   valB={statsB?.goals_scored ?? null}   nameA={teamA} nameB={teamB} />
-          <StatBar label="Goals Conceded" valA={statsA?.goals_conceded ?? null} valB={statsB?.goals_conceded ?? null} nameA={teamA} nameB={teamB} />
-          <StatBar label="Win Rate (%)"   valA={wrA} valB={wrB} nameA={teamA} nameB={teamB} />
+          <StatBar label="Goals scored"   valA={statsA?.goals_scored ?? null}   valB={statsB?.goals_scored ?? null}   nameA={teamA} nameB={teamB} />
+          <StatBar label="Goals conceded" valA={statsA?.goals_conceded ?? null} valB={statsB?.goals_conceded ?? null} nameA={teamA} nameB={teamB} />
+          <StatBar label="Win rate (%)"   valA={wrA} valB={wrB} nameA={teamA} nameB={teamB} />
         </>
       )}
     </div>
@@ -853,13 +858,13 @@ function PredictionSummaryPanel({ fixture, prediction }: { fixture: Fixture; pre
       <h3 className="section-label mb-4">Prediction Summary</h3>
       <dl className="space-y-3">
         {[
-          { term: "Predicted Winner", value: prediction.winner || "Unknown" },
+          { term: "Predicted winner", value: prediction.winner || "Unknown" },
           { term: "Confidence", value: prediction.confidence ? prediction.confidence.charAt(0).toUpperCase() + prediction.confidence.slice(1) : "Unknown" },
           { term: "Probabilities", value: prediction.probabilityMethod === "confidence-estimate" ? "Estimate (standings unavailable)" : "Dixon-Coles model" },
           { term: "Match", value: fixture.name },
           { term: "League", value: fixture.leagueName },
-          { term: "Fixture Source", value: fixture._isMock ? "Preview (mock)" : "football-data.org" },
-          { term: "AI Engine", value: "Google Gemini 2.5 Flash" },
+          { term: "Fixture source", value: fixture._isMock ? "Preview data" : "football-data.org" },
+          { term: "AI engine", value: "Google Gemini 2.5 Flash" },
         ].map(({ term, value }) => (
           <div key={term} className="flex items-start justify-between gap-3 text-sm">
             <dt style={{ color: "var(--muted)", flexShrink: 0 }}>{term}</dt>
@@ -904,16 +909,15 @@ function Disclaimer() {
 
 function PredictLoadingState({ home, away }: { home: string; away: string }) {
   const STEPS = [
-    "Reading team form",
-    "Comparing attacking strength",
-    "Checking defensive trends",
-    "Generating AI prediction",
+    "Gathering standings and recent form",
+    "Working out the probabilities",
+    "Asking Gemini to explain them",
   ];
   const [step, setStep] = React.useState(0);
   React.useEffect(() => {
     const interval = setInterval(() => {
       setStep((s) => Math.min(STEPS.length - 1, s + 1));
-    }, 520);
+    }, 3000);
     return () => clearInterval(interval);
   }, []);
 
@@ -1153,7 +1157,7 @@ function PredictionContent({ matchId }: { matchId: string }) {
                     </p>
                   </div>
                   <button onClick={handlePredict} disabled={outOfPredictions} className="btn-primary text-base px-10 py-3.5">
-                    Generate AI Prediction
+                    Generate AI prediction
                   </button>
                   <AllowanceBadge allowance={allowance} />
                 </>
@@ -1233,7 +1237,7 @@ function PredictionContent({ matchId }: { matchId: string }) {
               </svg>
             </div>
             <div>
-              <h3 className="font-semibold" style={{ color: "var(--ink)" }}>Prediction Unavailable</h3>
+              <h3 className="font-semibold" style={{ color: "var(--ink)" }}>Prediction unavailable</h3>
               <p className="mt-2 text-sm max-w-sm" style={{ color: "var(--muted)" }}>
                 {errorMsg || "This match can't be predicted right now. Pick another from the match list."}
               </p>

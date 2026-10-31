@@ -174,7 +174,7 @@ function DashboardContent() {
                 letterSpacing: "-0.025em", margin: "0 0 4px", color: "var(--ink)",
                 fontFamily: "var(--font-display), system-ui",
               }}>
-                {tab === "live" ? "Live Fixtures" : "Upcoming Fixtures"}
+                {tab === "live" ? "Live fixtures" : "Upcoming fixtures"}
               </h1>
               <p style={{ fontSize: 13, color: "var(--muted)", margin: 0 }}>
                 Select a fixture to generate an AI-powered match prediction.
@@ -190,7 +190,7 @@ function DashboardContent() {
               {isMockData && !isLiveData && (
                 <span className="badge-preview">
                   <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--orange)", display: "inline-block" }} />
-                  Preview Data
+                  Preview data
                 </span>
               )}
               <span className="badge-gemini">

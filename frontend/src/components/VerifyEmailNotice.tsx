@@ -23,8 +23,8 @@ export default function VerifyEmailNotice() {
       setStatus({
         tone: "warn",
         text: code === TOO_MANY_REQUESTS
-          ? "Too many attempts. Please wait a few minutes and try again."
-          : "That didn't work. Please try again.",
+          ? "Too many attempts. Wait a few minutes and try again."
+          : "That didn't work. Check your connection and try again.",
       });
     } finally {
       setBusy(false);
