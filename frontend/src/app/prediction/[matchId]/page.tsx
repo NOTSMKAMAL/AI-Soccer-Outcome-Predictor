@@ -13,6 +13,7 @@ import VerifyEmailNotice from "@/components/VerifyEmailNotice";
 import { describeApiError, getFixtureById, generatePrediction, getPredictionAllowance } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import type { Fixture, Prediction, PredictionAllowance } from "@/lib/types";
+import { parseFixtureDate, formatLADateLong, formatLATime } from "@/lib/dateUtils";
 import { resultFromScores, type MatchResult } from "@/lib/matchResult";
 import { extractInsightChips } from "@/lib/reasoningInsights";
 
@@ -117,17 +118,8 @@ function confidenceBadgeClass(level: string) {
 }
 
 function formatMatchTime(isoString: string): string {
-  try {
-    const d = new Date(
-      isoString.includes("T") ? isoString : isoString.replace(" ", "T") + "Z"
-    );
-    return d.toLocaleDateString("en-US", {
-      weekday: "long", year: "numeric", month: "long", day: "numeric",
-      hour: "numeric", minute: "2-digit", timeZoneName: "short",
-    });
-  } catch {
-    return isoString;
-  }
+  const date = parseFixtureDate(isoString);
+  return `${formatLADateLong(date)}, ${formatLATime(date)}`;
 }
 
 function buildVerdictHeadline(winner: string, confidence: string): string {

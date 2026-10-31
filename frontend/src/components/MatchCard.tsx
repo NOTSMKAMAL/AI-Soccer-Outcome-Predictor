@@ -5,6 +5,7 @@ import type { CSSProperties } from "react";
 import TeamBadge from "@/components/TeamBadge";
 import type { Fixture } from "@/lib/types";
 import { parseFixtureDate, formatLATime, formatLADateLabel, formatLADateLong } from "@/lib/dateUtils";
+import { isFinishedStatus, isLiveStatus } from "@/lib/fixtureStatus";
 
 interface Props {
   fixture: Fixture;
@@ -25,8 +26,8 @@ function formatKickoff(isoString: string): { dateLabel: string; time: string; fu
 
 function StatusChip({ status }: { status: string }) {
   const s = status?.toLowerCase() ?? "";
-  const isLive = s === "inplay" || s === "live" || s === "halftime";
-  const isFinished = ["finished", "ft", "aet", "pen"].includes(s);
+  const isLive = isLiveStatus(status);
+  const isFinished = isFinishedStatus(status);
 
   if (isLive) {
     return (
@@ -64,9 +65,8 @@ function StatusChip({ status }: { status: string }) {
 }
 
 export default function MatchCard({ fixture }: Props) {
-  const s = fixture.status?.toLowerCase() ?? "";
-  const isLive = s === "inplay" || s === "live" || s === "halftime";
-  const isFinished = ["finished", "ft", "aet", "pen"].includes(s);
+  const isLive = isLiveStatus(fixture.status);
+  const isFinished = isFinishedStatus(fixture.status);
   // Mock fixtures have no real match behind them, so the backend can never predict them.
   const isPreview = fixture._isMock === true;
   const canPredict = !isFinished && !isPreview;

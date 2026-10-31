@@ -9,6 +9,7 @@ import { MatchCardSkeleton } from "@/components/LoadingSkeleton";
 import EmptyState from "@/components/EmptyState";
 import ErrorState from "@/components/ErrorState";
 import { describeApiError, getTopLeagueFixtures } from "@/lib/api";
+import { isFinishedStatus, isLiveStatus } from "@/lib/fixtureStatus";
 import { MOCK_FIXTURES } from "@/lib/mockData";
 import type { Fixture } from "@/lib/types";
 import { parseFixtureDate, toLADateStr, isUpcomingLA } from "@/lib/dateUtils";
@@ -18,19 +19,14 @@ type LoadState = "loading" | "success" | "error";
 // 16px on phones, growing to 32px on desktop.
 const SIDE_GUTTER = "clamp(16px, 4vw, 32px)";
 
-const LIVE_STATUSES = ["live", "inplay", "halftime"];
-
 function isLiveFixture(f: Fixture): boolean {
-  return LIVE_STATUSES.includes(f.status?.toLowerCase() ?? "");
+  return isLiveStatus(f.status);
 }
-
-const FINISHED_STATUSES = ["finished", "ft", "aet", "pen"];
 
 // Not started yet, kicking off today or later. Status matters as well as date:
 // the backend keeps matches that finished earlier today.
 function isUpcomingFixture(f: Fixture): boolean {
-  const status = f.status?.toLowerCase() ?? "";
-  if (LIVE_STATUSES.includes(status) || FINISHED_STATUSES.includes(status)) return false;
+  if (isLiveStatus(f.status) || isFinishedStatus(f.status)) return false;
   return isUpcomingLA(parseFixtureDate(f.startingAt));
 }
 

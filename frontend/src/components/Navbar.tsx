@@ -391,7 +391,7 @@ function UserMenu({
 // ── Navbar ────────────────────────────────────────────────────────────────────
 
 export default function Navbar() {
-  const { user, logout } = useAuth();
+  const { user, loading, logout } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -423,8 +423,8 @@ export default function Navbar() {
             <span>FUTURE FC</span>
           </Link>
 
-          {/* Right */}
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          {/* Hidden until Firebase restores the session, so "Sign in" never flashes for a signed-in user */}
+          <div style={{ display: "flex", alignItems: "center", gap: 12, visibility: loading ? "hidden" : "visible" }}>
             {user ? (
               <>
                 {/* Nav links for authenticated users */}
