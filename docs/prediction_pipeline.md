@@ -291,10 +291,10 @@ if dc_probs["home_win"] >= dc_probs["away_win"] and dc_probs["home_win"] >= dc_p
 elif dc_probs["away_win"] >= dc_probs["home_win"] and dc_probs["away_win"] >= dc_probs["draw"]:
     winner = team_b_name  (away team)
 else:
-    winner = team_a_name  (draw is most likely — default to home team)
+    winner = "Draw"  (a draw is strictly the most likely result)
 ```
 
-Note: If a draw is predicted as most likely, the home team is assigned as the "winner" for the purposes of the response. The three-way probabilities are still returned to the frontend, so users see the full distribution.
+Note: If a draw is the most likely result, `winner` is `"Draw"` and Gemini is told to explain why, so the verdict matches the three-way probabilities shown to the user. This also matches the backtest, which counts draw as a predicted outcome. An exact tie goes to the home team, then the away team, over a draw. `_predicted_outcome` is the one place this is decided, for both the prompt and the stored winner.
 
 ### Why This Overrides Gemini's Assessment
 

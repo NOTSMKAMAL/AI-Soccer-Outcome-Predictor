@@ -43,6 +43,10 @@ _CONF_HIGH   = 0.65  # winner prob ≥ 65% → High
 _CONF_MEDIUM = 0.45  # winner prob ≥ 45% → Medium
                      # below 45% → Low
 
+# The `winner` value when a draw is the most likely result. Result tracking scores
+# anything other than the two team names as a draw, so this needs no special case there.
+DRAW_OUTCOME = "Draw"
+
 
 def prepare_matchup(team_a_id: int, team_b_id: int) -> dict:
     if team_a_id == team_b_id:
@@ -522,6 +526,41 @@ def cached_prediction(
     return _prediction_cache.get((team_a_id, team_b_id, team_a_name, team_b_name))
 
 
+def _predicted_outcome(dc_probs: dict, team_a_name: str, team_b_name: str) -> str:
+    """The most likely result under Dixon-Coles: a team's name, or DRAW_OUTCOME.
+
+    The one place the verdict is decided, so the prompt and the stored winner
+    can't disagree. An exact tie goes to the home team, then the away team, over
+    a draw, so DRAW_OUTCOME means a draw is strictly the most likely result.
+    """
+    if dc_probs["home_win"] >= dc_probs["away_win"] and \
+       dc_probs["home_win"] >= dc_probs["draw"]:
+        return team_a_name
+    if dc_probs["away_win"] >= dc_probs["home_win"] and \
+       dc_probs["away_win"] >= dc_probs["draw"]:
+        return team_b_name
+    return DRAW_OUTCOME
+
+
+def _verdict_instruction(verdict: str) -> str:
+    """Prompt text telling Gemini to explain the model's result, not choose its own."""
+    if verdict == DRAW_OUTCOME:
+        return (
+            f"PREDICTED RESULT: {DRAW_OUTCOME}\n"
+            f"The statistical model has determined that a draw is the most likely result of this match.\n\n"
+            f"Your task: Write a clear, factual explanation of WHY a draw is the most likely result,\n"
+            f"using the data provided below. Cite specific statistics. Do NOT argue for either team\n"
+            f"winning. Do NOT contradict the predicted result. Your Winner field MUST be: {DRAW_OUTCOME}\n\n"
+        )
+    return (
+        f"PREDICTED WINNER: {verdict}\n"
+        f"The statistical model has determined that {verdict} is predicted to win this match.\n\n"
+        f"Your task: Write a clear, factual explanation of WHY {verdict} is predicted to win,\n"
+        f"using the data provided below. Cite specific statistics. Do NOT argue for the other team\n"
+        f"winning. Do NOT contradict the predicted winner. Your Winner field MUST be: {verdict}\n\n"
+    )
+
+
 def generate_prediction(
     team_a_id: int, team_b_id: int,
     team_a_name: str, team_b_name: str,
@@ -567,18 +606,9 @@ def generate_prediction(
             team_b_id=team_b_id,
         )
 
-    # Determine winner from Dixon-Coles before building prompt
+    # Determine the result from Dixon-Coles before building prompt
     # Inject into Gemini prompt so reasoning supports verdict, not contradicts it
-    winner_name = None
-    if dc_probs:
-        if dc_probs["home_win"] >= dc_probs["away_win"] and \
-           dc_probs["home_win"] >= dc_probs["draw"]:
-            winner_name = team_a_name
-        elif dc_probs["away_win"] >= dc_probs["home_win"] and \
-             dc_probs["away_win"] >= dc_probs["draw"]:
-            winner_name = team_b_name
-        else:
-            winner_name = team_a_name  # draw: home team
+    verdict = _predicted_outcome(dc_probs, team_a_name, team_b_name) if dc_probs else None
 
     if enriched_data:
         enriched_section = _build_enriched_section(
@@ -607,19 +637,12 @@ def generate_prediction(
             "Reasoning: <2-3 sentences explaining the key factors>"
         )
 
-    # Build prompt with or without PREDICTED WINNER instruction based on availability
-    if winner_name:
-        # Dixon-Coles determined winner — inject it upfront so reasoning supports it
-        predicted_winner_instruction = (
-            f"PREDICTED WINNER: {winner_name}\n"
-            f"The statistical model has determined that {winner_name} is predicted to win this match.\n\n"
-            f"Your task: Write a clear, factual explanation of WHY {winner_name} is predicted to win,\n"
-            f"using the data provided below. Cite specific statistics. Do NOT argue for the other team\n"
-            f"winning. Do NOT contradict the predicted winner. Your Winner field MUST be: {winner_name}\n\n"
-        )
+    # Build prompt with or without the verdict instruction based on availability
+    if verdict:
+        # Dixon-Coles determined the result — inject it upfront so reasoning supports it
         prompt = f"""You are a professional sports analyst AI for the AI Sports Outcome Predictor.
 
-{predicted_winner_instruction}Match data:
+{_verdict_instruction(verdict)}Match data:
 
 Team A: {team_a_name}
 Team B: {team_b_name}
@@ -704,13 +727,7 @@ Team B: {team_b_name}
             result_data["probability_method"]   = "dixon-coles"
 
             # Override winner with Dixon-Coles prediction
-
-            if dc_probs["home_win"] >= dc_probs["away_win"] and \
-               dc_probs["home_win"] >= dc_probs["draw"]:
-                result_data["winner"] = team_a_name
-            elif dc_probs["away_win"] >= dc_probs["home_win"] and \
-                 dc_probs["away_win"] >= dc_probs["draw"]:
-                result_data["winner"] = team_b_name
+            result_data["winner"] = verdict
 
             # Override confidence with probability-derived label (shared scoring).
             # Gemini's confidence label is qualitative and inconsistent —

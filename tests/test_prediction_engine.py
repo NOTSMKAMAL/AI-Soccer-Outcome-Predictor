@@ -25,8 +25,10 @@ from engine.prediction_engine import (
     generate_prediction,
     prepare_matchup,
     compare_matchup,
+    DRAW_OUTCOME,
     _CONF_HIGH,
     _CONF_MEDIUM,
+    _predicted_outcome,
 )
 
 
@@ -397,14 +399,7 @@ class TestWinnerOverride:
         team_a = "Manchester City"
         team_b = "Liverpool"
 
-        if dc_probs["home_win"] >= dc_probs["away_win"] and \
-           dc_probs["home_win"] >= dc_probs["draw"]:
-            winner = team_a
-        elif dc_probs["away_win"] >= dc_probs["home_win"] and \
-             dc_probs["away_win"] >= dc_probs["draw"]:
-            winner = team_b
-        else:
-            winner = team_a
+        winner = _predicted_outcome(dc_probs, team_a, team_b)
 
         assert winner == team_a, "Home team should win"
 
@@ -418,19 +413,12 @@ class TestWinnerOverride:
         team_a = "Newcastle"
         team_b = "Arsenal"
 
-        if dc_probs["home_win"] >= dc_probs["away_win"] and \
-           dc_probs["home_win"] >= dc_probs["draw"]:
-            winner = team_a
-        elif dc_probs["away_win"] >= dc_probs["home_win"] and \
-             dc_probs["away_win"] >= dc_probs["draw"]:
-            winner = team_b
-        else:
-            winner = team_a
+        winner = _predicted_outcome(dc_probs, team_a, team_b)
 
         assert winner == team_b, "Away team should win"
 
     def test_winner_override_draw_is_highest(self):
-        """When draw is highest, home team used as tiebreaker."""
+        """When draw is highest, the verdict is a draw, not a team."""
         dc_probs = {
             "home_win": 0.35,
             "draw": 0.40,  # Draw is highest
@@ -439,16 +427,20 @@ class TestWinnerOverride:
         team_a = "Everton"
         team_b = "Fulham"
 
-        if dc_probs["home_win"] >= dc_probs["away_win"] and \
-           dc_probs["home_win"] >= dc_probs["draw"]:
-            winner = team_a
-        elif dc_probs["away_win"] >= dc_probs["home_win"] and \
-             dc_probs["away_win"] >= dc_probs["draw"]:
-            winner = team_b
-        else:
-            winner = team_a
+        winner = _predicted_outcome(dc_probs, team_a, team_b)
 
-        assert winner == team_a, "Draw case should default to home team"
+        assert winner == DRAW_OUTCOME, "A draw-led match must not be called for a team"
+
+    def test_winner_override_tie_with_draw(self):
+        """An exact tie with the draw goes to the team (>= comparison)."""
+        team_a = "Everton"
+        team_b = "Fulham"
+
+        home_tied = {"home_win": 0.40, "draw": 0.40, "away_win": 0.20}
+        away_tied = {"home_win": 0.20, "draw": 0.40, "away_win": 0.40}
+
+        assert _predicted_outcome(home_tied, team_a, team_b) == team_a
+        assert _predicted_outcome(away_tied, team_a, team_b) == team_b
 
     def test_winner_override_tie_home_away(self):
         """Exact tie home/away should use home team (>= comparison)."""
@@ -460,14 +452,7 @@ class TestWinnerOverride:
         team_a = "Chelsea"
         team_b = "Tottenham"
 
-        if dc_probs["home_win"] >= dc_probs["away_win"] and \
-           dc_probs["home_win"] >= dc_probs["draw"]:
-            winner = team_a
-        elif dc_probs["away_win"] >= dc_probs["home_win"] and \
-             dc_probs["away_win"] >= dc_probs["draw"]:
-            winner = team_b
-        else:
-            winner = team_a
+        winner = _predicted_outcome(dc_probs, team_a, team_b)
 
         assert winner == team_a, "Tie should resolve to home team (>= comparison)"
 
@@ -813,6 +798,55 @@ def _predict(enriched):
 
 def _prompt_sent(generate_content) -> str:
     return generate_content.call_args.kwargs["contents"]
+
+
+_DRAW_LED_PROBS = {"home_win": 0.32, "draw": 0.40, "away_win": 0.28, "method": "test"}
+
+
+class TestDrawIsMostLikely:
+    """When a draw leads, the verdict says so: the model decides, never a home default or Gemini."""
+
+    def _predict_draw_led(self):
+        import engine.prediction_engine as pe
+        with patch.object(pe, "dixon_coles_probability", return_value=_DRAW_LED_PROBS):
+            return _predict({"missing_sections": []})
+
+    def test_winner_is_draw(self, fake_gemini):
+        assert self._predict_draw_led()["data"]["winner"] == "Draw"
+
+    def test_gemini_cannot_name_a_team_instead(self, fake_gemini):
+        fake_gemini.return_value.text = "Winner: Home FC\nConfidence: high\nReasoning: Home FC win."
+        assert self._predict_draw_led()["data"]["winner"] == "Draw"
+
+    def test_prompt_asks_for_a_draw_explanation(self, fake_gemini):
+        self._predict_draw_led()
+        prompt = _prompt_sent(fake_gemini)
+        assert "PREDICTED RESULT: Draw" in prompt
+        assert "Your Winner field MUST be: Draw" in prompt
+
+    def test_prompt_never_says_a_team_will_win(self, fake_gemini):
+        self._predict_draw_led()
+        prompt = _prompt_sent(fake_gemini)
+        assert "PREDICTED WINNER" not in prompt
+        assert "Home FC is predicted to win" not in prompt
+
+    def test_confidence_comes_from_the_draw_probability(self, fake_gemini):
+        assert self._predict_draw_led()["data"]["confidence"] == "low"
+
+    def test_probabilities_are_unchanged(self, fake_gemini):
+        data = self._predict_draw_led()["data"]
+        assert (data["home_win_probability"], data["draw_probability"], data["away_win_probability"]) \
+            == (0.32, 0.40, 0.28)
+
+    def test_stored_verdict_is_scored_as_a_draw(self, fake_gemini):
+        from storage.prediction_db import _winner_side
+        winner = self._predict_draw_led()["data"]["winner"]
+        stored = {"predicted_winner": winner, "home_team": "Home FC", "away_team": "Away FC"}
+        assert _winner_side(stored) == "draw"
+
+    def test_a_team_win_still_names_the_team(self, fake_gemini):
+        assert _predict({"missing_sections": []})["data"]["winner"] == "Away FC"
+        assert "PREDICTED WINNER: Away FC" in _prompt_sent(fake_gemini)
 
 
 class TestDegradedEnrichment:
