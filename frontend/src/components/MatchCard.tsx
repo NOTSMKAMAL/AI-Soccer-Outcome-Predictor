@@ -32,7 +32,7 @@ function StatusChip({ status }: { status: string }) {
     return (
       <span style={{
         display: "inline-flex", alignItems: "center", gap: 5,
-        fontSize: 10, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase",
+        fontSize: 12, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase",
         color: "var(--primary-text)", background: "var(--primary-soft)", border: "1px solid var(--primary-edge)",
         borderRadius: 999, padding: "3px 9px",
       }}>
@@ -44,7 +44,7 @@ function StatusChip({ status }: { status: string }) {
   if (isFinished) {
     return (
       <span style={{
-        fontSize: 10, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase",
+        fontSize: 12, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase",
         color: "var(--muted-2)", background: "var(--surface-2)", border: "1px solid var(--border-s)",
         borderRadius: 999, padding: "3px 9px",
       }}>
@@ -54,7 +54,7 @@ function StatusChip({ status }: { status: string }) {
   }
   return (
     <span style={{
-      fontSize: 10, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase",
+      fontSize: 12, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase",
       color: "var(--primary-text)", background: "var(--primary-soft)", border: "1px solid var(--primary-edge)",
       borderRadius: 999, padding: "3px 9px",
     }}>
@@ -106,7 +106,7 @@ export default function MatchCard({ fixture }: Props) {
       className="hover-lift"
       style={{
         background: "var(--surface)",
-        borderRadius: 18,
+        borderRadius: 16,
         boxShadow: "inset 0 0 0 1px var(--border)",
         overflow: "hidden",
         position: "relative",
@@ -118,7 +118,7 @@ export default function MatchCard({ fixture }: Props) {
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <span style={{ width: 7, height: 7, borderRadius: 2, background: "var(--primary)", flexShrink: 0, display: "inline-block" }} />
-            <span style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)", letterSpacing: "0.02em" }}>
+            <span style={{ fontSize: 12, fontWeight: 600, color: "var(--muted)", letterSpacing: "0.02em" }}>
               {fixture.leagueName}
             </span>
           </div>
@@ -138,7 +138,7 @@ export default function MatchCard({ fixture }: Props) {
               }}>
                 {fixture.homeTeam.name}
               </p>
-              <p style={{ fontSize: 11, color: "var(--muted-2)", margin: "2px 0 0" }}>Home</p>
+              <p style={{ fontSize: 12, color: "var(--muted-2)", margin: "2px 0 0" }}>Home</p>
             </div>
           </div>
 
@@ -155,13 +155,13 @@ export default function MatchCard({ fixture }: Props) {
                     {score.away}
                   </span>
                 </div>
-                <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: isLive ? "var(--primary-text)" : "var(--muted-2)", opacity: 0.8 }}>
+                <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: isLive ? "var(--primary-text)" : "var(--muted-2)", opacity: 0.8 }}>
                   {isLive ? "LIVE" : "FT"}
                 </span>
               </>
             ) : (
               <>
-                <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.08em", color: "var(--muted)", textTransform: "uppercase" }}>
+                <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.08em", color: "var(--muted)", textTransform: "uppercase" }}>
                   {dateLabel}
                 </span>
                 <span style={{ fontSize: 18, fontWeight: 800, lineHeight: 1.1, letterSpacing: "-0.01em", color: "var(--ink)", whiteSpace: "nowrap", fontFamily: "var(--font-display), system-ui" }}>
@@ -182,7 +182,7 @@ export default function MatchCard({ fixture }: Props) {
               }}>
                 {fixture.awayTeam.name}
               </p>
-              <p style={{ fontSize: 11, color: "var(--muted-2)", margin: "2px 0 0" }}>Away</p>
+              <p style={{ fontSize: 12, color: "var(--muted-2)", margin: "2px 0 0" }}>Away</p>
             </div>
           </div>
         </div>
@@ -190,7 +190,7 @@ export default function MatchCard({ fixture }: Props) {
         {/* Footer */}
         <div style={{ marginTop: "auto", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, paddingTop: 4, borderTop: "1px solid var(--border)" }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
-            <span style={{ fontSize: 11, color: "var(--muted)" }}>
+            <span style={{ fontSize: 12, color: "var(--muted)" }}>
               {fullDate}{!isFinished && !isLive ? ` · ${time}` : ""}
             </span>
             {fixture.venue && (
@@ -198,7 +198,7 @@ export default function MatchCard({ fixture }: Props) {
                 <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--muted-2)", flexShrink: 0 }}>
                   <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" />
                 </svg>
-                <span style={{ fontSize: 10, color: "var(--muted-2)", overflowWrap: "anywhere" }}>
+                <span style={{ fontSize: 12, color: "var(--muted-2)", overflowWrap: "anywhere" }}>
                   {fixture.venue}
                 </span>
               </div>

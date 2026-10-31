@@ -61,7 +61,7 @@ function StatsRow({ fixtures, liveCount, isLive }: { fixtures: Fixture[]; liveCo
     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12, marginBottom: 28 }}>
       {stats.map((s) => (
         <div key={s.label} style={{
-          background: "var(--surface)", borderRadius: 14, padding: "16px 20px",
+          background: "var(--surface)", borderRadius: 16, padding: "16px 20px",
           boxShadow: "inset 0 0 0 1px var(--border)",
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--muted)", marginBottom: 6 }}>
@@ -286,10 +286,7 @@ function DashboardContent() {
               {(search || league) && (
                 <button
                   onClick={() => { setSearch(""); setLeague(""); }}
-                  style={{
-                    padding: "10px 20px", borderRadius: 10, border: "1px solid var(--border-s)",
-                    background: "var(--surface)", color: "var(--ink-2)", fontSize: 13, cursor: "pointer",
-                  }}
+                  className="btn-ghost text-sm px-6 py-2.5"
                 >
                   Clear filters
                 </button>

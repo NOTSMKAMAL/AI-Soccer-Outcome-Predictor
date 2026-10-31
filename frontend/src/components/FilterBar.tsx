@@ -167,7 +167,7 @@ export default function FilterBar({ search, onSearchChange, league, onLeagueChan
                 color: tab === t ? "var(--ink)" : "var(--muted)",
                 background: tab === t ? "var(--surface-3)" : "none",
                 boxShadow: tab === t ? "inset 0 0 0 1px var(--border-s)" : "none",
-                transition: "all 0.15s ease",
+                transition: "background-color 0.15s ease, color 0.15s ease",
               }}
             >
               {label}

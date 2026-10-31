@@ -129,9 +129,9 @@ function AccountSettingsModal({
         width: "100%", maxWidth: 420,
         maxHeight: "calc(100dvh - 48px)", overflowY: "auto", overscrollBehavior: "contain",
         background: "var(--surface)",
-        borderRadius: 20,
+        borderRadius: 16,
         boxShadow: "inset 0 0 0 1px var(--border-s)",
-        padding: 28,
+        padding: "clamp(20px, 5vw, 28px)",
         animation: "slideUp 0.2s cubic-bezier(0.16,1,0.3,1)",
       }}>
         {/* Header */}
@@ -251,7 +251,7 @@ function AccountSettingsModal({
                 border: saved ? "1px solid var(--primary-edge)" : "none",
                 cursor: busy || saved ? "default" : "pointer",
                 display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-                transition: "all 0.2s",
+                transition: "background-color 0.2s, color 0.2s",
                 opacity: busy ? 0.7 : 1,
               }}
             >

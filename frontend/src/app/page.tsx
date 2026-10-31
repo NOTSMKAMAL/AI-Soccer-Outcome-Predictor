@@ -35,7 +35,7 @@ function HeroPreviewCard() {
       <div style={{
         position: "relative",
         background: "var(--surface)",
-        borderRadius: 20,
+        borderRadius: 16,
         boxShadow: "inset 0 0 0 1px var(--border-s)",
         overflow: "hidden",
       }}>
@@ -46,7 +46,7 @@ function HeroPreviewCard() {
             <span style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)" }}>Prediction board preview</span>
           </div>
           <span style={{
-            fontSize: 11, color: "var(--muted)", fontWeight: 500,
+            fontSize: 12, color: "var(--muted)", fontWeight: 500,
             padding: "3px 8px", borderRadius: 6,
             background: "var(--surface-2)",
             border: "1px solid var(--border)",
@@ -66,7 +66,7 @@ function HeroPreviewCard() {
             }}>
               {/* League badge */}
               <span style={{
-                fontSize: 10, fontWeight: 700, letterSpacing: "0.05em",
+                fontSize: 12, fontWeight: 700, letterSpacing: "0.05em",
                 color: "var(--muted)", minWidth: 28, flexShrink: 0,
               }}>
                 {f.league}
@@ -80,7 +80,7 @@ function HeroPreviewCard() {
               </div>
 
               {/* Status */}
-              <span style={{ fontSize: 11, color: "var(--muted)", whiteSpace: "nowrap", flexShrink: 0 }}>
+              <span style={{ fontSize: 12, color: "var(--muted)", whiteSpace: "nowrap", flexShrink: 0 }}>
                 {f.status === "live" ? (
                   <><span style={{ color: "var(--primary-text)" }}>● </span>Live · {f.minute}</>
                 ) : (
@@ -90,7 +90,7 @@ function HeroPreviewCard() {
 
               {/* Confidence chip */}
               <span style={{
-                fontSize: 11, fontWeight: 700,
+                fontSize: 12, fontWeight: 700,
                 padding: "3px 8px", borderRadius: 20,
                 background: f.level === "high" ? "var(--primary-soft)" : "var(--orange-soft)",
                 color: f.level === "high" ? "var(--primary-text)" : "var(--orange)",
@@ -263,7 +263,7 @@ function LandingPage() {
               <span style={{
                 width: 22, height: 22, borderRadius: "50%",
                 background: "var(--primary)",
-                display: "grid", placeItems: "center", color: "var(--on-accent)", fontSize: 10,
+                display: "grid", placeItems: "center", color: "var(--on-accent)", fontSize: 12,
               }}>
                 <SoccerBallSm />
               </span>
@@ -293,7 +293,7 @@ function LandingPage() {
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 28 }}>
               <Link href="/auth" replace style={{
                 display: "inline-flex", alignItems: "center", gap: 8,
-                padding: "14px 28px", borderRadius: 12, fontSize: 16, fontWeight: 600,
+                padding: "0 28px", minHeight: 52, borderRadius: 12, fontSize: 16, fontWeight: 600,
                 background: "var(--primary)",
                 color: "var(--on-accent)", textDecoration: "none",
               }}>
@@ -304,7 +304,7 @@ function LandingPage() {
               </Link>
               <Link href="/auth" replace style={{
                 display: "inline-flex", alignItems: "center", gap: 8,
-                padding: "14px 28px", borderRadius: 12, fontSize: 16, fontWeight: 600,
+                padding: "0 28px", minHeight: 52, borderRadius: 12, fontSize: 16, fontWeight: 600,
                 background: "var(--surface)", color: "var(--ink-2)", textDecoration: "none",
                 border: "1px solid var(--border-strong)",
               }}>
@@ -333,7 +333,7 @@ function LandingPage() {
       {/* ── Leagues strip ── */}
       <section id="leagues" style={{ position: "relative", zIndex: 1, borderTop: "1px solid var(--border)", borderBottom: "1px solid var(--border)", background: "var(--surface)" }}>
         <div style={{ maxWidth: 1200, margin: "0 auto", padding: "20px clamp(16px, 4vw, 32px)", display: "flex", alignItems: "center", gap: 24, flexWrap: "wrap" }}>
-          <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--muted-2)", flexShrink: 0 }}>
+          <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--muted-2)", flexShrink: 0 }}>
             Covers Europe's top competitions
           </span>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
@@ -357,7 +357,7 @@ function LandingPage() {
         <div style={{ maxWidth: 1200, margin: "0 auto" }}>
           <header style={{ textAlign: "center", marginBottom: 56 }}>
             <div style={{
-              display: "inline-block", fontSize: 11, fontWeight: 700, letterSpacing: "0.12em",
+              display: "inline-block", fontSize: 12, fontWeight: 700, letterSpacing: "0.12em",
               textTransform: "uppercase", color: "var(--primary-text)",
               marginBottom: 14,
             }}>
@@ -374,7 +374,7 @@ function LandingPage() {
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 16 }}>
             {FEATURES.map((f) => (
               <article key={f.title} className="hover-lift" style={{
-                background: "var(--surface)", borderRadius: 20, padding: "28px 28px 24px",
+                background: "var(--surface)", borderRadius: 16, padding: "28px 28px 24px",
                 border: "1px solid var(--border)",
                 transition: "transform 0.25s, box-shadow 0.25s",
                 cursor: "default",
@@ -391,7 +391,7 @@ function LandingPage() {
                 </div>
                 <h3 style={{ fontSize: 17, fontWeight: 600, letterSpacing: "-0.015em", color: "var(--ink)", margin: "0 0 8px" }}>{f.title}</h3>
                 <p style={{ fontSize: 14, color: "var(--muted)", margin: "0 0 20px", lineHeight: 1.6 }}>{f.desc}</p>
-                <div style={{ paddingTop: 16, borderTop: "1px solid var(--border)", fontSize: 11, color: "var(--muted-2)", fontFamily: "monospace" }}>
+                <div style={{ paddingTop: 16, borderTop: "1px solid var(--border)", fontSize: 12, color: "var(--muted-2)", fontFamily: "monospace" }}>
                   {f.meta}
                 </div>
               </article>
@@ -409,7 +409,7 @@ function LandingPage() {
         <div style={{ maxWidth: 1200, margin: "0 auto" }}>
           <header style={{ textAlign: "center", marginBottom: 56 }}>
             <div style={{
-              display: "inline-block", fontSize: 11, fontWeight: 700, letterSpacing: "0.12em",
+              display: "inline-block", fontSize: 12, fontWeight: 700, letterSpacing: "0.12em",
               textTransform: "uppercase", color: "var(--primary-text)", marginBottom: 14,
             }}>
               How it works
@@ -422,7 +422,7 @@ function LandingPage() {
           <ol style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16, listStyle: "none", padding: 0, margin: 0 }}>
             {STEPS.map((s) => (
               <li key={s.n} style={{
-                background: "var(--bg)", borderRadius: 20, padding: "28px",
+                background: "var(--bg)", borderRadius: 16, padding: "28px",
                 border: "1px solid var(--border)",
               }}>
                 <div style={{
@@ -453,7 +453,7 @@ function LandingPage() {
           <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
             <Link href="/auth" replace style={{
               display: "inline-flex", alignItems: "center", gap: 8,
-              padding: "14px 32px", borderRadius: 12, fontSize: 16, fontWeight: 600,
+              padding: "0 28px", minHeight: 52, borderRadius: 12, fontSize: 16, fontWeight: 600,
               background: "var(--primary)",
               color: "var(--on-accent)", textDecoration: "none",
             }}>
@@ -464,7 +464,7 @@ function LandingPage() {
             </Link>
             <Link href="/auth" replace style={{
               display: "inline-flex", alignItems: "center",
-              padding: "14px 28px", borderRadius: 12, fontSize: 16, fontWeight: 600,
+              padding: "0 28px", minHeight: 52, borderRadius: 12, fontSize: 16, fontWeight: 600,
               background: "var(--surface)", color: "var(--ink-2)", textDecoration: "none",
               border: "1px solid var(--border-strong)",
             }}>

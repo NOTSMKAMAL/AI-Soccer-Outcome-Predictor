@@ -23,7 +23,7 @@ export default function ErrorState({
         )}
       </div>
       {onRetry && (
-        <button onClick={onRetry} className="btn-ghost text-sm py-2 px-4">
+        <button onClick={onRetry} className="btn-ghost text-sm px-6 py-2.5">
           Try again
         </button>
       )}

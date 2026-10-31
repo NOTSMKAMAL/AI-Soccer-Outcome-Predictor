@@ -1,7 +1,7 @@
 import type { CSSProperties } from "react";
 import { getTeamColor, visibleRingColor } from "@/lib/teamColors";
 
-const MIN_FONT_SIZE = 8;
+const MIN_FONT_SIZE = 12;
 
 /**
  * A team's colour and abbreviation. Used instead of club crests, which are

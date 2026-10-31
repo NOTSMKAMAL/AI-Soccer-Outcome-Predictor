@@ -4,6 +4,7 @@ import { useEffect, useId, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import PageLoading from "@/components/PageLoading";
 import { describeAuthError } from "@/lib/authErrors";
 import { requestPasswordReset } from "@/lib/passwordReset";
 
@@ -95,7 +96,7 @@ function Field({
         {label}
       </label>
       <div
-        className="input-box flex items-center gap-2.5 rounded-[10px] px-3 transition-all duration-200"
+        className="input-box flex items-center gap-2.5 rounded-[10px] px-3 transition-colors duration-200"
         style={{
           minWidth: 0,
           background: "var(--surface-2)",
@@ -152,7 +153,7 @@ export default function AuthPage() {
     if (!loading && user) router.replace("/dashboard");
   }, [user, loading, router]);
 
-  if (loading || user) return null;
+  if (loading || user) return <PageLoading />;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -271,7 +272,7 @@ export default function AuthPage() {
               >
                 <span
                   style={{
-                    fontFamily: "var(--font-display), monospace", fontSize: 11, fontWeight: 700, letterSpacing: "0.06em",
+                    fontFamily: "var(--font-display), monospace", fontSize: 12, fontWeight: 700, letterSpacing: "0.06em",
                     color: "var(--primary-text)",
                     background: "var(--primary-soft)",
                     padding: "5px 9px",
@@ -291,7 +292,7 @@ export default function AuthPage() {
           </ol>
 
           {/* Footer disclaimer */}
-          <div style={{ marginTop: 32, display: "flex", alignItems: "center", gap: 8, fontSize: 11, color: "var(--muted)" }}>
+          <div style={{ marginTop: 32, display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "var(--muted)" }}>
             <InfoIcon />
             <span>Analytics and entertainment only. Not betting advice.</span>
           </div>
@@ -319,9 +320,9 @@ export default function AuthPage() {
           style={{
             width: "100%", maxWidth: 440,
             background: "var(--surface)",
-            borderRadius: 20,
+            borderRadius: 16,
             boxShadow: "inset 0 0 0 1px var(--border-s)",
-            padding: 32,
+            padding: "clamp(20px, 5vw, 32px)",
           }}
         >
           {/* Tab toggle */}
@@ -514,7 +515,7 @@ export default function AuthPage() {
               type="submit"
               disabled={busy}
               className="btn-primary"
-              style={{ width: "100%", padding: "16px 22px", fontSize: 15, marginTop: 4, borderRadius: 12 }}
+              style={{ width: "100%", padding: "0 22px", minHeight: 52, fontSize: 16, marginTop: 4, borderRadius: 12 }}
             >
               {busy ? (
                 <>
