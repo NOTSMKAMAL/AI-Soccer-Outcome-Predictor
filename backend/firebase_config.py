@@ -14,6 +14,13 @@ from backend.config import FIREBASE_SERVICE_ACCOUNT_PATH
 _app: firebase_admin.App | None = None
 _init_attempted: bool = False
 
+# Seconds of clock difference tolerated between Google (which stamps the token's
+# issued-at time) and this server. The SDK default is 0, so a server clock even
+# one second behind rejects a freshly issued token as "Token used too early" —
+# and the frontend force-refreshes the token right before every prediction.
+# Firebase allows up to 60; 10 covers normal drift between OS time syncs.
+TOKEN_CLOCK_SKEW_SECONDS = 10
+
 
 def _get_app() -> firebase_admin.App | None:
     """Initialize Firebase Admin SDK once and cache the result.
@@ -93,19 +100,37 @@ def _get_app() -> firebase_admin.App | None:
     return None
 
 
+def _log_verify_failure(exc: Exception, token: str) -> None:
+    """Print why a token was rejected, without ever printing the token itself.
+
+    Every failure surfaces to the client as the same 401, so this line in the
+    uvicorn terminal is the only way to tell a bad token from a broken server
+    (wrong project, bad service account key, clock skew, network).
+    """
+    message = str(exc).replace(token, "<token>")
+    print(f"[Firebase] Token verification failed: {type(exc).__name__}: {message}")
+
+
 def verify_id_token(token: str) -> dict | None:
-    """Verify a Firebase ID token and return the decoded claims, or None on failure."""
+    """Verify a Firebase ID token and return the decoded claims, or None on failure.
+
+    Failures are logged server-side (exception type and message, never the token).
+    """
     if not token:
         return None
     app = _get_app()
     if app is None:
         return None
     try:
-        decoded = auth.verify_id_token(token, app=app, check_revoked=True)
+        decoded = auth.verify_id_token(
+            token, app=app, check_revoked=True, clock_skew_seconds=TOKEN_CLOCK_SKEW_SECONDS
+        )
         return decoded
-    except (ExpiredIdTokenError, InvalidIdTokenError, RevokedIdTokenError):
+    except (ExpiredIdTokenError, InvalidIdTokenError, RevokedIdTokenError) as exc:
+        _log_verify_failure(exc, token)
         return None
-    except Exception:
+    except Exception as exc:
+        _log_verify_failure(exc, token)
         return None
 
 
