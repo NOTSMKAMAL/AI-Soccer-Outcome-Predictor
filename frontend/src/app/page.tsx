@@ -246,6 +246,7 @@ function LandingPage() {
         </div>
       </header>
 
+      <main>
       {/* ── Hero ── */}
       <section className="depth" style={{ position: "relative", zIndex: 1 }}>
         <div style={{
@@ -483,6 +484,7 @@ function LandingPage() {
           </div>
         </div>
       </section>
+      </main>
 
     </div>
   );

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
@@ -87,13 +87,14 @@ function Field({
   autoComplete?: string;
   extra?: React.ReactNode;
 }) {
+  const id = useId();
   return (
     <div className="flex flex-col gap-1.5" style={{ minWidth: 0 }}>
-      <label className="text-xs font-medium" style={{ color: "var(--muted)" }}>
+      <label htmlFor={id} className="text-xs font-medium" style={{ color: "var(--muted)" }}>
         {label}
       </label>
       <div
-        className="flex items-center gap-2.5 rounded-[10px] px-3 py-2.5 transition-all duration-200"
+        className="input-box flex items-center gap-2.5 rounded-[10px] px-3 py-2.5 transition-all duration-200"
         style={{
           minWidth: 0,
           background: "var(--surface-2)",
@@ -104,7 +105,9 @@ function Field({
           <IconC />
         </span>
         <input
+          id={id}
           type={type}
+          aria-invalid={error ? true : undefined}
           value={value}
           onChange={onChange}
           placeholder={placeholder}
@@ -230,7 +233,7 @@ export default function AuthPage() {
           </Link>
 
           {/* Title */}
-          <h1
+          <p
             style={{
               fontSize: "clamp(28px, 3vw, 42px)",
               lineHeight: 1.08,
@@ -241,7 +244,7 @@ export default function AuthPage() {
             }}
           >
             Get started with AI match predictions.
-          </h1>
+          </p>
           <p style={{ fontSize: 16, lineHeight: 1.55, color: "var(--ink-2)", marginBottom: 36 }}>
             Create an account to access live fixtures, AI predictions and match insights across
             the top leagues.
@@ -350,6 +353,7 @@ export default function AuthPage() {
                 key={t}
                 onClick={() => { setTab(t); setErrors({}); setGlobalError(""); }}
                 type="button"
+                aria-pressed={tab === t}
                 style={{
                   position: "relative", zIndex: 1,
                   padding: "10px",
@@ -370,9 +374,9 @@ export default function AuthPage() {
 
           {/* Header */}
           <div style={{ marginBottom: 22 }}>
-            <h2 style={{ fontSize: 22, fontWeight: 600, letterSpacing: "-0.025em", margin: "0 0 5px", color: "var(--ink)" }}>
+            <h1 style={{ fontSize: 22, fontWeight: 600, letterSpacing: "-0.025em", margin: "0 0 5px", color: "var(--ink)" }}>
               {tab === "signin" ? "Welcome back" : "Create your account"}
-            </h2>
+            </h1>
             <p style={{ fontSize: 13, color: "var(--muted)", margin: 0 }}>
               {tab === "signin" ? "Sign in to view today's prediction board." : "Free to use. No payment needed."}
             </p>

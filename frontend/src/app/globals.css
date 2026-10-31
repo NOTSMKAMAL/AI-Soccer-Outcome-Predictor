@@ -88,6 +88,17 @@ html {
 
   html { scroll-behavior: smooth; }
 
+  :focus-visible { outline: 2px solid var(--primary-text); outline-offset: 2px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
   body {
     min-height: 100vh;
     background-color: var(--bg);
@@ -127,6 +138,9 @@ html {
     color: var(--ink);
     font-weight: 700; line-height: 1; letter-spacing: 0.02em;
   }
+
+  /* ── Input whose box is drawn by a wrapper, so the wrapper shows the focus ring ── */
+  .input-box:focus-within { outline: 2px solid var(--primary-text); outline-offset: 2px; }
 
   /* ── Card: flat surface with a hairline border ── */
   .card {

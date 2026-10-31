@@ -153,6 +153,7 @@ function DashboardContent() {
   return (
     <div style={{ minHeight: "100vh", paddingTop: NAVBAR_HEIGHT }}>
       <Navbar />
+      <main>
       <FilterBar
         search={search}
         onSearchChange={setSearch}
@@ -306,6 +307,7 @@ function DashboardContent() {
           Predictions are for analytics and entertainment only. Not betting advice.
         </p>
       </div>
+      </main>
     </div>
   );
 }

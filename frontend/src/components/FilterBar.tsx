@@ -28,11 +28,18 @@ export default function FilterBar({ search, onSearchChange, league, onLeagueChan
   const dropRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const handler = (e: MouseEvent) => {
+    const onPointer = (e: MouseEvent) => {
       if (!dropRef.current?.contains(e.target as Node)) setDropdownOpen(false);
     };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setDropdownOpen(false);
+    };
+    document.addEventListener("mousedown", onPointer);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onPointer);
+      document.removeEventListener("keydown", onKey);
+    };
   }, []);
 
   return (
@@ -54,13 +61,14 @@ export default function FilterBar({ search, onSearchChange, league, onLeagueChan
           </svg>
           <input
             type="text"
+            aria-label="Search clubs or leagues"
             placeholder="Search clubs or leagues…"
             value={search}
             onChange={(e) => onSearchChange(e.target.value)}
             style={{
               width: "100%", padding: "9px 14px 9px 36px",
               background: "var(--surface)", border: "1px solid var(--border-s)",
-              borderRadius: 10, color: "var(--ink)", fontSize: 13, outline: "none",
+              borderRadius: 10, color: "var(--ink)", fontSize: 13,
               transition: "border-color 0.15s", boxSizing: "border-box",
             }}
             onFocus={(e) => (e.currentTarget.style.borderColor = "var(--primary-edge)")}
@@ -72,6 +80,7 @@ export default function FilterBar({ search, onSearchChange, league, onLeagueChan
         <div ref={dropRef} style={{ position: "relative" }}>
           <button
             onClick={() => setDropdownOpen((o) => !o)}
+            aria-expanded={dropdownOpen}
             style={{
               display: "flex", alignItems: "center", gap: 7,
               padding: "9px 14px", borderRadius: 10,
@@ -151,6 +160,7 @@ export default function FilterBar({ search, onSearchChange, league, onLeagueChan
             <button
               key={t}
               onClick={() => onTabChange(t)}
+              aria-pressed={tab === t}
               style={{
                 padding: "6px 14px", borderRadius: 7, border: "none", cursor: "pointer",
                 fontSize: 13, fontWeight: tab === t ? 600 : 400,

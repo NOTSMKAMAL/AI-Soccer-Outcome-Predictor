@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, MotionConfig, useReducedMotion } from "framer-motion";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import Navbar from "@/components/Navbar";
 import { PredictionSkeleton } from "@/components/LoadingSkeleton";
@@ -164,6 +164,7 @@ function ThreeSegmentBar({
 }: {
   homeP: number; drawP: number; awayP: number; homeName: string; awayName: string;
 }) {
+  const reduceMotion = useReducedMotion();
   const total = homeP + drawP + awayP || 100;
   const hW = (homeP / total) * 100;
   const dW = (drawP / total) * 100;
@@ -181,7 +182,7 @@ function ThreeSegmentBar({
       {/* Bar */}
       <div className="h-3 rounded-full overflow-hidden flex gap-0.5" style={{ background: "var(--surface-2)" }}>
         <motion.div
-          initial={{ width: 0 }}
+          initial={reduceMotion ? false : { width: 0 }}
           animate={{ width: `${hW}%` }}
           transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1], delay: 0.15 }}
           style={{
@@ -191,7 +192,7 @@ function ThreeSegmentBar({
           }}
         />
         <motion.div
-          initial={{ width: 0 }}
+          initial={reduceMotion ? false : { width: 0 }}
           animate={{ width: `${dW}%` }}
           transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1], delay: 0.3 }}
           style={{
@@ -200,7 +201,7 @@ function ThreeSegmentBar({
           }}
         />
         <motion.div
-          initial={{ width: 0 }}
+          initial={reduceMotion ? false : { width: 0 }}
           animate={{ width: `${aW}%` }}
           transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1], delay: 0.45 }}
           style={{
@@ -314,6 +315,7 @@ function AIVerdictCard({
   // predictions because the engine sets all three probability fields in both the
   // Dixon-Coles path (dc_probs) and the confidence-estimate fallback path.
   const pct = prediction.winProbability ?? confidencePercent(prediction.confidence);
+  const reduceMotion = useReducedMotion();
 
   return (
     <motion.div
@@ -387,7 +389,7 @@ function AIVerdictCard({
             </div>
             <div className="h-2.5 rounded-full overflow-hidden" style={{ background: "var(--surface-2)" }}>
               <motion.div
-                initial={{ width: 0 }}
+                initial={reduceMotion ? false : { width: 0 }}
                 animate={{ width: `${Math.min(Math.max(Math.round(pct), 5), 95)}%` }}
                 transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1], delay: 0.3 }}
                 className="h-full rounded-full"
@@ -619,6 +621,7 @@ function XGSection({ xg, teamA, teamB }: { xg: { team_a_xg: number; team_b_xg: n
   const pctB = Math.round((xg.team_b_xg / max) * 100);
   const diff = Math.abs(xg.team_a_xg - xg.team_b_xg).toFixed(2);
   const leader = xg.team_a_xg > xg.team_b_xg ? teamA : teamB;
+  const reduceMotion = useReducedMotion();
 
   return (
     <div className="card p-6">
@@ -641,7 +644,7 @@ function XGSection({ xg, teamA, teamB }: { xg: { team_a_xg: number; team_b_xg: n
             </div>
             <div className="h-3 rounded-full overflow-hidden" style={{ background: "var(--surface-2)" }}>
               <motion.div
-                initial={{ width: 0 }}
+                initial={reduceMotion ? false : { width: 0 }}
                 animate={{ width: `${pct}%` }}
                 transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
                 className="h-full rounded-full"
@@ -1155,6 +1158,7 @@ function PredictionContent({ matchId }: { matchId: string }) {
     <div className="min-h-screen">
       <Navbar />
 
+      <main>
       <div className="relative pt-20">
         <div className="relative mx-auto max-w-4xl px-4 pt-10 pb-4 sm:px-6">
           <Link href="/dashboard" className="mb-4 inline-flex items-center gap-1.5 text-sm transition-colors"
@@ -1298,6 +1302,7 @@ function PredictionContent({ matchId }: { matchId: string }) {
           />
         )}
       </div>
+      </main>
     </div>
   );
 }
@@ -1305,7 +1310,9 @@ function PredictionContent({ matchId }: { matchId: string }) {
 export default function PredictionPage({ params }: { params: { matchId: string } }) {
   return (
     <ProtectedRoute>
-      <PredictionContent matchId={params.matchId} />
+      <MotionConfig reducedMotion="user">
+        <PredictionContent matchId={params.matchId} />
+      </MotionConfig>
     </ProtectedRoute>
   );
 }

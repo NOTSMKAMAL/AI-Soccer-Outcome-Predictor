@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
@@ -71,17 +71,19 @@ function AccountSettingsModal({
   const [busy, setBusy]           = useState(false);
   const [saved, setSaved]         = useState(false);
   const [error, setError]         = useState("");
-  const overlayRef = useRef<HTMLDivElement>(null);
+  const dialogRef = useRef<HTMLDialogElement>(null);
+
+  // showModal makes the page behind inert, keeps focus inside and handles Escape.
+  useEffect(() => {
+    dialogRef.current?.showModal();
+    dialogRef.current?.querySelector("input")?.focus();
+  }, []);
+
+  const close = () => dialogRef.current?.close();
 
   const handleOverlayClick = (e: React.MouseEvent) => {
-    if (e.target === overlayRef.current) onClose();
+    if (e.target === dialogRef.current) close();
   };
-
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
-    document.addEventListener("keydown", handler);
-    return () => document.removeEventListener("keydown", handler);
-  }, [onClose]);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -92,7 +94,7 @@ function AccountSettingsModal({
     try {
       await updateDisplayName(name);
       setSaved(true);
-      setTimeout(onClose, 900);
+      setTimeout(close, 900);
     } catch {
       setError("Failed to update name. Please try again.");
     } finally {
@@ -103,11 +105,15 @@ function AccountSettingsModal({
   const initial = (existing || user.email || "?")[0].toUpperCase();
 
   return (
-    <div
-      ref={overlayRef}
+    <dialog
+      ref={dialogRef}
+      aria-labelledby="account-settings-title"
       onClick={handleOverlayClick}
+      onClose={onClose}
       style={{
         position: "fixed", inset: 0, zIndex: 200,
+        width: "100%", height: "100%", maxWidth: "none", maxHeight: "none",
+        margin: 0, border: 0, color: "inherit",
         background: "var(--scrim)",
         display: "grid", placeItems: "center",
         padding: 24,
@@ -131,7 +137,7 @@ function AccountSettingsModal({
         {/* Header */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 22 }}>
           <div>
-            <h2 style={{ fontSize: 17, fontWeight: 600, letterSpacing: "-0.02em", color: "var(--ink)", margin: "0 0 3px" }}>
+            <h2 id="account-settings-title" style={{ fontSize: 17, fontWeight: 600, letterSpacing: "-0.02em", color: "var(--ink)", margin: "0 0 3px" }}>
               Account settings
             </h2>
             <p style={{ fontSize: 12, color: "var(--muted)", margin: 0 }}>
@@ -139,13 +145,13 @@ function AccountSettingsModal({
             </p>
           </div>
           <button
-            onClick={onClose}
+            onClick={close}
             style={{
               width: 30, height: 30, borderRadius: 8, border: "1px solid var(--border)",
               background: "var(--surface-2)", color: "var(--muted)",
               display: "grid", placeItems: "center", cursor: "pointer", flexShrink: 0,
             }}
-            aria-label="Close"
+            aria-label="Close account settings"
           >
             <CloseIcon />
           </button>
@@ -175,8 +181,9 @@ function AccountSettingsModal({
         <form onSubmit={handleSave} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, minWidth: 0 }}>
             <div style={{ minWidth: 0 }}>
-              <label style={{ display: "block", fontSize: 12, fontWeight: 500, color: "var(--muted)", marginBottom: 6 }}>First name</label>
+              <label htmlFor="account-first-name" style={{ display: "block", fontSize: 12, fontWeight: 500, color: "var(--muted)", marginBottom: 6 }}>First name</label>
               <input
+                id="account-first-name"
                 type="text"
                 value={firstName}
                 onChange={(e) => { setFirstName(e.target.value); setSaved(false); setError(""); }}
@@ -187,15 +194,16 @@ function AccountSettingsModal({
                   width: "100%", minWidth: 0, boxSizing: "border-box",
                   padding: "9px 12px", borderRadius: 10, fontSize: 14,
                   background: "var(--surface-2)", color: "var(--ink)",
-                  border: "1px solid var(--border-strong)", outline: "none",
+                  border: "1px solid var(--border-strong)",
                 }}
                 onFocus={(e) => (e.currentTarget.style.borderColor = "var(--primary)")}
                 onBlur={(e)  => (e.currentTarget.style.borderColor = "var(--border-strong)")}
               />
             </div>
             <div style={{ minWidth: 0 }}>
-              <label style={{ display: "block", fontSize: 12, fontWeight: 500, color: "var(--muted)", marginBottom: 6 }}>Last name</label>
+              <label htmlFor="account-last-name" style={{ display: "block", fontSize: 12, fontWeight: 500, color: "var(--muted)", marginBottom: 6 }}>Last name</label>
               <input
+                id="account-last-name"
                 type="text"
                 value={lastName}
                 onChange={(e) => { setLastName(e.target.value); setSaved(false); setError(""); }}
@@ -205,7 +213,7 @@ function AccountSettingsModal({
                   width: "100%", minWidth: 0, boxSizing: "border-box",
                   padding: "9px 12px", borderRadius: 10, fontSize: 14,
                   background: "var(--surface-2)", color: "var(--ink)",
-                  border: "1px solid var(--border-strong)", outline: "none",
+                  border: "1px solid var(--border-strong)",
                 }}
                 onFocus={(e) => (e.currentTarget.style.borderColor = "var(--primary)")}
                 onBlur={(e)  => (e.currentTarget.style.borderColor = "var(--border-strong)")}
@@ -222,7 +230,7 @@ function AccountSettingsModal({
           <div style={{ display: "flex", gap: 10, marginTop: 2 }}>
             <button
               type="button"
-              onClick={onClose}
+              onClick={close}
               style={{
                 flex: 1, padding: "10px 16px", borderRadius: 10, fontSize: 14, fontWeight: 500,
                 background: "var(--surface-2)", color: "var(--ink-2)",
@@ -254,7 +262,7 @@ function AccountSettingsModal({
 
         <DeleteAccountSection />
       </div>
-    </div>
+    </dialog>
   );
 }
 
@@ -262,10 +270,12 @@ function AccountSettingsModal({
 
 function UserMenu({
   user,
+  buttonRef,
   onSignOut,
   onOpenSettings,
 }: {
   user: { email: string | null; displayName?: string | null } | null;
+  buttonRef: RefObject<HTMLButtonElement>;
   onSignOut: () => void;
   onOpenSettings: () => void;
 }) {
@@ -273,11 +283,18 @@ function UserMenu({
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const handler = (e: MouseEvent) => {
+    const onPointer = (e: MouseEvent) => {
       if (!ref.current?.contains(e.target as Node)) setOpen(false);
     };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("mousedown", onPointer);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onPointer);
+      document.removeEventListener("keydown", onKey);
+    };
   }, []);
 
   const email = user?.email ?? "";
@@ -287,6 +304,7 @@ function UserMenu({
   return (
     <div ref={ref} style={{ position: "relative" }}>
       <button
+        ref={buttonRef}
         onClick={() => setOpen((o) => !o)}
         style={{
           width: 34, height: 34, borderRadius: "50%",
@@ -296,7 +314,8 @@ function UserMenu({
           border: open ? "2px solid var(--primary-edge)" : "2px solid transparent",
           cursor: "pointer", transition: "border-color 0.2s",
         }}
-        aria-label="User menu"
+        aria-label="Account menu"
+        aria-expanded={open}
       >
         {initial}
       </button>
@@ -378,6 +397,7 @@ export default function Navbar() {
   const router = useRouter();
   const pathname = usePathname();
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
 
   const handleLogout = async () => {
     await logout();
@@ -428,6 +448,7 @@ export default function Navbar() {
                 </nav>
                 <UserMenu
                   user={user}
+                  buttonRef={menuButtonRef}
                   onSignOut={handleLogout}
                   onOpenSettings={() => setSettingsOpen(true)}
                 />
@@ -444,7 +465,7 @@ export default function Navbar() {
       {settingsOpen && user && (
         <AccountSettingsModal
           user={user}
-          onClose={() => setSettingsOpen(false)}
+          onClose={() => { setSettingsOpen(false); menuButtonRef.current?.focus(); }}
         />
       )}
     </>

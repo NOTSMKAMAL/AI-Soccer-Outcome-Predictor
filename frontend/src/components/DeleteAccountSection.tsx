@@ -125,7 +125,7 @@ export default function DeleteAccountSection() {
                 width: "100%", boxSizing: "border-box", marginBottom: 10,
                 padding: "9px 12px", borderRadius: 10, fontSize: 14,
                 background: "var(--surface-2)", color: "var(--ink)",
-                border: "1px solid var(--border-strong)", outline: "none",
+                border: "1px solid var(--border-strong)",
               }}
             />
           )}
