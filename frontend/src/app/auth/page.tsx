@@ -110,6 +110,7 @@ function Field({
           id={id}
           type={type}
           aria-invalid={error ? true : undefined}
+          aria-describedby={error ? `${id}-error` : undefined}
           value={value}
           onChange={onChange}
           placeholder={placeholder}
@@ -128,7 +129,7 @@ function Field({
         />
         {extra}
       </div>
-      {error && <p className="text-xs" style={{ color: "var(--danger)" }}>{error}</p>}
+      {error && <p id={`${id}-error`} className="text-xs" style={{ color: "var(--danger)" }}>{error}</p>}
     </div>
   );
 }
@@ -229,7 +230,7 @@ export default function AuthPage() {
         {/* Content */}
         <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", height: "100%", maxWidth: 520, margin: "0 auto", width: "100%" }}>
           {/* Brand */}
-          <Link href="/" replace className="flex items-center gap-3 mb-14">
+          <Link href="/" replace className="flex items-center gap-3 min-h-[24px] mb-14">
             <span style={{ fontWeight: 700, fontSize: 15, letterSpacing: "-0.01em", fontFamily: "var(--font-display), system-ui" }}>
               FUTURE FC
             </span>

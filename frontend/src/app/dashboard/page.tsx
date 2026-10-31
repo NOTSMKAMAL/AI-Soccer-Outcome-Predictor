@@ -266,7 +266,7 @@ function DashboardContent() {
         )}
 
         {/* Empty for filtered view */}
-        {state === "success" && filtered.length === 0 && fixtures.length > 0 && (() => {
+        {state !== "loading" && filtered.length === 0 && fixtures.length > 0 && (() => {
           const dayLabel = tab === "live" ? "live right now" : "the upcoming schedule";
           return (
             <div style={{ textAlign: "center", padding: "60px 0" }}>

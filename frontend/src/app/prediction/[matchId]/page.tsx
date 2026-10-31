@@ -92,7 +92,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000"
 
 function SectionBadge({ label }: { label: string }) {
   return (
-    <span className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-bold uppercase tracking-widest"
+    <span className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-bold uppercase tracking-wide"
       style={{ borderColor: "var(--primary-edge)", background: "var(--primary-soft)", color: "var(--primary-text)" }}>
       <span className="h-1 w-1 rounded-full" style={{ background: "var(--primary-text)" }} />
       {label}
@@ -380,7 +380,7 @@ function H2HTimeline({ h2h, teamA, teamB }: { h2h: Prediction["headToHead"]; tea
 
   return (
     <div className="card p-6">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
         <h3 className="section-label">Head to Head History</h3>
         <SectionBadge label="HISTORICAL DATA • football-data.org" />
       </div>
@@ -503,9 +503,9 @@ function MatchCardInner({ fixture, teamId, defaultExpanded }: { fixture: RecentF
         style={{ cursor: hasStats ? "pointer" : "default" }}
       >
         <TeamBadge name={myTeam.name} size={32} />
-        <span className="text-xs flex-1 min-w-0 break-words" style={{ color: "var(--ink-2)" }}>{myTeam.name}</span>
+        <span className="text-xs flex-auto min-w-0 break-words" style={{ color: "var(--ink-2)" }}>{myTeam.name}</span>
         <span className="text-sm font-bold px-2 shrink-0" style={{ color: "var(--ink)" }}>{scoreStr}</span>
-        <span className="text-xs flex-1 min-w-0 text-right break-words" style={{ color: "var(--ink-2)" }}>{oppTeam.name}</span>
+        <span className="text-xs flex-auto min-w-0 text-right break-words" style={{ color: "var(--ink-2)" }}>{oppTeam.name}</span>
         <TeamBadge name={oppTeam.name} size={32} />
         <span className="w-full flex items-center gap-2">
           {resultLabel && (
@@ -540,7 +540,7 @@ function RecentFormSection({ formA, formB, teamA, teamB, teamAId, teamBId }: {
 }) {
   return (
     <div className="card p-6">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
         <h3 className="section-label">Recent Form</h3>
         <SectionBadge label="SCHEDULES & RESULTS • football-data.org" />
       </div>
@@ -578,7 +578,7 @@ function XGSection({ xg, teamA, teamB }: { xg: { team_a_xg: number; team_b_xg: n
 
   return (
     <div className="card p-6">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
         <h3 className="section-label">xG Match Analysis</h3>
         <SectionBadge label="EXPECTED GOALS (xG) • football-data.org" />
       </div>
@@ -662,7 +662,7 @@ function SeasonStatsSection({ statsA, statsB, teamA, teamB }: { statsA: TeamStat
 
   return (
     <div className="card p-6">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
         <h3 className="section-label">Season Statistics</h3>
         <SectionBadge label="STATISTICS • football-data.org" />
       </div>
@@ -692,7 +692,7 @@ function StandingsSection({ standings, teamAId, teamBId }: { standings: Standing
 
   return (
     <div className="card p-6 overflow-x-auto">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
         <h3 className="section-label">League Standings</h3>
         <SectionBadge label="STANDINGS • football-data.org" />
       </div>
@@ -753,7 +753,7 @@ function TrendsSection({ trends, teamA, teamB }: { trends: { team_a: string[]; t
 
   return (
     <div className="card p-6">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
         <h3 className="section-label">Current Trends</h3>
         <SectionBadge label="LIVESCORES & EVENTS • football-data.org" />
       </div>
