@@ -111,7 +111,7 @@ and users past their cap get "You have used your N predictions for today."
 
 ## Step 3 — Deploy the API (Render free tier)
 
-1. Push the repo to GitHub (see "Moving this to your own GitHub" below).
+1. Push the repo to GitHub.
 2. Render → **New → Web Service** → connect the repo.
 3. Settings:
    - **Runtime:** Python 3
@@ -178,56 +178,3 @@ Once `ALLOWED_EMAILS` is set, only listed accounts and owners can predict.
   5 minutes and derives team stats from the standings response, so normal browsing
   stays well under it. Heavy simultaneous use can still hit 429s, which degrade to
   cached or mock data rather than errors.
-
----
-
-## Moving this to your own GitHub
-
-The repo currently points at the course organisation. Publish it under your own
-account **with its history intact** — 69 commits read better on a résumé than a single
-"initial commit".
-
-Create an empty repo on GitHub first (no README, no licence, so nothing conflicts),
-then:
-
-```bash
-git add -A
-git commit -m "Retire World Cup feature and SportMonks integration; add access controls"
-```
-
-```bash
-git switch main
-git merge wc-accuracy-signals
-```
-
-Your local `main` is 3 commits behind `origin/main` (README edits made on GitHub), so
-pull those in as well:
-
-```bash
-git pull origin main
-```
-
-If that conflicts on `README.md`, keep your local version — the rewritten README
-already contains the demo-video link those commits added.
-
-```bash
-git remote rename origin upstream
-git remote add origin https://github.com/<your-username>/<your-repo>.git
-git push -u origin main
-```
-
-`upstream` keeps the course remote available if you ever need it; nothing is pushed
-there unless you name it explicitly.
-
-Why not fork: a fork is permanently labelled "forked from UCR-CS180/…" and its stars,
-issues and traffic belong to the parent. A normal repo is yours, and you can still
-credit the coursework and your teammate in the README — which this one does.
-
-Before making it public, confirm nothing sensitive is tracked:
-
-```bash
-git ls-files | grep -Ei "\.env$|serviceaccount|credential"
-```
-
-That should print nothing. `.env`, `serviceAccountKey.json` and `frontend/.env.local`
-are in `.gitignore`, and no secret was ever committed to this history.

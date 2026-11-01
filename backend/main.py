@@ -416,7 +416,11 @@ async def _fail_prediction(receipt: QuotaReceipt, match_id: str, reason: str) ->
 
 
 async def _generate_prediction(match_id: str, fixture: dict, receipt: QuotaReceipt) -> dict:
-    """Enrich the fixture and run the engine. On failure, refunds and raises a 503."""
+    """Enrich the fixture and run the engine.
+
+    Refunds the unit and raises a 422 when Dixon-Coles has too little data to give
+    probabilities, and a 503 on any other failure.
+    """
     home = fixture["homeTeam"]
     away = fixture["awayTeam"]
 
@@ -442,6 +446,16 @@ async def _generate_prediction(match_id: str, fixture: dict, receipt: QuotaRecei
         )
     except Exception as exc:
         await _fail_prediction(receipt, match_id, f"{type(exc).__name__}: {exc}")
+
+    if prediction["status"] == "insufficient_data":
+        await asyncio.to_thread(quota.refund, receipt)
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                "Not enough data for a prediction. This match's league standings aren't "
+                "available right now, so try again later. This attempt didn't use up a prediction."
+            ),
+        )
 
     if prediction["status"] != "success":
         await _fail_prediction(

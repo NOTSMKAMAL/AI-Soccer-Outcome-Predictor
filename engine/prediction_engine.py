@@ -603,55 +603,37 @@ def generate_prediction(
             team_b_id=team_b_id,
         )
 
+    # Probabilities only ever come from Dixon-Coles, so without them there is no
+    # prediction. Stopping here also means no Gemini credit is spent.
+    if not dc_probs:
+        return {"status": "insufficient_data"}
+
     # Determine the result from Dixon-Coles before building prompt
     # Inject into Gemini prompt so reasoning supports verdict, not contradicts it
-    verdict = _predicted_outcome(dc_probs, team_a_name, team_b_name) if dc_probs else None
+    verdict = _predicted_outcome(dc_probs, team_a_name, team_b_name)
 
-    if enriched_data:
-        enriched_section = _build_enriched_section(
-            team_a_name, team_b_name, team_a_id, team_b_id, enriched_data
-        )
-        data_block = f"{h2h_section}\n\n{enriched_section}"
-        limitations = _data_limitations_note(enriched_data.get("missing_sections") or [])
-        if limitations:
-            data_block = f"{data_block}\n\n{limitations}"
-        response_format = (
-            "Respond in this exact format:\n"
-            "Winner: <team name>\n"
-            "Confidence: <low | medium | high>\n"
-            "Reasoning: <4-5 sentences. Each sentence must reference a specific statistic "
-            "from the data above. Do not use generic phrases without citing actual numbers.>\n"
-            "Key Factor 1: <title> | <one sentence with specific stat>\n"
-            "Key Factor 2: <title> | <one sentence with specific stat>\n"
-            "Key Factor 3: <title> | <one sentence with specific stat>"
-        )
-    else:
-        data_block = f"{h2h_section}\n\n{_data_limitations_note(list(_SECTION_DESCRIPTIONS))}"
-        response_format = (
-            "Respond in this exact format:\n"
-            "Winner: <team name>\n"
-            "Confidence: <low | medium | high>\n"
-            "Reasoning: <2-3 sentences explaining the key factors>"
-        )
+    enriched_section = _build_enriched_section(
+        team_a_name, team_b_name, team_a_id, team_b_id, enriched_data
+    )
+    data_block = f"{h2h_section}\n\n{enriched_section}"
+    limitations = _data_limitations_note(enriched_data.get("missing_sections") or [])
+    if limitations:
+        data_block = f"{data_block}\n\n{limitations}"
+    response_format = (
+        "Respond in this exact format:\n"
+        "Winner: <team name>\n"
+        "Confidence: <low | medium | high>\n"
+        "Reasoning: <4-5 sentences. Each sentence must reference a specific statistic "
+        "from the data above. Do not use generic phrases without citing actual numbers.>\n"
+        "Key Factor 1: <title> | <one sentence with specific stat>\n"
+        "Key Factor 2: <title> | <one sentence with specific stat>\n"
+        "Key Factor 3: <title> | <one sentence with specific stat>"
+    )
 
-    # Build prompt with or without the verdict instruction based on availability
-    if verdict:
-        # Dixon-Coles determined the result — inject it upfront so reasoning supports it
-        prompt = f"""You are a professional sports analyst AI for the AI Sports Outcome Predictor.
+    # Dixon-Coles determined the result — inject it upfront so reasoning supports it
+    prompt = f"""You are a professional sports analyst AI for the AI Sports Outcome Predictor.
 
 {_verdict_instruction(verdict)}Match data:
-
-Team A: {team_a_name}
-Team B: {team_b_name}
-
-{data_block}
-
-{response_format}
-"""
-    else:
-        # No Dixon-Coles prediction — Gemini decides freely
-        prompt = f"""You are a professional sports analyst AI for the AI Sports Outcome Predictor.
-Analyze ALL data below and predict the winner. Your reasoning MUST cite specific statistics.
 
 Team A: {team_a_name}
 Team B: {team_b_name}
@@ -716,38 +698,22 @@ Team B: {team_b_name}
         if key_factors:
             result_data["keyFactors"] = key_factors
 
-        # Win-probability split — Dixon-Coles when stats available, else confidence fallback
-        if dc_probs:
-            result_data["home_win_probability"] = dc_probs["home_win"]
-            result_data["draw_probability"]     = dc_probs["draw"]
-            result_data["away_win_probability"] = dc_probs["away_win"]
-            result_data["probability_method"]   = "dixon-coles"
+        # Win-probability split from Dixon-Coles
+        result_data["home_win_probability"] = dc_probs["home_win"]
+        result_data["draw_probability"]     = dc_probs["draw"]
+        result_data["away_win_probability"] = dc_probs["away_win"]
+        result_data["probability_method"]   = "dixon-coles"
 
-            # Override winner with Dixon-Coles prediction
-            result_data["winner"] = verdict
+        # Override winner with Dixon-Coles prediction
+        result_data["winner"] = verdict
 
-            # Override confidence with probability-derived label (shared scoring).
-            # Gemini's confidence label is qualitative and inconsistent —
-            # the computed label is reproducible and consistent with probability bars.
-            winner_prob = max(dc_probs["home_win"],
-                              dc_probs["draw"],
-                              dc_probs["away_win"])
-            result_data["confidence"] = scoring.confidence_from_prob(winner_prob)
-
-        else:
-            # Confidence-label fallback: assign probabilities based on predicted winner
-            _fb: dict[str, tuple[float, float, float]] = {
-                "high":   (0.72, 0.18, 0.10),
-                "medium": (0.52, 0.23, 0.25),
-                "low":    (0.38, 0.28, 0.34),
-            }
-            conf_key = parsed.get("Confidence", "low").lower()
-            w_p, dr_p, l_p = _fb.get(conf_key, _fb["low"])
-            winner_is_home = parsed.get("Winner", "").lower() == team_a_name.lower()
-            result_data["home_win_probability"] = w_p if winner_is_home else l_p
-            result_data["draw_probability"]     = dr_p
-            result_data["away_win_probability"] = l_p if winner_is_home else w_p
-            result_data["probability_method"]   = "confidence-estimate"
+        # Override confidence with probability-derived label (shared scoring).
+        # Gemini's confidence label is qualitative and inconsistent —
+        # the computed label is reproducible and consistent with probability bars.
+        winner_prob = max(dc_probs["home_win"],
+                          dc_probs["draw"],
+                          dc_probs["away_win"])
+        result_data["confidence"] = scoring.confidence_from_prob(winner_prob)
 
         # Unified scoring fields (parity with the WC engine via engine/scoring.py).
         result_data["risk_level"] = scoring.compute_risk_level(
@@ -762,7 +728,7 @@ Team B: {team_b_name}
         result = {"status": "success", "data": result_data}
         # The cache never expires, so only keep a prediction built from complete
         # data — otherwise one rate-limited fetch would pin a stats-free write-up
-        # (and confidence-estimate probabilities) to this matchup for good.
+        # to this matchup for good.
         if _enrichment_complete(enriched_data):
             _prediction_cache[cache_key] = result
         return result

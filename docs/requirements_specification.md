@@ -65,7 +65,7 @@
 - `winner`: predicted winning team name (string)
 - `confidence`: `"low"` | `"medium"` | `"high"` (derived from Dixon-Coles winner probability)
 - `home_win_probability`, `draw_probability`, `away_win_probability`: three-way floats in [0.05, 0.90]
-- `probability_method`: `"dixon-coles"` or `"confidence-estimate"`
+- `probability_method`: always `"dixon-coles"`
 - `reasoning`: 4–5 sentence natural-language explanation citing specific statistics (Gemini-generated)
 - `keyFactors`: array of 3 objects `{title, text}` each citing a specific stat
 - `headToHead`: historical W/D/L record and 5 most recent results between the two teams
@@ -77,7 +77,7 @@
 - Fixture not in cache and not found on football-data.org → HTTP 404 "Fixture not found"
 - `GEMINI_API_KEY` not set or engine import fails → HTTP 501 "Prediction engine unavailable"
 - Individual enrichment calls fail (e.g., the football-data.org rate limit) → `_safe()` wrapper returns an error envelope; the section is listed in `missing_sections` and logged as `[Enrich] <section> unavailable …`; the Gemini prompt gets a DATA LIMITATIONS note naming it; neither the enrichment nor the prediction is cached
-- Dixon-Coles returns `None` (insufficient stats data — e.g., team has 0 matches played) → falls back to confidence-estimate probability mapping `{high: (0.72, 0.18, 0.10), medium: (0.52, 0.23, 0.25), low: (0.38, 0.28, 0.34)}`
+- Dixon-Coles returns `None` (insufficient stats data — e.g., team has 0 matches played) → HTTP 422 "Not enough data for a prediction"; Gemini is not called and the quota unit is refunded
 - Prediction already cached for this matchup → returned without calling football-data.org or Gemini, and the quota unit is refunded; a user at their cap is still refused
 - Gemini reports a server error (e.g. overloaded) → retried once after 2 seconds
 - Gemini call still fails → HTTP 503 with a plain retry message; the quota unit is refunded and the raw error is logged
@@ -107,8 +107,8 @@
 ### Functionality 2 Mapping — Fixture Discovery
 
 **Interface responsibilities:**
-- `src/app/dashboard/page.tsx`: calls `getTopLeagueFixtures()` on mount; stores raw fixture list in state; applies date filter (`todayLA()` / `tomorrowLA()`), league filter, and search filter via `useMemo`; groups results by `leagueName`; renders `MatchCard` per fixture
-- `src/lib/dateUtils.ts`: converts all `startingAt` UTC strings to America/Los_Angeles calendar dates for filtering and display (DST-safe via `Intl.DateTimeFormat`)
+- `src/app/dashboard/page.tsx`: calls `getTopLeagueFixtures()` on mount; stores raw fixture list in state; applies date filter (`isUpcomingLocal()`), league filter, and search filter via `useMemo`; groups results by `leagueName`; renders `MatchCard` per fixture
+- `src/lib/dateUtils.ts`: converts all `startingAt` UTC strings to the viewer's own time zone for filtering and display (DST-safe via `Intl.DateTimeFormat`)
 - `src/lib/mockData.ts`: frontend-side fallback fixture list used when the backend is unreachable
 - `src/components/FilterBar.tsx`: Today/Tomorrow tab, league dropdown, text search
 - `src/components/MatchCard.tsx`: displays fixture card; links to `/prediction/[id]`
@@ -272,7 +272,7 @@ Return payload/status:
 
 Failure statuses:
 - Any single call returns `{"status": "error", "message": "…"}` or raises exception → `_safe()` returns `None` → that enrichment section omitted from Gemini prompt; pipeline continues
-- All enrichment calls fail → `enriched_data` is `None` → Dixon-Coles returns `None` → confidence-estimate fallback probabilities used
+- All enrichment calls fail → `enriched_data` is `None` → Dixon-Coles returns `None` → HTTP 422 "Not enough data for a prediction", no Gemini call
 
 ---
 

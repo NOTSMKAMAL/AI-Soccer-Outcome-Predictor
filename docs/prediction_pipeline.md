@@ -563,7 +563,6 @@ interface Prediction {
     recentResults?: Array<{name, date, result_info}>;
   };
   keyFactors?: Array<{title: string, text: string}>;
-  probabilityMethod?: "dixon-coles" | "confidence-estimate";
 }
 ```
 

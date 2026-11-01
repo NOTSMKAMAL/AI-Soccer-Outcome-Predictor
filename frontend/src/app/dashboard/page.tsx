@@ -12,7 +12,7 @@ import { describeApiError, getTopLeagueFixtures } from "@/lib/api";
 import { isFinishedStatus, isLiveStatus } from "@/lib/fixtureStatus";
 import { MOCK_FIXTURES } from "@/lib/mockData";
 import type { Fixture } from "@/lib/types";
-import { parseFixtureDate, toLADateStr, isUpcomingLA } from "@/lib/dateUtils";
+import { parseFixtureDate, isUpcomingLocal } from "@/lib/dateUtils";
 
 type LoadState = "loading" | "success" | "error";
 
@@ -27,7 +27,7 @@ function isLiveFixture(f: Fixture): boolean {
 // the backend keeps matches that finished earlier today.
 function isUpcomingFixture(f: Fixture): boolean {
   if (isLiveStatus(f.status) || isFinishedStatus(f.status)) return false;
-  return isUpcomingLA(parseFixtureDate(f.startingAt));
+  return isUpcomingLocal(parseFixtureDate(f.startingAt));
 }
 
 function groupByLeague(fixtures: Fixture[]): Record<string, Fixture[]> {
@@ -277,7 +277,7 @@ function DashboardContent() {
               <p style={{ fontSize: 14, color: "var(--muted)", margin: "0 0 20px" }}>
                 {search || league
                   ? "Try clearing your search or league filter."
-                  : `No matches are scheduled for ${dayLabel} (Pacific time).`}
+                  : `No matches are scheduled for ${dayLabel}.`}
               </p>
               {(search || league) && (
                 <button

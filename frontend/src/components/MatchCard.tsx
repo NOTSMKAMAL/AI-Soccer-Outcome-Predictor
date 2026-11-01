@@ -4,7 +4,7 @@ import Link from "next/link";
 import type { CSSProperties } from "react";
 import TeamBadge from "@/components/TeamBadge";
 import type { Fixture } from "@/lib/types";
-import { parseFixtureDate, formatLATime, formatLADateLabel, formatLADateLong } from "@/lib/dateUtils";
+import { parseFixtureDate, formatLocalTime, formatLocalDateLabel, formatLocalDateLong } from "@/lib/dateUtils";
 import { isFinishedStatus, isLiveStatus } from "@/lib/fixtureStatus";
 
 interface Props {
@@ -15,9 +15,9 @@ function formatKickoff(isoString: string): { dateLabel: string; time: string; fu
   try {
     const d = parseFixtureDate(isoString);
     return {
-      dateLabel: formatLADateLabel(d),
-      time: formatLATime(d),
-      fullDate: formatLADateLong(d),
+      dateLabel: formatLocalDateLabel(d),
+      time: formatLocalTime(d),
+      fullDate: formatLocalDateLong(d),
     };
   } catch {
     return { dateLabel: "—", time: "—", fullDate: "—" };

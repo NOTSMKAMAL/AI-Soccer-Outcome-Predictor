@@ -95,6 +95,25 @@ def test_gemini_error_text_goes_to_the_log_not_the_user(monkeypatch, refunds, ca
     assert raw in capsys.readouterr().out
 
 
+def test_not_enough_data_refunds_and_says_so(monkeypatch, refunds):
+    _use_engine(monkeypatch, FakeEngine(result={"status": "insufficient_data"}))
+    with pytest.raises(HTTPException) as exc:
+        _predict()
+    assert exc.value.status_code == 422
+    assert "Not enough data for a prediction" in exc.value.detail
+    assert refunds.refunded == [RECEIPT]
+
+
+def test_not_enough_data_is_not_recorded_as_a_prediction(monkeypatch, refunds):
+    logged = []
+    monkeypatch.setattr(main, "_tracking_available", True)
+    monkeypatch.setattr(main, "_tracking", type("Log", (), {"log_prediction": lambda *args: logged.append(args)}), raising=False)
+    _use_engine(monkeypatch, FakeEngine(result={"status": "insufficient_data"}))
+    with pytest.raises(HTTPException):
+        _predict()
+    assert logged == []
+
+
 def test_unknown_fixture_refunds(monkeypatch, refunds):
     engine = FakeEngine()
     _use_engine(monkeypatch, engine)

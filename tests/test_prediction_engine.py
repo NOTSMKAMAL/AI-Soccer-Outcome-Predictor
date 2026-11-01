@@ -860,6 +860,45 @@ class TestDrawIsMostLikely:
         assert "PREDICTED WINNER: Away FC" in _prompt_sent(fake_gemini)
 
 
+class TestNotEnoughData:
+    """No Dixon-Coles numbers means no prediction: Gemini never stands in for the model."""
+
+    @pytest.fixture
+    def no_model(self, fake_gemini):
+        import engine.prediction_engine as pe
+        with patch.object(pe, "dixon_coles_probability", return_value=None):
+            yield fake_gemini
+
+    def test_missing_standings_give_no_prediction(self, no_model):
+        assert _predict({"missing_sections": ["standings"]}) == {"status": "insufficient_data"}
+
+    def test_failed_enrichment_gives_no_prediction(self, fake_gemini):
+        assert _predict(None) == {"status": "insufficient_data"}
+
+    def test_empty_enrichment_gives_no_prediction(self, fake_gemini):
+        assert _predict({}) == {"status": "insufficient_data"}
+
+    def test_gemini_is_never_called(self, no_model):
+        _predict({"missing_sections": ["standings"]})
+        no_model.assert_not_called()
+
+    def test_nothing_is_cached(self, no_model):
+        import engine.prediction_engine as pe
+        _predict({"missing_sections": ["standings"]})
+        assert pe._prediction_cache == {}
+
+    def test_a_later_attempt_with_standings_succeeds(self, fake_gemini):
+        import engine.prediction_engine as pe
+        with patch.object(pe, "dixon_coles_probability", return_value=None):
+            assert _predict({"missing_sections": ["standings"]})["status"] == "insufficient_data"
+        assert _predict({"missing_sections": []})["status"] == "success"
+
+    def test_a_prediction_is_always_marked_dixon_coles(self, fake_gemini):
+        data = _predict({"missing_sections": []})["data"]
+        assert data["probability_method"] == "dixon-coles"
+        assert data["home_win_probability"] == _DC_PROBS["home_win"]
+
+
 class TestDegradedEnrichment:
     """A rate-limited fetch must not pin a stats-free prediction to a matchup."""
 
@@ -873,11 +912,6 @@ class TestDegradedEnrichment:
         partial = {"missing_sections": ["standings"]}
         _predict(partial)
         _predict(partial)
-        assert fake_gemini.call_count == 2
-
-    def test_missing_enrichment_is_not_cached(self, fake_gemini):
-        _predict(None)
-        _predict(None)
         assert fake_gemini.call_count == 2
 
     def test_complete_retry_after_partial_is_cached(self, fake_gemini):
@@ -897,12 +931,6 @@ class TestDegradedEnrichment:
     def test_prompt_has_no_limitations_note_when_complete(self, fake_gemini):
         _predict({"missing_sections": []})
         assert "DATA LIMITATIONS" not in _prompt_sent(fake_gemini)
-
-    def test_prompt_without_enrichment_lists_everything_missing(self, fake_gemini):
-        _predict(None)
-        prompt = _prompt_sent(fake_gemini)
-        assert "DATA LIMITATIONS" in prompt
-        assert "the league's top scorers" in prompt
 
     def test_gemini_called_once_without_search_tools(self, fake_gemini):
         _predict({"missing_sections": []})
@@ -979,7 +1007,7 @@ class TestDegradedEnrichment:
 
     def test_prompt_never_invites_general_knowledge(self, fake_gemini):
         import engine.prediction_engine as pe
-        for enriched in ({"missing_sections": []}, {"missing_sections": ["standings"]}, None):
+        for enriched in ({"missing_sections": []}, {"missing_sections": ["standings"]}):
             pe._prediction_cache.clear()  # the complete case caches; each case needs a fresh call
             fake_gemini.reset_mock()
             _predict(enriched)

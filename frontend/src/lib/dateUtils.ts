@@ -1,9 +1,12 @@
 /**
- * Shared date helpers — all display and filtering uses America/Los_Angeles.
- * DST is automatic: PDT in summer, PST in winter.
+ * Shared date helpers. All display and filtering uses the viewer's own time zone.
+ *
+ * `timeZone` stays undefined in the app, which means the browser's zone. The checks
+ * in frontend/tests/dateUtils.test.mjs pass a zone and a clock so they are repeatable.
+ * Labels stay in English to match the rest of the site, whatever the viewer's locale.
  */
 
-export const LA_TZ = "America/Los_Angeles";
+const LOCALE = "en-US";
 
 /**
  * Parse a football-data.org date string into a JS Date.
@@ -20,13 +23,13 @@ export function parseFixtureDate(raw: string): Date {
 }
 
 /**
- * Returns "YYYY-MM-DD" in America/Los_Angeles.
+ * Returns "YYYY-MM-DD" in the viewer's time zone.
  * Uses formatToParts (not a locale trick) so it works in every browser and Node version.
  */
-export function toLADateStr(date: Date): string {
+export function toLocalDateStr(date: Date, timeZone?: string): string {
   if (isNaN(date.getTime())) return "invalid";
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone: LA_TZ,
+  const parts = new Intl.DateTimeFormat(LOCALE, {
+    timeZone,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
@@ -35,46 +38,42 @@ export function toLADateStr(date: Date): string {
   return `${get("year")}-${get("month")}-${get("day")}`;
 }
 
-/** Today's calendar date in LA ("YYYY-MM-DD") */
-export function todayLA(): string {
-  return toLADateStr(new Date());
+/** The viewer's calendar date ("YYYY-MM-DD") */
+export function todayLocal(timeZone?: string, now: Date = new Date()): string {
+  return toLocalDateStr(now, timeZone);
 }
 
 /**
- * Tomorrow's calendar date in LA ("YYYY-MM-DD").
- * We add exactly 24 h to a noon-UTC anchor derived from today's LA date
- * so month/year rollovers are handled correctly by the JS Date engine.
+ * The viewer's next calendar date ("YYYY-MM-DD").
+ * Works on the date alone, so a 23- or 25-hour day at a clock change can't skip one.
  */
-export function tomorrowLA(): string {
-  const [y, m, d] = todayLA().split("-").map(Number);
-  // noon UTC on today-in-LA: safely within the LA calendar day regardless of DST
-  const anchor = new Date(Date.UTC(y, m - 1, d, 20, 0, 0)); // 20:00 UTC = noon PDT / 1 PM PST
-  const next = new Date(anchor.getTime() + 24 * 60 * 60 * 1000);
-  return toLADateStr(next);
+export function tomorrowLocal(timeZone?: string, now: Date = new Date()): string {
+  const [y, m, d] = todayLocal(timeZone, now).split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d + 1)).toISOString().slice(0, 10);
 }
 
-/** "5:30 PM PDT" or "5:30 PM PST" — DST resolved automatically by Intl */
-export function formatLATime(date: Date): string {
+/** "5:30 PM PDT", or "5:30 PM GMT+9" where the zone has no common abbreviation in English */
+export function formatLocalTime(date: Date, timeZone?: string): string {
   if (isNaN(date.getTime())) return "—";
-  return date.toLocaleTimeString("en-US", {
-    timeZone: LA_TZ,
+  return date.toLocaleTimeString(LOCALE, {
+    timeZone,
     hour: "numeric",
     minute: "2-digit",
     timeZoneName: "short",
   });
 }
 
-/** Returns true when the fixture date (LA calendar) is today or later. */
-export function isUpcomingLA(date: Date): boolean {
+/** Returns true when the fixture's date is today or later on the viewer's calendar. */
+export function isUpcomingLocal(date: Date, timeZone?: string, now: Date = new Date()): boolean {
   if (isNaN(date.getTime())) return false;
-  return toLADateStr(date) >= todayLA();
+  return toLocalDateStr(date, timeZone) >= todayLocal(timeZone, now);
 }
 
 /** "Saturday, May 16, 2026" */
-export function formatLADateLong(date: Date): string {
+export function formatLocalDateLong(date: Date, timeZone?: string): string {
   if (isNaN(date.getTime())) return "—";
-  return date.toLocaleDateString("en-US", {
-    timeZone: LA_TZ,
+  return date.toLocaleDateString(LOCALE, {
+    timeZone,
     weekday: "long",
     month: "long",
     day: "numeric",
@@ -86,16 +85,28 @@ export function formatLADateLong(date: Date): string {
  * Label for the card center:
  * "TODAY" | "TOMORROW" | "Sat, May 17, 2026"
  */
-export function formatLADateLabel(date: Date): string {
+export function formatLocalDateLabel(date: Date, timeZone?: string, now: Date = new Date()): string {
   if (isNaN(date.getTime())) return "—";
-  const dStr = toLADateStr(date);
-  if (dStr === todayLA()) return "TODAY";
-  if (dStr === tomorrowLA()) return "TOMORROW";
-  return date.toLocaleDateString("en-US", {
-    timeZone: LA_TZ,
+  const day = toLocalDateStr(date, timeZone);
+  if (day === todayLocal(timeZone, now)) return "TODAY";
+  if (day === tomorrowLocal(timeZone, now)) return "TOMORROW";
+  return date.toLocaleDateString(LOCALE, {
+    timeZone,
     weekday: "short",
     month: "short",
     day: "numeric",
     year: "numeric",
   });
+}
+
+/** The next daily prediction reset: 00:00 UTC, when backend/access.py starts a new day. */
+export function nextDailyReset(now: Date = new Date()): Date {
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1));
+}
+
+/** When the limit resets, for the viewer: "today at 5:00 PM PDT" or "tomorrow at 9:00 AM GMT+9". */
+export function formatDailyReset(timeZone?: string, now: Date = new Date()): string {
+  const reset = nextDailyReset(now);
+  const day = toLocalDateStr(reset, timeZone) === todayLocal(timeZone, now) ? "today" : "tomorrow";
+  return `${day} at ${formatLocalTime(reset, timeZone)}`;
 }

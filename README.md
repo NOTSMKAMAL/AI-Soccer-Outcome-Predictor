@@ -120,8 +120,8 @@ https://www.youtube.com/watch?v=s4UfIk_ctJw
 ### 1. Clone
 
 ```bash
-git clone https://github.com/<your-username>/ai-sports-predictor.git
-cd ai-sports-predictor
+git clone https://github.com/NOTSMKAMAL/AI-Soccer-Outcome-Predictor.git
+cd AI-Soccer-Outcome-Predictor
 ```
 
 ### 2. Backend

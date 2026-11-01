@@ -13,7 +13,7 @@ import VerifyEmailNotice from "@/components/VerifyEmailNotice";
 import { describeApiError, getFixtureById, generatePrediction, getPredictionAllowance } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import type { Fixture, Prediction, PredictionAllowance } from "@/lib/types";
-import { parseFixtureDate, formatLADateLong, formatLATime } from "@/lib/dateUtils";
+import { parseFixtureDate, formatLocalDateLong, formatLocalTime } from "@/lib/dateUtils";
 import { resultFromScores, type MatchResult } from "@/lib/matchResult";
 import { extractInsightChips } from "@/lib/reasoningInsights";
 
@@ -119,7 +119,7 @@ function confidenceBadgeClass(level: string) {
 
 function formatMatchTime(isoString: string): string {
   const date = parseFixtureDate(isoString);
-  return `${formatLADateLong(date)}, ${formatLATime(date)}`;
+  return `${formatLocalDateLong(date)}, ${formatLocalTime(date)}`;
 }
 
 function buildVerdictHeadline(winner: string, confidence: string): string {
@@ -343,12 +343,6 @@ function AIVerdictCard({
             homeName={fixture.homeTeam.name}
             awayName={fixture.awayTeam.name}
           />
-        )}
-
-        {prediction.probabilityMethod === "confidence-estimate" && (
-          <p className="mt-3 mx-auto max-w-xs text-xs" style={{ color: "var(--muted)" }}>
-            League standings weren&apos;t available, so these are rough estimates from Gemini&apos;s confidence, not the model&apos;s probabilities.
-          </p>
         )}
       </div>
     </motion.div>
@@ -852,7 +846,7 @@ function PredictionSummaryPanel({ fixture, prediction }: { fixture: Fixture; pre
         {[
           { term: "Predicted winner", value: prediction.winner || "Unknown" },
           { term: "Confidence", value: prediction.confidence ? prediction.confidence.charAt(0).toUpperCase() + prediction.confidence.slice(1) : "Unknown" },
-          { term: "Probabilities", value: prediction.probabilityMethod === "confidence-estimate" ? "Estimate (standings unavailable)" : "Dixon-Coles model" },
+          { term: "Probabilities", value: "Dixon-Coles model" },
           { term: "Match", value: fixture.name },
           { term: "League", value: fixture.leagueName },
           { term: "Fixture source", value: fixture._isMock ? "Preview data" : "football-data.org" },
@@ -1058,8 +1052,6 @@ function PredictionContent({ matchId }: { matchId: string }) {
         drawProbability: (raw.draw_probability as any) ?? undefined,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         awayWinProbability: (raw.away_win_probability as any) ?? undefined,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        probabilityMethod: (raw.probability_method as any) ?? undefined,
       } as Prediction;
 
       setPrediction(pred);
@@ -1085,8 +1077,8 @@ function PredictionContent({ matchId }: { matchId: string }) {
       if (httpStatus === "501") {
         setErrorMsg("This match has no live data behind it, so it can't be predicted. Pick another from the match list.");
         setPageState("unavailable");
-      } else if (httpStatus === "403" || httpStatus === "429") {
-        // Access gate or daily prediction limit — show the backend's reason.
+      } else if (httpStatus === "403" || httpStatus === "422" || httpStatus === "429") {
+        // Access gate, not enough data or daily limit — show the backend's reason.
         setErrorMsg(detail);
         setPageState("unavailable");
       } else {
