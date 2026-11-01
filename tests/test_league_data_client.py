@@ -5,6 +5,7 @@ normalized shapes that backend/main.py and engine/prediction_engine.py consume.
 """
 import os
 import sys
+from datetime import date, timedelta
 from unittest.mock import patch
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -113,26 +114,123 @@ def test_unknown_competition_is_safe():
 
 # ── Upcoming fixtures aggregation ─────────────────────────────────────────────
 
-def test_get_upcoming_fixtures_aggregates_and_sorts():
-    def fake_get(path, params=None):
-        # one match per competition, with deliberately out-of-order dates
-        return {"status": "success", "data": {"matches": [{
-            "id": hash(path) % 1000,
-            "utcDate": "2026-03-05T12:00:00Z" if "PL" in path else "2026-03-01T12:00:00Z",
-            "status": "SCHEDULED",
-            "homeTeam": {"id": 1, "name": "H"},
-            "awayTeam": {"id": 2, "name": "A"},
-            "score": {"fullTime": {"home": None, "away": None}},
-        }]}}
+def _match(code, match_id=1, when="2026-03-01T12:00:00Z", status="SCHEDULED"):
+    return {
+        "id": match_id,
+        "utcDate": when,
+        "status": status,
+        "competition": {"code": code},
+        "homeTeam": {"id": 1, "name": "H"},
+        "awayTeam": {"id": 2, "name": "A"},
+        "score": {"fullTime": {"home": None, "away": None}},
+    }
+
+
+def _ok(matches):
+    return {"status": "success", "data": {"matches": matches}}
+
+
+def _upcoming(fake_get):
+    """Run get_upcoming_fixtures against a fake provider; return (result, paths called)."""
+    calls = []
+
+    def recording_get(path, params=None):
+        calls.append((path, params or {}))
+        return fake_get(path, params)
 
     with patch.object(ldc._fdorg, "has_api_key", return_value=True), \
-         patch.object(ldc._fdorg, "get", side_effect=fake_get):
-        res = ldc.get_upcoming_fixtures()
+         patch.object(ldc._fdorg, "get", side_effect=recording_get):
+        return ldc.get_upcoming_fixtures(), calls
+
+
+def test_get_upcoming_fixtures_aggregates_and_sorts():
+    # one match per competition, with deliberately out-of-order dates
+    matches = [
+        _match(code, i, "2026-03-05T12:00:00Z" if code == "PL" else "2026-03-01T12:00:00Z")
+        for i, code in enumerate(ldc.COMPETITION_CODES)
+    ]
+    res, _ = _upcoming(lambda path, params: _ok(matches))
     assert res["status"] == "success"
     assert res["source"] == "football-data"
     assert len(res["data"]) == len(ldc.COMPETITION_CODES)
     dates = [f["startingAt"] for f in res["data"]]
     assert dates == sorted(dates)                          # sorted ascending
+
+
+def test_all_six_leagues_come_from_one_call():
+    matches = [_match(code, i) for i, code in enumerate(ldc.COMPETITION_CODES)]
+    _, calls = _upcoming(lambda path, params: _ok(matches))
+    assert len(calls) == 1
+    path, params = calls[0]
+    assert path == "/matches"
+    assert params["competitions"] == ",".join(ldc.COMPETITION_CODES)
+
+
+def test_combined_window_stays_within_the_ten_day_limit():
+    # Measured 2026-10-31: /matches returns HTTP 400 for a 13-day range and 200 for 10.
+    matches = [_match(code, i) for i, code in enumerate(ldc.COMPETITION_CODES)]
+    _, calls = _upcoming(lambda path, params: _ok(matches))
+    params = calls[0][1]
+    span = date.fromisoformat(params["dateTo"]) - date.fromisoformat(params["dateFrom"])
+    assert span.days <= 10
+
+
+def test_fixtures_keep_their_own_competition():
+    res, _ = _upcoming(lambda path, params: _ok([_match("SA", 7), *[
+        _match(code, 10 + i) for i, code in enumerate(ldc.COMPETITION_CODES) if code != "SA"
+    ]]))
+    fixture = next(f for f in res["data"] if f["id"] == "7")
+    assert fixture["seasonId"] == "SA"
+    assert fixture["leagueName"] == "Serie A"
+
+
+def test_quiet_league_gets_its_own_wide_call():
+    """Off-season or an international break: only the empty league costs a second call."""
+    in_window = [_match(code, i) for i, code in enumerate(ldc.COMPETITION_CODES) if code != "CL"]
+
+    def fake_get(path, params=None):
+        if path == "/matches":
+            return _ok(in_window)
+        return _ok([_match("CL", 99, "2027-02-01T20:00:00Z")])
+
+    res, calls = _upcoming(fake_get)
+    assert [path for path, _ in calls] == ["/matches", "/competitions/CL/matches"]
+    assert any(f["seasonId"] == "CL" for f in res["data"])
+
+
+def test_per_competition_limit_still_applies():
+    matches = [_match("PL", i, f"2026-03-{i + 1:02d}T12:00:00Z") for i in range(20)]
+    matches += [_match(code, 100 + i) for i, code in enumerate(ldc.COMPETITION_CODES) if code != "PL"]
+    res, _ = _upcoming(lambda path, params: _ok(matches))
+    assert sum(f["seasonId"] == "PL" for f in res["data"]) == ldc.PER_COMPETITION_LIMIT
+
+
+def test_failed_combined_call_falls_back_to_each_league():
+    def fake_get(path, params=None):
+        if path == "/matches":
+            return {"status": "error", "message": "HTTP 500"}
+        return _ok([_match(path.split("/")[2], hash(path) % 1000)])
+
+    res, calls = _upcoming(fake_get)
+    assert len(calls) == 1 + len(ldc.COMPETITION_CODES)
+    assert res["status"] == "success"
+    assert len(res["data"]) == len(ldc.COMPETITION_CODES)
+
+
+def test_rate_limit_stops_further_calls():
+    res, calls = _upcoming(lambda path, params: {"status": "throttled", "code": 429, "message": "429"})
+    assert len(calls) == 1
+    assert res["status"] == "error"
+
+
+def test_finished_match_from_today_is_kept_but_older_ones_are_dropped():
+    today = date.today()
+    old = _match("PL", 1, f"{today - timedelta(days=1)}T12:00:00Z", "FINISHED")
+    fresh = _match("BL1", 2, f"{today}T12:00:00Z", "FINISHED")
+    rest = [_match(code, 10 + i) for i, code in enumerate(ldc.COMPETITION_CODES)]
+    res, _ = _upcoming(lambda path, params: _ok([old, fresh, *rest]))
+    ids = {f["id"] for f in res["data"]}
+    assert "2" in ids and "1" not in ids
 
 
 def test_get_upcoming_fixtures_no_key_errors():

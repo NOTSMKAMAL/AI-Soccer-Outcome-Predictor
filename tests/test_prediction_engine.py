@@ -286,6 +286,17 @@ class TestDixonColesProbability:
             0.05 <= p <= 0.90 for p in [result["home_win"], result["draw"], result["away_win"]]
         ), "All probabilities must be in [0.05, 0.90]"
 
+    def test_a_failed_standings_fetch_is_not_remembered(self):
+        """A rate-limited moment must not leave a league without numbers until a restart."""
+        standings = {
+            57: {"goals_scored_per_game": 2.1, "goals_conceded_per_game": 0.8, "matches_played": 10, "clean_sheets": 0},
+            61: {"goals_scored_per_game": 1.2, "goals_conceded_per_game": 1.4, "matches_played": 10, "clean_sheets": 0},
+        }
+        with patch("engine.prediction_engine.get_season_team_stats", return_value={}) as stats:
+            assert dixon_coles_probability({}, {}, season_id="PL", team_a_id=57, team_b_id=61) is None
+            stats.return_value = standings
+            assert dixon_coles_probability({}, {}, season_id="PL", team_a_id=57, team_b_id=61) is not None
+
 
 # ── GROUP 2: Confidence Label Branch Coverage Tests ──────────────────────────────
 

@@ -153,16 +153,31 @@ def _parse_scores(scores: dict | None) -> dict | None:
 # next-season schedule of 380 matches doesn't flood the dashboard).
 PER_COMPETITION_LIMIT = 12
 
+# /matches rejects a date range over 10 days with HTTP 400 (measured 2026-10-31:
+# 13 days fails, 10 passes). /competitions/{code}/matches has no such limit.
+COMBINED_WINDOW_DAYS = 10
+WIDE_WINDOW_DAYS = 180
+
+
+def _soonest_matches(raw: list[dict], today_str: str) -> list[dict]:
+    """Upcoming or live matches plus today's results, soonest first, capped per competition."""
+    # Drop the long tail of older finished games.
+    kept = [m for m in raw
+            if m.get("status") != "FINISHED" or (m.get("utcDate") or "")[:10] >= today_str]
+    kept.sort(key=lambda m: m.get("utcDate") or "")
+    return kept[:PER_COMPETITION_LIMIT]
+
 
 def get_upcoming_fixtures() -> dict:
     """Fetch the soonest upcoming (and very-recent) fixtures per competition.
 
-    Robust across the season cycle: it asks for each competition's matches over a
-    wide forward window (today-3 .. today+180) and keeps the soonest
-    PER_COMPETITION_LIMIT non-finished fixtures. This means that even in the
-    European off-season — when domestic leagues have no games for weeks — the next
-    season's opening fixtures (already published for some competitions) still show
-    up, instead of the page falling back to mock data.
+    Every competition comes from one /matches call covering the next few days, so
+    a normal week costs a single request against the 10/min budget.
+
+    Robust across the season cycle: a competition with nothing in that window (the
+    European off-season, an international break) gets its own wide-window call, so
+    the next season's opening fixtures still show up instead of the page falling
+    back to mock data. Only the quiet competitions pay for this.
 
     Returns {"status","data":[fixture,...],"source"}.
     """
@@ -174,28 +189,43 @@ def get_upcoming_fixtures() -> dict:
     if not _fdorg.has_api_key():
         return {"status": "error", "message": "FOOTBALL_DATA_API_KEY is not set — add it to .env and restart"}
 
-    date_from = str(date.today() - timedelta(days=3))
-    date_to = str(date.today() + timedelta(days=180))
-    today_str = str(date.today())
+    today = date.today()
+    today_str = str(today)
 
     fixtures: list[dict] = []
     errors: list[str] = []
+
+    def rate_limited(res: dict) -> bool:
+        return res.get("code") == 429 or "429" in str(res.get("message", ""))
+
+    # Starts yesterday so a late kick-off still running past midnight stays listed.
+    combined = _fdorg.get("/matches", {
+        "competitions": ",".join(COMPETITION_CODES),
+        "dateFrom": str(today - timedelta(days=1)),
+        "dateTo": str(today + timedelta(days=COMBINED_WINDOW_DAYS - 1)),
+    })
+    by_code: dict[str, list[dict]] = {}
+    if combined["status"] == "success":
+        for m in combined["data"].get("matches", []):
+            by_code.setdefault((m.get("competition") or {}).get("code") or "", []).append(m)
+    else:
+        errors.append(f"all competitions: {combined.get('message')}")
+
+    wide_from = str(today - timedelta(days=3))
+    wide_to = str(today + timedelta(days=WIDE_WINDOW_DAYS))
     for code in COMPETITION_CODES:
-        res = _fdorg.get(f"/competitions/{code}/matches", {"dateFrom": date_from, "dateTo": date_to})
-        if res["status"] != "success":
-            errors.append(f"{code}: {res.get('message')}")
-            # Back off on rate-limit (free tier: 10 req/min) — stop hammering the
-            # API and return whatever competitions already succeeded.
-            if res.get("code") == 429 or "429" in str(res.get("message", "")):
-                break
-            continue
-        raw = res["data"].get("matches", [])
-        # Keep upcoming/live matches plus anything finished in the last few days;
-        # drop the long tail of older finished games.
-        upcoming = [m for m in raw
-                    if m.get("status") != "FINISHED" or (m.get("utcDate") or "")[:10] >= today_str]
-        upcoming.sort(key=lambda m: m.get("utcDate") or "")
-        for m in upcoming[:PER_COMPETITION_LIMIT]:
+        matches = by_code.get(code)
+        # Back off on rate-limit (free tier: 10 req/min) — stop hammering the API
+        # and return whatever competitions already succeeded.
+        if not matches and not rate_limited(combined):
+            res = _fdorg.get(f"/competitions/{code}/matches", {"dateFrom": wide_from, "dateTo": wide_to})
+            if res["status"] != "success":
+                errors.append(f"{code}: {res.get('message')}")
+                if rate_limited(res):
+                    break
+                continue
+            matches = res["data"].get("matches", [])
+        for m in _soonest_matches(matches or [], today_str):
             fixtures.append(_normalize_match(m, code))
 
     if not fixtures:

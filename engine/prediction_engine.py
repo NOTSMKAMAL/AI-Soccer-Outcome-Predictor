@@ -11,7 +11,6 @@ load_dotenv()
 
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
-_season_stats_cache: dict[int, dict] = {}
 _prediction_cache: dict[tuple, dict] = {}
 
 _GEMINI_RETRY_DELAY_SECONDS = 2
@@ -201,9 +200,7 @@ def dixon_coles_probability(
 
     # ── Priority 2: Season Statistics endpoint ──────────────────────────────
     if avg_s_a is None and season_id and team_a_id and team_b_id:
-        if season_id not in _season_stats_cache:
-            _season_stats_cache[season_id] = get_season_team_stats(season_id)
-        sdata = _season_stats_cache[season_id]
+        sdata = get_season_team_stats(season_id)  # cached with the standings
         ta = sdata.get(int(team_a_id))
         tb = sdata.get(int(team_b_id))
         if ta and tb:
