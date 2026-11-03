@@ -17,6 +17,7 @@ from backend import access
 
 OWNER = {"uid": "owner-uid", "email": "owner@example.com", "email_verified": True}
 PUBLIC = {"uid": "u1", "email": "someone@example.com", "email_verified": True}
+SECRET = "test-gate-secret"
 
 
 class FakeSnapshot:
@@ -567,3 +568,77 @@ def test_snapshot_survives_a_firestore_outage():
     snap = access.DailyQuota(client=broken).snapshot()
     assert snap["used_today"] is None
     assert snap["per_user_limit"] == 3
+
+
+class TestRegionGate:
+    """Blocked, allowed and missing-header cases, on a deployed server and in local development."""
+
+    @pytest.fixture
+    def deployed(self, monkeypatch):
+        monkeypatch.setenv("RENDER", "true")
+        monkeypatch.setenv("GEO_GATE_SECRET", SECRET)
+
+    @pytest.fixture
+    def local(self, monkeypatch):
+        monkeypatch.delenv("RENDER", raising=False)
+        monkeypatch.delenv("GEO_GATE_SECRET", raising=False)
+
+    @staticmethod
+    def _status(secret, country):
+        with pytest.raises(HTTPException) as exc:
+            access.enforce_region(secret, country)
+        return exc.value.status_code
+
+    @pytest.mark.parametrize("country", [
+        "DE", "FR", "IE", "ES",  # EU
+        "NO", "IS", "LI",        # rest of the EEA
+        "CH", "GB",              # named separately in the terms
+        "AX", "RE", "GP",        # EU territories that IP lookups report separately
+        "GI", "JE", "GG", "IM",  # close to the UK, blocked to be safe
+    ])
+    def test_blocked_regions_are_refused(self, deployed, country):
+        assert self._status(SECRET, country) == 451
+
+    def test_the_whole_eu_is_covered(self):
+        assert len(access._EU_COUNTRIES) == 27
+        assert access._EU_COUNTRIES <= access.BLOCKED_COUNTRIES
+
+    @pytest.mark.parametrize("country", ["de", " de ", "Gb"])
+    def test_case_and_spaces_cannot_get_past_the_list(self, deployed, country):
+        assert self._status(SECRET, country) == 451
+
+    @pytest.mark.parametrize("country", ["US", "CA", "BR", "JP", "AU", "TR", "UA", "RS"])
+    def test_allowed_countries_pass(self, deployed, country):
+        access.enforce_region(SECRET, country)
+
+    @pytest.mark.parametrize("country", [None, "", "   ", "X", "USA", "12", "U1", "XX,US"])
+    def test_a_missing_or_malformed_country_is_refused(self, deployed, country):
+        assert self._status(SECRET, country) == 451
+
+    @pytest.mark.parametrize("secret", [None, "", "wrong", SECRET + "x", SECRET[:-1]])
+    def test_a_wrong_or_missing_secret_is_refused_even_for_an_allowed_country(self, deployed, secret):
+        assert self._status(secret, "US") == 403
+
+    def test_a_spoofed_country_without_the_secret_is_refused(self, deployed):
+        assert self._status(None, "US") == 403
+
+    def test_render_without_a_secret_refuses_everything(self, monkeypatch, capsys):
+        monkeypatch.setenv("RENDER", "true")
+        monkeypatch.delenv("GEO_GATE_SECRET", raising=False)
+        assert self._status("anything", "US") == 503
+        assert "[Region]" in capsys.readouterr().out
+
+    def test_another_host_turns_the_gate_on_with_the_secret_alone(self, monkeypatch):
+        monkeypatch.delenv("RENDER", raising=False)
+        monkeypatch.setenv("GEO_GATE_SECRET", SECRET)
+        assert self._status(None, "US") == 403
+
+    def test_local_development_is_unaffected(self, local):
+        access.enforce_region(None, None)
+        access.enforce_region(None, "DE")
+
+    def test_the_message_tells_a_blocked_visitor_what_still_works(self, deployed):
+        with pytest.raises(HTTPException) as exc:
+            access.enforce_region(SECRET, "DE")
+        assert "European Economic Area" in exc.value.detail
+        assert "browse fixtures" in exc.value.detail

@@ -2,7 +2,7 @@ import asyncio
 import os
 import time
 from datetime import datetime, timedelta, timezone
-from typing import Any, NoReturn
+from typing import Annotated, Any, NoReturn
 from zoneinfo import ZoneInfo
 
 from fastapi import Depends, FastAPI, Header, HTTPException, status
@@ -12,6 +12,7 @@ from backend.access import (
     QuotaReceipt,
     allowance_for,
     enforce as enforce_prediction_access,
+    enforce_region,
     is_recent_sign_in,
     quota,
 )
@@ -469,12 +470,17 @@ async def _generate_prediction(match_id: str, fixture: dict, receipt: QuotaRecei
 async def fixture_prediction(
     match_id: str,
     user: dict = Depends(get_current_user),
+    gate_secret: Annotated[str | None, Header(alias="x-geo-gate-secret")] = None,
+    visitor_country: Annotated[str | None, Header(alias="x-visitor-country")] = None,
 ) -> dict[str, Any]:
     if not _engine_available:
         raise HTTPException(
             status_code=status.HTTP_501_NOT_IMPLEMENTED,
             detail="Prediction engine unavailable — GEMINI_API_KEY may not be set.",
         )
+
+    # Before the quota, so a visitor who can't predict is never charged.
+    enforce_region(gate_secret, visitor_country)
 
     # Verified email + allowlist + daily quota — the only endpoint that spends
     # Gemini credit. In a thread because the quota check is a Firestore transaction.

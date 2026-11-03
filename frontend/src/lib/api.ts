@@ -5,8 +5,8 @@ const API_BASE =
 
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
-async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
+async function request<T>(path: string, options?: RequestInit, base: string = API_BASE): Promise<T> {
+  const res = await fetch(`${base}${path}`, {
     headers: { "Content-Type": "application/json" },
     ...options,
   });
@@ -29,7 +29,8 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 async function authRequest<T>(
   path: string,
   token: string,
-  options?: RequestInit
+  options?: RequestInit,
+  base?: string
 ): Promise<T> {
   return request<T>(path, {
     ...options,
@@ -38,7 +39,7 @@ async function authRequest<T>(
       Authorization: `Bearer ${token}`,
       ...(options?.headers ?? {}),
     },
-  });
+  }, base);
 }
 
 /**
@@ -80,14 +81,16 @@ export async function getFixtureById(matchId: string) {
 // ── Protected endpoints (Firebase ID token required) ─────────────────────────
 
 /**
- * Triggers a prediction for the given fixture.
- * Backed by POST /api/fixtures/{matchId}/prediction (Firebase ID token required).
+ * Triggers a prediction for the given fixture (Firebase ID token required).
+ * Goes through this site's own proxy route, which adds the visitor's country for
+ * the API's region gate, so it's the one call that doesn't go straight to the API.
  */
 export async function generatePrediction(matchId: string, token: string) {
   return authRequest<{ status: string; data: unknown }>(
     `/api/fixtures/${matchId}/prediction`,
     token,
-    { method: "POST" }
+    { method: "POST" },
+    ""
   );
 }
 

@@ -1077,8 +1077,8 @@ function PredictionContent({ matchId }: { matchId: string }) {
       if (httpStatus === "501") {
         setErrorMsg("This match has no live data behind it, so it can't be predicted. Pick another from the match list.");
         setPageState("unavailable");
-      } else if (httpStatus === "403" || httpStatus === "422" || httpStatus === "429") {
-        // Access gate, not enough data or daily limit — show the backend's reason.
+      } else if (["403", "422", "429", "451"].includes(httpStatus ?? "")) {
+        // Access gate, not enough data, daily limit or region — show the backend's reason.
         setErrorMsg(detail);
         setPageState("unavailable");
       } else {

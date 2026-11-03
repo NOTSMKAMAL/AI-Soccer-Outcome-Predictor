@@ -1,6 +1,6 @@
 """Access control for the expensive (Gemini-backed) endpoints.
 
-Four gates, all configured by environment variables so a public deployment can
+Five gates, all configured by environment variables so a public deployment can
 be handed out as a link without the LLM quota being burned:
 
 1. VERIFIED EMAIL — the Firebase token's `email_verified` claim must be true.
@@ -21,12 +21,22 @@ be handed out as a link without the LLM quota being burned:
    Days are UTC. A cap of 0 blocks everyone. If Firestore cannot be reached the
    gate fails closed: no count, no prediction.
 
+5. REGION — Gemini's terms allow only Paid Services for users in the EEA,
+   Switzerland and the UK, and this app uses the free tier, so predictions are
+   refused there. The country comes from Vercel through the proxy route in
+   frontend/src/app/api/fixtures/[matchId]/prediction, and is believed only when
+   that route's shared secret (`GEO_GATE_SECRET`) comes with it. The gate is on
+   wherever `RENDER` or `GEO_GATE_SECRET` is set, and off in local development.
+   Owners are not exempt: the rule depends on where the visitor is, not who.
+
 All gates run only on endpoints that actually call Gemini. Reading fixtures,
 standings and analytics stays free and unmetered.
 """
 from __future__ import annotations
 
+import hmac
 import os
+import re
 import threading
 import time
 from dataclasses import dataclass
@@ -58,6 +68,23 @@ _DELETE_BATCH_SIZE = 400
 
 # How old a sign-in may be for a destructive action; Firebase's own rule is 5 minutes.
 RECENT_SIGN_IN_SECONDS = 300
+
+# Regions where Gemini's terms require Paid Services. ISO 3166-1 alpha-2 codes.
+_EU_COUNTRIES = frozenset({
+    "AT", "BE", "BG", "HR", "CY", "CZ", "DK", "EE", "FI", "FR", "DE", "GR", "HU", "IE",
+    "IT", "LV", "LT", "LU", "MT", "NL", "PL", "PT", "RO", "SK", "SI", "ES", "SE",
+})
+_OTHER_EEA_COUNTRIES = frozenset({"IS", "LI", "NO"})
+# IP lookups report these separately. The first group is part of the EU. The second
+# isn't part of the UK itself, and is blocked to stay on the safe side.
+_EU_TERRITORIES = frozenset({"AX", "GF", "GP", "MQ", "RE", "YT", "MF"})
+_UK_ADJACENT_TERRITORIES = frozenset({"GI", "GG", "JE", "IM"})
+BLOCKED_COUNTRIES = (
+    _EU_COUNTRIES | _OTHER_EEA_COUNTRIES | _EU_TERRITORIES | _UK_ADJACENT_TERRITORIES | {"CH", "GB"}
+)
+
+_COUNTRY_CODE = re.compile(r"[A-Z]{2}")
+HTTP_UNAVAILABLE_FOR_LEGAL_REASONS = 451
 
 
 def _env_int(name: str, default: int) -> int:
@@ -289,6 +316,47 @@ def allowance_for(user: dict) -> dict:
         return {"unlimited": True, "remaining": None, "limit": None}
     per_user, _ = quota.limits()
     return {"unlimited": False, "remaining": quota.remaining(user_key(user)), "limit": per_user}
+
+
+def enforce_region(gate_secret: str | None, country: str | None) -> None:
+    """Refuse a prediction the visitor's region doesn't allow. Off in local development.
+
+    Fails closed: a server with no secret configured refuses everything, and a
+    visitor whose country is missing or malformed is refused. Raises 403 when the
+    request didn't come through the proxy, 451 for the region, and 503 when the
+    secret isn't configured.
+    """
+    expected = os.getenv("GEO_GATE_SECRET", "")
+    if not (expected or os.getenv("RENDER")):
+        return
+    if not expected:
+        print("[Region] GEO_GATE_SECRET is not set: refusing every prediction.")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Predictions are temporarily unavailable. Please try again in a few minutes.",
+        )
+    if not hmac.compare_digest((gate_secret or "").encode(), expected.encode()):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Predictions are only available through the FUTURE FC website.",
+        )
+    code = (country or "").strip().upper()
+    if not _COUNTRY_CODE.fullmatch(code):
+        raise HTTPException(
+            status_code=HTTP_UNAVAILABLE_FOR_LEGAL_REASONS,
+            detail=(
+                "We couldn't confirm your region, so we can't run this prediction. "
+                "Turn off any VPN or proxy and try again."
+            ),
+        )
+    if code in BLOCKED_COUNTRIES:
+        raise HTTPException(
+            status_code=HTTP_UNAVAILABLE_FOR_LEGAL_REASONS,
+            detail=(
+                "AI predictions aren't available in the European Economic Area, Switzerland "
+                "or the UK. You can still browse fixtures here."
+            ),
+        )
 
 
 def enforce(user: dict) -> QuotaReceipt:

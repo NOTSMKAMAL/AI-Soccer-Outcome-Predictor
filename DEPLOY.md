@@ -10,11 +10,12 @@ Everything below is on free plans. Budget about 45 minutes end to end.
 
 ## How access control works
 
-Five layers, all already in the code:
+Six layers, all already in the code:
 
 | Layer | Where | What it stops |
 |---|---|---|
 | Firebase sign-in | `backend/main.py` → `get_current_user` | anonymous traffic hitting the prediction endpoint |
+| Region | `backend/access.py` → `enforce_region` | predictions in the EEA, Switzerland and the UK, where Gemini's terms require Paid Services and this app uses the free tier |
 | Verified email | `backend/access.py` → `enforce` | throwaway email/password accounts. Google sign-in already counts as verified |
 | Owner | `backend/access.py` → `OWNER_EMAILS` | you being capped. Needs an exact, *verified* email |
 | Email allowlist (optional) | `backend/access.py` → `ALLOWED_EMAILS` | everyone not listed, if you want an invite-only app |
@@ -27,6 +28,13 @@ open and costs nothing, because it never calls Gemini.
 sleeping or restarted instance can't reset them, and two requests at once can't slip
 past. Days are UTC. If Firestore can't be reached, the public gets "Predictions are
 temporarily unavailable" rather than uncounted predictions; owners keep working.
+
+**How the region gate holds:** predictions go through one Next.js route
+(`frontend/src/app/api/fixtures/[matchId]/prediction/route.ts`), which reads Vercel's
+`x-vercel-ip-country` and passes it to the API with `GEO_GATE_SECRET`. Anything that
+reaches the API without the secret is refused, and so is a missing or malformed country.
+On Render the gate is on even if you forget the secret: every prediction is then refused.
+It's off locally. It works from IP location, so a VPN can get around it.
 
 A prediction already stored for that matchup is free: it calls neither Gemini nor
 football-data.org, and doesn't use up one of the user's predictions.
@@ -90,6 +98,7 @@ OWNER_EMAILS=you@gmail.com
 PREDICTIONS_PER_USER_PER_DAY=3
 PREDICTIONS_PER_DAY_TOTAL=50
 ALLOWED_ORIGINS=https://your-app.vercel.app
+GEO_GATE_SECRET=<a long random value, e.g. from: openssl rand -hex 32>
 ```
 
 Notes:
@@ -102,10 +111,13 @@ Notes:
   allows a whole domain) to restrict predictions to those accounts.
 - A cap of `0` blocks everyone except owners; it does not mean "no limit".
 - `ALLOWED_ORIGINS` should be your exact frontend URL. Unset means any origin.
+- `GEO_GATE_SECRET` must match the value on Vercel (Step 4). Rotating it means changing
+  both, so predictions are refused until the two match again.
 
 Users see a clear message in each case: unverified accounts get a verify prompt with a
 resend button, blocked accounts get "This account does not have prediction access…",
-and users past their cap get "You have used your N predictions for today."
+users past their cap get "You have used your N predictions for today.", and visitors in
+the EEA, Switzerland or the UK get "AI predictions aren't available…".
 
 ---
 
@@ -147,7 +159,11 @@ NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=...
 NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=...
 NEXT_PUBLIC_FIREBASE_APP_ID=...
 NEXT_PUBLIC_API_BASE_URL=https://<your-api>.onrender.com
+GEO_GATE_SECRET=<the same value as on Render>
 ```
+
+`GEO_GATE_SECRET` is server-only, so never give it a `NEXT_PUBLIC_` prefix. Set it for
+both Production and Preview, or predictions on preview links are refused.
 
 4. Deploy. Then finish the loop:
    - Firebase Console → Authentication → Settings → **Authorized domains** → add your
@@ -156,6 +172,15 @@ NEXT_PUBLIC_API_BASE_URL=https://<your-api>.onrender.com
 
 `NEXT_PUBLIC_*` values are visible in the browser by design — that is normal for
 Firebase web config. Access is enforced by the backend gates above, not by hiding these.
+
+After the first deploy, check what can't be tested locally:
+
+- `https://<your-app>/_next/image?url=%2Ffuture-fc-logo.png&w=64&q=75` returns 404.
+- A prediction works from an allowed country, and a VPN set to Germany gets the
+  "aren't available" message.
+- On that VPN, a prediction request with a fake `x-vercel-ip-country: US` header is still
+  refused.
+- A signed-in request straight to `https://<your-api>.onrender.com` gets a 403.
 
 ---
 

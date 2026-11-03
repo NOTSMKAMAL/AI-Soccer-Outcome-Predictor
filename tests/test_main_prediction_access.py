@@ -50,6 +50,8 @@ def refunds(monkeypatch):
     monkeypatch.setattr(main, "_tracking_available", False)
     monkeypatch.setattr(main, "_engine_cached_prediction", lambda *args: None, raising=False)
     monkeypatch.setitem(main._fixture_cache, "m1", FIXTURE)
+    monkeypatch.delenv("RENDER", raising=False)
+    monkeypatch.delenv("GEO_GATE_SECRET", raising=False)
     return log
 
 
@@ -112,6 +114,59 @@ def test_not_enough_data_is_not_recorded_as_a_prediction(monkeypatch, refunds):
     with pytest.raises(HTTPException):
         _predict()
     assert logged == []
+
+
+class TestRegionGate:
+    """On a deployed server the region is checked first, so nothing is spent or charged."""
+
+    @pytest.fixture
+    def deployed(self, monkeypatch, refunds):
+        monkeypatch.setenv("RENDER", "true")
+        monkeypatch.setenv("GEO_GATE_SECRET", "s3cret")
+        self.charged = []
+
+        def charge(user):
+            self.charged.append(user)
+            return RECEIPT
+
+        monkeypatch.setattr(main, "enforce_prediction_access", charge)
+        self.engine = FakeEngine(result={"status": "success", "data": {"winner": "Home"}})
+        _use_engine(monkeypatch, self.engine)
+
+    def _predict(self, secret="s3cret", country="US"):
+        return asyncio.run(main.fixture_prediction("m1", USER, secret, country))
+
+    def _refused(self, **kwargs):
+        with pytest.raises(HTTPException) as exc:
+            self._predict(**kwargs)
+        assert self.engine.calls == 0
+        assert self.charged == []
+        return exc.value
+
+    def test_allowed_country_predicts(self, deployed):
+        assert self._predict()["data"] == {"winner": "Home"}
+        assert self.engine.calls == 1
+
+    def test_blocked_country_reaches_neither_quota_nor_gemini(self, deployed):
+        assert self._refused(country="DE").status_code == 451
+
+    def test_missing_country_reaches_neither_quota_nor_gemini(self, deployed):
+        assert self._refused(country=None).status_code == 451
+
+    def test_missing_secret_reaches_neither_quota_nor_gemini(self, deployed):
+        assert self._refused(secret=None).status_code == 403
+
+    def test_a_blocked_visitor_gets_no_cached_prediction(self, deployed, monkeypatch):
+        monkeypatch.setattr(main, "_engine_cached_prediction", lambda *args: {"status": "success", "data": {}}, raising=False)
+        assert self._refused(country="GB").status_code == 451
+
+    def test_local_development_needs_no_headers(self, monkeypatch, refunds):
+        _use_engine(monkeypatch, FakeEngine(result={"status": "success", "data": {"winner": "Home"}}))
+        assert _predict()["data"] == {"winner": "Home"}
+
+    def test_route_reads_the_headers_the_proxy_sends(self):
+        route = next(r for r in main.app.routes if getattr(r, "path", "") == "/api/fixtures/{match_id}/prediction")
+        assert {param.alias for param in route.dependant.header_params} >= {"x-geo-gate-secret", "x-visitor-country"}
 
 
 def test_unknown_fixture_refunds(monkeypatch, refunds):

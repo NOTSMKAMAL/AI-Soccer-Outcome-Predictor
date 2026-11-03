@@ -153,6 +153,7 @@ Optional but recommended before sharing a link:
 | `PREDICTIONS_PER_USER_PER_DAY` | per-account daily cap (default 3; 0 blocks everyone but owners) |
 | `PREDICTIONS_PER_DAY_TOTAL` | shared daily cap across all users (default 50; 0 blocks everyone but owners) |
 | `ALLOWED_ORIGINS` | browser origins allowed to call the API |
+| `GEO_GATE_SECRET` | production only: shared with Vercel so the API can trust the visitor's country. Leave unset locally |
 
 Start it:
 

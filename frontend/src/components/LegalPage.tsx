@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import Navbar from "@/components/Navbar";
 
 export const CONTACT_EMAIL = "chrome.usa.llc@gmail.com";
-export const LEGAL_LAST_UPDATED = "October 30, 2026";
+export const LEGAL_LAST_UPDATED = "October 31, 2026";
 
 /** Shared layout for the Privacy and Terms pages. */
 export default function LegalPage({ title, children }: { title: string; children: ReactNode }) {

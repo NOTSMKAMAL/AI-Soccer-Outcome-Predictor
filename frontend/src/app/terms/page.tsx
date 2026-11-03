@@ -37,6 +37,15 @@ export default function TermsPage() {
         </p>
       </LegalSection>
 
+      <LegalSection heading="Where the AI feature is available">
+        <p>
+          AI predictions aren&apos;t available in the European Economic Area, Switzerland or the
+          United Kingdom. We use the approximate location of your internet connection to apply this,
+          and refuse a prediction if we can&apos;t determine your location. You can still browse
+          fixtures from these regions.
+        </p>
+      </LegalSection>
+
       <LegalSection heading="Daily limits">
         <p>
           Predictions are limited each day, per account and across the site. Don&apos;t create extra

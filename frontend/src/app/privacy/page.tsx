@@ -42,6 +42,11 @@ export default function PrivacyPage() {
             requests so the server can identify you. The server checks it and doesn&apos;t store it.
           </li>
           <li>
+            <strong>Country.</strong> When you ask for a prediction, Vercel works out your country
+            from your IP address and we use it to check whether the AI feature is available where
+            you are. We don&apos;t store it.
+          </li>
+          <li>
             <strong>Request logs.</strong> Our hosting providers record requests to the site. These
             logs can include IP addresses. We try to keep user IDs and email addresses out of our
             own server logs.

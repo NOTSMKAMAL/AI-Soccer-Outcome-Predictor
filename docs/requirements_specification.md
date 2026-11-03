@@ -78,6 +78,7 @@
 - `GEMINI_API_KEY` not set or engine import fails → HTTP 501 "Prediction engine unavailable"
 - Individual enrichment calls fail (e.g., the football-data.org rate limit) → `_safe()` wrapper returns an error envelope; the section is listed in `missing_sections` and logged as `[Enrich] <section> unavailable …`; the Gemini prompt gets a DATA LIMITATIONS note naming it; neither the enrichment nor the prediction is cached
 - Dixon-Coles returns `None` (insufficient stats data — e.g., team has 0 matches played) → HTTP 422 "Not enough data for a prediction"; Gemini is not called and the quota unit is refunded
+- Visitor in the EEA, Switzerland or the UK, or their country can't be determined, on a deployed server → HTTP 451 before the quota, Gemini or the cache are touched; a request without the proxy's secret → HTTP 403
 - Prediction already cached for this matchup → returned without calling football-data.org or Gemini, and the quota unit is refunded; a user at their cap is still refused
 - Gemini reports a server error (e.g. overloaded) → retried once after 2 seconds
 - Gemini call still fails → HTTP 503 with a plain retry message; the quota unit is refunded and the raw error is logged
